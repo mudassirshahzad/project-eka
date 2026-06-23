@@ -1,0 +1,169 @@
+# ────────────────────────────────────────────────────────────────────────────
+# Project EKA — .gitignore
+# ────────────────────────────────────────────────────────────────────────────
+
+# ── Environment & Secrets ────────────────────────────────────────────────────
+.env
+.env.*
+*.env
+!.env.example
+secrets/
+*.pem
+*.key
+*.p12
+*.jks
+*.pkcs12
+
+# ── Java ─────────────────────────────────────────────────────────────────────
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.rar
+*.zip
+*.tar.gz
+hs_err_pid*
+replay_pid*
+
+# ── Maven ────────────────────────────────────────────────────────────────────
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ── Gradle ───────────────────────────────────────────────────────────────────
+.gradle/
+build/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+**/build/
+out/
+
+# ── Spring Boot ──────────────────────────────────────────────────────────────
+application-local.yml
+application-local.yaml
+application-local.properties
+application-dev-local.yml
+application-dev-local.yaml
+spring-shell.log
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+log/
+*.log
+*.log.*
+*.log.gz
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+
+# ── Local Uploads & Document Storage ─────────────────────────────────────────
+uploads/
+documents/
+data/
+storage/
+/tmp/
+
+# ── IntelliJ IDEA ────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+atlassian-ide-plugin.xml
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# ── VS Code ──────────────────────────────────────────────────────────────────
+.vscode/
+*.code-workspace
+.history/
+*.vsix
+
+# ── Eclipse ──────────────────────────────────────────────────────────────────
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# ── NetBeans ─────────────────────────────────────────────────────────────────
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+Icon
+
+# ── Windows ──────────────────────────────────────────────────────────────────
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# ── Linux ────────────────────────────────────────────────────────────────────
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ── Test & Coverage Reports ───────────────────────────────────────────────────
+test-results/
+surefire-reports/
+failsafe-reports/
+jacoco.exec
+jacoco/
+coverage/
+*.lcov
+htmlcov/
+
+# ── Testcontainers ───────────────────────────────────────────────────────────
+.testcontainers.properties
+
+# ── Weaviate Local Data ───────────────────────────────────────────────────────
+weaviate-data/
+
+# ── Miscellaneous ────────────────────────────────────────────────────────────
+*.swp
+*.swo
+*.bak
+*.orig
+*.rej
+.cache/
+.temp/
+.tmp/
