@@ -28,9 +28,9 @@ Project EKA is designed from day one to support the full spectrum of modern ente
 
 ## Current Status
 
-**Active Phase: P01 — Infrastructure Completion** ✅ Complete
+**Active Phase: P02.1 — Application Layer Foundation** 🚧 In Progress
 
-All six P01 tasks delivered. Compilation clean. 8/8 ArchUnit tests pass. Build verified.
+P01 (Infrastructure Completion) is complete. P02.1 is now in progress.
 
 ---
 
@@ -50,13 +50,25 @@ All six P01 tasks delivered. Compilation clean. 8/8 ArchUnit tests pass. Build v
 - [x] Fixed `Document.getText()` API (was `getContent()`) for Spring AI 1.0.0
 - [x] ArchUnit `allowEmptyShould(true)` on application-layer rules (no app layer yet)
 
-### P02 — Application Layer ⏳
+### P02.1 — Application Layer Foundation 🚧
 
-- [ ] `DocumentIngestionService` (use case orchestrator)
-- [ ] `RetrievalService`
-- [ ] `ConversationService`
-- [ ] `ChatService`
-- [ ] `UserService`
+- [x] `DomainEventPublisher` port (application.shared)
+- [x] `SpringDomainEventPublisher` adapter (infrastructure.event)
+- [x] Application exceptions: `ApplicationException`, `ResourceNotFoundException`, `DuplicateResourceException`
+- [x] 12 domain events in `application.event` package
+- [x] `DocumentApplicationService` with register, get, list, updateMetadata, delete
+- [x] `ConversationApplicationService` with create, get, list, addUserMessage, rename, delete
+- [x] `ChatSessionApplicationService` with start, recordTurn, complete, timeout, find, list
+- [x] `QueryApplicationService` with submit, get, list
+- [x] `UserApplicationService` with register, get, findByEmail, activate, deactivate, changePassword, assignRole, removeRole
+- [x] Commands: 13 command records across all packages
+- [x] Hexagonal boundaries verified (ArchUnit 8/8 pass)
+
+### P02.2 — Business Use Cases ⏳
+
+- [ ] `DocumentIngestionService` (pipeline orchestrator — P03 dependency)
+- [ ] `RetrievalService` (P04 dependency)
+- [ ] `ChatService` (full conversational AI — P06 dependency)
 
 ### P03 — Document Ingestion Pipeline ⏳
 
@@ -144,7 +156,7 @@ The hexagonal architecture is **frozen**. The following may not be changed:
 | Persistence adapters | ✅ | All 7 adapters: Document, Chunk, Conversation, ChatSession, DocumentTag, AuditLog, User |
 | Weaviate adapter | ✅ | VectorStore port impl, MetadataFilterTranslator, batch indexing |
 | Config properties | ✅ | `AppProperties` covering ingestion, retrieval, conversation, storage |
-| Application layer | ⏳ | Not started (P02) |
+| Application layer | 🚧 | Foundation complete (P02.1) — business use cases pending (P02.2) |
 | REST API | ⏳ | Not started (P05) |
 | Security | ⏳ | Not started (P05) |
 | Ingestion pipeline | ⏳ | Not started (P03) |
@@ -377,7 +389,8 @@ Refresh tokens are stored as SHA-256 hashes — the raw token never touches the 
 | Phase | Scope | Status |
 |---|---|---|
 | P01 | Infrastructure Completion — persistence adapters, config properties, Spring AI 1.0 fixes | ✅ Complete |
-| P02 | Application Layer — use case orchestrators, domain service wiring | ⏳ Next |
+| P02.1 | Application Layer Foundation — services, commands, events, DomainEventPublisher | 🚧 In Progress |
+| P02.2 | Business Use Cases — ingestion, retrieval, and chat orchestrators (deferred to P03–P06) | ⏳ Planned |
 | P03 | Document Ingestion — Tika, format chunking, async pipeline, batch embedding | ⏳ Planned |
 | P04 | Retrieval Pipeline — hybrid search, BM25, re-rank, context assembly | ⏳ Planned |
 | P05 | REST API + Security — JWT RS256, RBAC, controllers, DTOs, OpenAPI | ⏳ Planned |
