@@ -20,30 +20,30 @@ class MetadataFilterTranslator {
         }
 
         var b = new FilterExpressionBuilder();
-        List<Filter.Expression> expressions = new ArrayList<>();
+        List<FilterExpressionBuilder.Op> ops = new ArrayList<>();
 
         for (Map.Entry<String, Object> entry : filter.criteria().entrySet()) {
             String key   = entry.getKey();
             Object value = entry.getValue();
 
             if (value instanceof List<?> list && !list.isEmpty()) {
-                expressions.add(b.in(key, list.toArray()));
+                ops.add(b.in(key, list.toArray()));
             } else if (value != null) {
-                expressions.add(b.eq(key, value));
+                ops.add(b.eq(key, value));
             }
         }
 
-        if (expressions.isEmpty()) {
+        if (ops.isEmpty()) {
             return null;
         }
-        if (expressions.size() == 1) {
-            return expressions.getFirst();
+        if (ops.size() == 1) {
+            return ops.getFirst().build();
         }
 
-        Filter.Expression combined = expressions.get(0);
-        for (int i = 1; i < expressions.size(); i++) {
-            combined = b.and(combined, expressions.get(i));
+        FilterExpressionBuilder.Op combined = ops.get(0);
+        for (int i = 1; i < ops.size(); i++) {
+            combined = b.and(combined, ops.get(i));
         }
-        return combined;
+        return combined.build();
     }
 }

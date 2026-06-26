@@ -17,6 +17,7 @@ import com.mudassir.eka.infrastructure.persistence.postgres.entity.UserEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class ConversationPersistenceMapper {
@@ -65,11 +66,16 @@ public class ConversationPersistenceMapper {
     }
 
     public MessageEntity messageToEntity(Message m, ConversationEntity conversation) {
+        return messageToEntity(m, conversation, null);
+    }
+
+    public MessageEntity messageToEntity(Message m, ConversationEntity conversation, UUID sessionId) {
         MessageEntity entity = MessageEntity.builder()
                 .conversation(conversation)
                 .role(m.role().name())
                 .content(m.content())
                 .queryId(m.queryId() != null ? m.queryId().value() : null)
+                .sessionId(sessionId)
                 .build();
         entity.setId(m.id());
 

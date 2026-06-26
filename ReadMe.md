@@ -26,21 +26,129 @@ Project EKA is designed from day one to support the full spectrum of modern ente
 
 ---
 
+## Current Status
+
+**Active Phase: P01 — Infrastructure Completion** ✅ Complete
+
+All six P01 tasks delivered. Compilation clean. 8/8 ArchUnit tests pass. Build verified.
+
+---
+
+## Progress Tracker
+
+### P01 — Infrastructure Completion ✅
+
+- [x] `ChatSessionPersistenceMapper` (bidirectional, follows ChunkPersistenceMapper pattern)
+- [x] `ChatSessionRepositoryAdapter` (implements `ChatSessionRepository`, upsert pattern)
+- [x] `DocumentTagPersistenceMapper` (bidirectional)
+- [x] `DocumentTagRepositoryAdapter` (implements `DocumentTagRepository`)
+- [x] `ConversationPersistenceMapper` — `messageToEntity()` overloaded with `sessionId` parameter
+- [x] `AppProperties` `@ConfigurationProperties` for `app.*` (ingestion, retrieval, conversation, storage)
+- [x] `WeaviateVectorStoreAdapter` — replaced `@Value` with `AppProperties` injection
+- [x] Fixed Spring AI 1.0.0 artifact IDs (`spring-ai-starter-model-ollama`, `spring-ai-starter-vector-store-weaviate`)
+- [x] Fixed `FilterExpressionBuilder` API (`Op` vs `Expression`) for Spring AI 1.0.0
+- [x] Fixed `Document.getText()` API (was `getContent()`) for Spring AI 1.0.0
+- [x] ArchUnit `allowEmptyShould(true)` on application-layer rules (no app layer yet)
+
+### P02 — Application Layer ⏳
+
+- [ ] `DocumentIngestionService` (use case orchestrator)
+- [ ] `RetrievalService`
+- [ ] `ConversationService`
+- [ ] `ChatService`
+- [ ] `UserService`
+
+### P03 — Document Ingestion Pipeline ⏳
+
+- [ ] Tika document parser adapter
+- [ ] Format-specific chunking strategies (semantic, slide, row)
+- [ ] Async ingestion pipeline with state machine transitions
+- [ ] Batch embedding via nomic-embed-text
+
+### P04 — Retrieval Pipeline ⏳
+
+- [ ] PostgreSQL BM25 full-text search adapter
+- [ ] Hybrid search fusion (alpha-weighted)
+- [ ] Metadata pre-filtering bridge to Weaviate
+- [ ] Re-ranking port + Noop adapter
+- [ ] Context assembly with token-budget guard
+
+### P05 — REST API + Security ⏳
+
+- [ ] JWT RS256 filter chain (`SecurityFilterChain`)
+- [ ] `JwtService` (issue, validate, rotate)
+- [ ] REST controllers (document, conversation, query)
+- [ ] Request/response DTOs
+- [ ] `@PreAuthorize` on application services
+- [ ] OpenAPI spec
+
+### P06 — Conversational AI ⏳
+
+- [ ] Sliding-window conversation memory
+- [ ] Query rewriting via Ollama
+- [ ] Prompt builder with system-prompt isolation
+- [ ] Streaming SSE response
+- [ ] Citation extraction from `[SOURCE-N]` markers
+
+### P07 — MCP Integration ⏳
+
+- [ ] MCP server scaffold
+- [ ] Knowledge base query tool
+- [ ] Document ingestion tool
+- [ ] Session management tool
+
+### P08 — LangGraph + Agentic AI ⏳
+
+- [ ] LangGraph graph definition
+- [ ] Retrieval grader node
+- [ ] Self-correction loop
+- [ ] Multi-agent coordination
+
+---
+
+## Release Roadmap
+
+| Version | Phase | Scope | Status |
+|---|---|---|---|
+| v0.1.0 | P01 | Infrastructure completion — persistence adapters, config properties | ✅ Complete |
+| v0.2.0 | P02 | Application layer — use case orchestrators | ⏳ Planned |
+| v0.3.0 | P03 | Document ingestion — Tika, chunking, async pipeline | ⏳ Planned |
+| v0.4.0 | P04 | Retrieval pipeline — hybrid search, re-rank, context assembly | ⏳ Planned |
+| v0.5.0 | P05 | REST API + Security — JWT, RBAC, controllers, OpenAPI | ⏳ Planned |
+| v0.6.0 | P06 | Conversational AI — memory, query rewriting, streaming, citations | ⏳ Planned |
+| v0.7.0 | P07 | MCP integration — knowledge base and ingestion tools | ⏳ Planned |
+| v0.8.0 | P08 | LangGraph + agentic AI — self-correction, multi-agent | ⏳ Planned |
+| v0.9.0 | — | Production hardening — observability, load testing, docs | ⏳ Planned |
+
+---
+
+## Architecture Freeze
+
+The hexagonal architecture is **frozen**. The following may not be changed:
+
+- Package structure (`domain`, `infrastructure`, `api`, `application`)
+- Domain aggregate boundaries
+- Port interface contracts
+- Persistence entity hierarchy (`BaseUuidEntity → AuditableEntity`)
+- Mapper and adapter naming conventions
+- ArchUnit layering rules
+
+---
+
 ## Current Progress
 
-| Status | Milestone |
-|:---:|---|
-| ✅ | Architecture Foundation |
-| ✅ | Domain Model |
-| ✅ | PostgreSQL Schema |
-| 🔄 | Weaviate Integration |
-| ⏳ | Security Layer |
-| ⏳ | Document Ingestion Pipeline |
-| ⏳ | Retrieval Pipeline |
-| ⏳ | Conversational AI |
-| ⏳ | MCP Integration |
-| ⏳ | LangGraph Integration |
-| ⏳ | Agentic AI Platform |
+| Layer | Status | Notes |
+|:---|:---:|---|
+| Domain model | ✅ | All aggregates, value objects, port interfaces complete |
+| PostgreSQL schema | ✅ | V001–V014 Flyway migrations, all tables, indexes, constraints |
+| Persistence adapters | ✅ | All 7 adapters: Document, Chunk, Conversation, ChatSession, DocumentTag, AuditLog, User |
+| Weaviate adapter | ✅ | VectorStore port impl, MetadataFilterTranslator, batch indexing |
+| Config properties | ✅ | `AppProperties` covering ingestion, retrieval, conversation, storage |
+| Application layer | ⏳ | Not started (P02) |
+| REST API | ⏳ | Not started (P05) |
+| Security | ⏳ | Not started (P05) |
+| Ingestion pipeline | ⏳ | Not started (P03) |
+| Retrieval pipeline | ⏳ | Not started (P04) |
 
 ---
 
@@ -268,17 +376,16 @@ Refresh tokens are stored as SHA-256 hashes — the raw token never touches the 
 
 | Phase | Scope | Status |
 |---|---|---|
-| Phase 1 | Architecture Foundation, Domain Model, PostgreSQL Schema | ✅ Complete |
-| Phase 2 | Weaviate Integration, Document Ingestion, Tika, Chunking | 🔄 In Progress |
-| Phase 3 | Hybrid Retrieval, Generation, Streaming, Citations | ⏳ Planned |
-| Phase 4 | Conversational Memory, Query Rewriting | ⏳ Planned |
-| Phase 5 | Security Layer, Audit Logging, Observability | ⏳ Planned |
-| Phase 6 | Re-ranking, Advanced Retrieval | Future |
-| Phase 7 | MCP Server Integration | Future |
-| Phase 8 | LangGraph Integration | Future |
-| Phase 9 | Agentic AI Platform | Future |
+| P01 | Infrastructure Completion — persistence adapters, config properties, Spring AI 1.0 fixes | ✅ Complete |
+| P02 | Application Layer — use case orchestrators, domain service wiring | ⏳ Next |
+| P03 | Document Ingestion — Tika, format chunking, async pipeline, batch embedding | ⏳ Planned |
+| P04 | Retrieval Pipeline — hybrid search, BM25, re-rank, context assembly | ⏳ Planned |
+| P05 | REST API + Security — JWT RS256, RBAC, controllers, DTOs, OpenAPI | ⏳ Planned |
+| P06 | Conversational AI — memory window, query rewriting, streaming, citations | ⏳ Planned |
+| P07 | MCP Server Integration — knowledge base tools, ingestion tools | ⏳ Future |
+| P08 | LangGraph + Agentic AI — self-correction, multi-agent coordination | ⏳ Future |
 
-See [docs/roadmap.md](docs/roadmap.md) for full detail on each phase including MCP, LangGraph, and Agentic AI integration plans.
+See [docs/roadmap.md](docs/roadmap.md) for full detail on each phase.
 
 ---
 

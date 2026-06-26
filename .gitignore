@@ -167,3 +167,4 @@ weaviate-data/
 .cache/
 .temp/
 .tmp/
+project-structure.txt

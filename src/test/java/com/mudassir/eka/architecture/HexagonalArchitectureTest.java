@@ -55,7 +55,8 @@ class HexagonalArchitectureTest {
         ArchRule rule = noClasses()
                 .that().resideInAPackage(ROOT + ".application..")
                 .should().dependOnClassesThat()
-                .resideInAPackage(ROOT + ".infrastructure..");
+                .resideInAPackage(ROOT + ".infrastructure..")
+                .allowEmptyShould(true);
         rule.check(classes);
     }
 
@@ -64,7 +65,8 @@ class HexagonalArchitectureTest {
         ArchRule rule = noClasses()
                 .that().resideInAPackage(ROOT + ".application..")
                 .should().dependOnClassesThat()
-                .resideInAPackage(ROOT + ".api..");
+                .resideInAPackage(ROOT + ".api..")
+                .allowEmptyShould(true);
         rule.check(classes);
     }
 

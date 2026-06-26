@@ -6,6 +6,7 @@ import com.mudassir.eka.domain.chunk.ChunkMetadata;
 import com.mudassir.eka.domain.chunk.VectorSearchResult;
 import com.mudassir.eka.domain.chunk.VectorStore;
 import com.mudassir.eka.domain.query.MetadataFilter;
+import com.mudassir.eka.infrastructure.config.AppProperties;
 import com.mudassir.eka.infrastructure.vectorstore.weaviate.exception.VectorIndexingException;
 import com.mudassir.eka.infrastructure.vectorstore.weaviate.exception.VectorSearchException;
 import com.mudassir.eka.infrastructure.vectorstore.weaviate.exception.VectorStoreException;
@@ -14,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.filter.Filter;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -31,9 +31,7 @@ public class WeaviateVectorStoreAdapter implements VectorStore {
 
     private final org.springframework.ai.vectorstore.VectorStore springVectorStore;
     private final MetadataFilterTranslator filterTranslator;
-
-    @Value("${app.ingestion.embedding-batch-size:32}")
-    private int batchSize;
+    private final AppProperties            appProperties;
 
     @Override
     public void index(List<Chunk> chunks) {
@@ -50,7 +48,7 @@ public class WeaviateVectorStoreAdapter implements VectorStore {
         }
 
         try {
-            List<List<Document>> batches = partition(documents, batchSize);
+            List<List<Document>> batches = partition(documents, appProperties.ingestion().embeddingBatchSize());
             for (List<Document> batch : batches) {
                 springVectorStore.add(batch);
             }
@@ -121,7 +119,7 @@ public class WeaviateVectorStoreAdapter implements VectorStore {
 
         double score = doc.getScore() != null ? doc.getScore() : 0.0;
 
-        return new VectorSearchResult(chunkId, doc.getId(), doc.getContent(), score);
+        return new VectorSearchResult(chunkId, doc.getId(), doc.getText(), score);
     }
 
     private static <T> List<List<T>> partition(List<T> list, int size) {

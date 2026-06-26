@@ -68,7 +68,7 @@ public class DocumentRepositoryAdapter implements DocumentRepository {
         TenantEntity tenant   = tenantJpaRepository.getReferenceById(tenantId.value());
         Page<DocumentEntity> page = documentJpaRepository.findByTenant(
                 tenant,
-                PageRequest.of(pageRequest.pageNumber(), pageRequest.pageSize())
+                org.springframework.data.domain.PageRequest.of(pageRequest.pageNumber(), pageRequest.pageSize())
         );
         return PageResult.of(
                 page.getContent().stream().map(mapper::toDomain).toList(),
@@ -86,7 +86,7 @@ public class DocumentRepositoryAdapter implements DocumentRepository {
         UserEntity   owner  = userJpaRepository.getReferenceById(ownerId.value());
         Page<DocumentEntity> page = documentJpaRepository.findByOwnerAndTenant(
                 owner, tenant,
-                PageRequest.of(pageRequest.pageNumber(), pageRequest.pageSize())
+                org.springframework.data.domain.PageRequest.of(pageRequest.pageNumber(), pageRequest.pageSize())
         );
         return PageResult.of(
                 page.getContent().stream().map(mapper::toDomain).toList(),

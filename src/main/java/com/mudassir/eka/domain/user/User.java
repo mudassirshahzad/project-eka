@@ -12,7 +12,7 @@ public class User {
 
     private final UserId id;
     private final TenantId tenantId;
-    private final String email;
+    private String email;
     private String passwordHash;
     private boolean active;
     private final Set<UserRole> roles;
