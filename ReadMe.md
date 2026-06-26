@@ -28,9 +28,9 @@ Project EKA is designed from day one to support the full spectrum of modern ente
 
 ## Current Status
 
-**Active Phase: P02.1 — Application Layer Foundation** 🚧 In Progress
+**Active Phase: P02.2 — Business Use Cases** 🚧 In Progress
 
-P01 (Infrastructure Completion) is complete. P02.1 is now in progress.
+P01 (Infrastructure Completion) and P02.1 (Application Layer Foundation) are complete. P02.2 is now in progress.
 
 ---
 
@@ -50,7 +50,7 @@ P01 (Infrastructure Completion) is complete. P02.1 is now in progress.
 - [x] Fixed `Document.getText()` API (was `getContent()`) for Spring AI 1.0.0
 - [x] ArchUnit `allowEmptyShould(true)` on application-layer rules (no app layer yet)
 
-### P02.1 — Application Layer Foundation 🚧
+### P02.1 — Application Layer Foundation ✅
 
 - [x] `DomainEventPublisher` port (application.shared)
 - [x] `SpringDomainEventPublisher` adapter (infrastructure.event)
@@ -64,11 +64,27 @@ P01 (Infrastructure Completion) is complete. P02.1 is now in progress.
 - [x] Commands: 13 command records across all packages
 - [x] Hexagonal boundaries verified (ArchUnit 8/8 pass)
 
-### P02.2 — Business Use Cases ⏳
+### P02.2 — Business Use Cases 🚧
 
-- [ ] `DocumentIngestionService` (pipeline orchestrator — P03 dependency)
-- [ ] `RetrievalService` (P04 dependency)
-- [ ] `ChatService` (full conversational AI — P06 dependency)
+- [x] `UploadDocumentUseCase` — filename + format-filename consistency validation
+- [x] `GetDocumentUseCase` — retrieves document scoped to tenant
+- [x] `ListDocumentsUseCase` — lists by tenant or by owner (`executeByOwner` overload)
+- [x] `DeleteDocumentUseCase` — soft-deletes with required-param validation
+- [x] `CreateConversationUseCase` — title validation (not blank, ≤ 500 chars)
+- [x] `GetConversationUseCase` — retrieves conversation scoped to user
+- [x] `ListConversationsUseCase` — lists by user and tenant
+- [x] `DeleteConversationUseCase` — guards: rejects if active `ChatSession` exists (cross-service)
+- [x] `StartChatSessionUseCase` — validates modelId not blank
+- [x] `CompleteChatSessionUseCase` — transitions active session to COMPLETED
+- [x] `TimeoutChatSessionUseCase` — transitions active session to TIMED_OUT
+- [x] `CreateKnowledgeQueryUseCase` — queryText validation (not blank, ≤ 10 000 chars)
+- [x] `GetKnowledgeQueryUseCase` — retrieves query by ID
+- [x] `ListKnowledgeQueriesUseCase` — lists by user and tenant
+- [x] `RegisterUserUseCase` — email format, passwordHash, roles validation
+- [x] `GetUserUseCase` — retrieves user by ID
+- [x] `DeactivateUserUseCase` — deactivates user within tenant
+- [x] `docs/releases/v0.3.0.md` created (Work In Progress)
+- [x] BUILD SUCCESSFUL, all tests pass
 
 ### P03 — Document Ingestion Pipeline ⏳
 
