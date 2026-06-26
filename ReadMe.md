@@ -28,9 +28,9 @@ Project EKA is designed from day one to support the full spectrum of modern ente
 
 ## Current Status
 
-**Phase Completed: P02 — Application Layer** ✅
+**Phase Completed: P03.1 — Document Parsing & Storage** ✅
 
-P01 (Infrastructure Completion) and P02 (Application Layer: Foundation + Business Use Cases + Validation) are complete. **v0.3.0 is ready for release.** Next: P03 — Document Ingestion Pipeline.
+P01, P02, and P03.1 are complete. **v0.3.0 is released.** P03.1 is the first stage of the ingestion pipeline: Upload → Validation → Storage → Tika Parsing → Metadata Extraction. **v0.4.0 in progress.** Next: P03.2 — Chunking.
 
 ---
 
@@ -99,12 +99,28 @@ P01 (Infrastructure Completion) and P02 (Application Layer: Foundation + Busines
 - [x] `docs/releases/v0.3.0.md` marked **Ready for Release**
 - [x] BUILD SUCCESSFUL — 46 tests, 0 failures, 0 errors
 
-### P03 — Document Ingestion Pipeline ⏳
+### P03.1 — Document Parsing & Storage ✅
 
-- [ ] Tika document parser adapter
-- [ ] Format-specific chunking strategies (semantic, slide, row)
-- [ ] Async ingestion pipeline with state machine transitions
-- [ ] Batch embedding via nomic-embed-text
+- [x] `SupportedFormat` extended — DOC, JSON, XML added; `fromMimeType()` method
+- [x] `FileStorage` domain port + `LocalFileStorageAdapter` (`app.storage.document-root`)
+- [x] `DocumentParser` domain port + `TikaDocumentParserAdapter` (Apache Tika 2.9.2)
+- [x] `ParsedDocument` / `ParsedMetadata` / `ParsingStatus` value objects
+- [x] `parsedTextPath` field on `Document` domain + `assignParsedTextPath()`
+- [x] `UploadDocumentCommand` with `byte[] content`; `UploadDocumentUseCase` full pipeline
+- [x] `DocumentParsedEvent` — signals chunking pipeline that text is ready
+- [x] `DocumentApplicationService.updateDocument()` — persists state changes after parsing
+- [x] Flyway V015 — `parsed_text_path` column + expanded format CHECK constraint
+- [x] 3 new test classes (14 new tests); total 62 tests, 0 failures
+
+### P03.2 — Chunking ⏳
+
+- [ ] `ChunkingStrategy` port + implementations (semantic paragraph, slide, tabular row)
+- [ ] `ChunkDocumentUseCase` — reads parsed text, produces chunks, transitions to CHUNKING
+
+### P03.3 — Embedding & Indexing ⏳
+
+- [ ] Batch embedding via nomic-embed-text (Ollama)
+- [ ] Weaviate indexing, state transitions to EMBEDDING → INDEXED
 
 ### P04 — Retrieval Pipeline ⏳
 
@@ -153,7 +169,8 @@ P01 (Infrastructure Completion) and P02 (Application Layer: Foundation + Busines
 |---|---|---|---|
 | v0.1.0 | P01 | Infrastructure completion — persistence adapters, config properties | ✅ Complete |
 | v0.3.0 | P02 | Application layer — services, use cases, validation, 46 tests | ✅ Complete |
-| v0.4.0 | P03 | Document ingestion — Tika, chunking, async pipeline | ⏳ Planned |
+| v0.4.0 | P03.1 | Document parsing & storage — Tika adapter, file storage, parsed text path | 🚧 In Progress |
+| v0.4.0 | P03.2–P03.3 | Chunking strategies + embedding + Weaviate indexing | ⏳ Planned |
 | v0.4.0 | P04 | Retrieval pipeline — hybrid search, re-rank, context assembly | ⏳ Planned |
 | v0.5.0 | P05 | REST API + Security — JWT, RBAC, controllers, OpenAPI | ⏳ Planned |
 | v0.6.0 | P06 | Conversational AI — memory, query rewriting, streaming, citations | ⏳ Planned |

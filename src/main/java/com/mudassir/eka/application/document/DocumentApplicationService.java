@@ -54,6 +54,10 @@ public class DocumentApplicationService {
         return documentRepository.findByOwnerIdAndTenantId(ownerId, tenantId, pageRequest);
     }
 
+    public Document updateDocument(Document document) {
+        return documentRepository.save(document);
+    }
+
     public Document updateMetadata(UpdateDocumentMetadataCommand cmd) {
         Document document = documentRepository.findByIdAndTenantId(cmd.documentId(), cmd.tenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Document", cmd.documentId().value().toString()));

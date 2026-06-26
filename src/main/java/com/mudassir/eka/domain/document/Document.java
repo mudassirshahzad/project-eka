@@ -16,6 +16,7 @@ public class Document {
     private DocumentStatus   status;
     private DocumentMetadata metadata;
     private String           rawContentPath;
+    private String           parsedTextPath;
     private int              chunkCount;
     private String           ingestionError;
     private final Instant    createdAt;
@@ -40,7 +41,7 @@ public class Document {
     public static Document reconstitute(
             DocumentId id, TenantId tenantId, UserId ownerId,
             String filename, SupportedFormat format, DocumentStatus status,
-            DocumentMetadata metadata, String rawContentPath,
+            DocumentMetadata metadata, String rawContentPath, String parsedTextPath,
             int chunkCount, String ingestionError,
             Instant createdAt, Instant updatedAt, Instant deletedAt
     ) {
@@ -48,6 +49,7 @@ public class Document {
         doc.status         = status;
         doc.metadata       = metadata;
         doc.rawContentPath = rawContentPath;
+        doc.parsedTextPath = parsedTextPath;
         doc.chunkCount     = chunkCount;
         doc.ingestionError = ingestionError;
         doc.updatedAt      = updatedAt;
@@ -98,6 +100,11 @@ public class Document {
         this.updatedAt      = Instant.now();
     }
 
+    public void assignParsedTextPath(String path) {
+        this.parsedTextPath = Objects.requireNonNull(path);
+        this.updatedAt      = Instant.now();
+    }
+
     public void updateMetadata(DocumentMetadata metadata) {
         this.metadata  = Objects.requireNonNull(metadata);
         this.updatedAt = Instant.now();
@@ -121,6 +128,7 @@ public class Document {
     public DocumentStatus    getStatus()          { return status; }
     public DocumentMetadata  getMetadata()        { return metadata; }
     public String            getRawContentPath()  { return rawContentPath; }
+    public String            getParsedTextPath()  { return parsedTextPath; }
     public int               getChunkCount()      { return chunkCount; }
     public String            getIngestionError()  { return ingestionError; }
     public Instant           getCreatedAt()       { return createdAt; }

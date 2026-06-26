@@ -29,6 +29,7 @@ public class DocumentPersistenceMapper {
                 DocumentStatus.valueOf(e.getStatus()),
                 toMetadata(e),
                 e.getRawContentPath(),
+                e.getParsedTextPath(),
                 e.getChunkCount(),
                 e.getIngestionError(),
                 e.getCreatedAt(),
@@ -51,6 +52,7 @@ public class DocumentPersistenceMapper {
                 .classification(d.getMetadata().classification())
                 .tags(toTagArray(d.getMetadata().tags()))
                 .rawContentPath(d.getRawContentPath())
+                .parsedTextPath(d.getParsedTextPath())
                 .chunkCount(d.getChunkCount())
                 .ingestionError(d.getIngestionError())
                 .deletedAt(d.getDeletedAt())
@@ -68,6 +70,7 @@ public class DocumentPersistenceMapper {
         entity.setClassification(d.getMetadata().classification());
         entity.setTags(toTagArray(d.getMetadata().tags()));
         entity.setRawContentPath(d.getRawContentPath());
+        entity.setParsedTextPath(d.getParsedTextPath());
         entity.setChunkCount(d.getChunkCount());
         entity.setIngestionError(d.getIngestionError());
         entity.setDeletedAt(d.getDeletedAt());

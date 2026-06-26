@@ -66,6 +66,9 @@ public class DocumentEntity extends AuditableEntity {
     @Column(name = "raw_content_path", length = 1000)
     private String rawContentPath;
 
+    @Column(name = "parsed_text_path", length = 1000)
+    private String parsedTextPath;
+
     @Column(name = "chunk_count", nullable = false)
     @Builder.Default
     private int chunkCount = 0;
