@@ -28,9 +28,9 @@ Project EKA is designed from day one to support the full spectrum of modern ente
 
 ## Current Status
 
-**Active Phase: P02.2 — Business Use Cases** 🚧 In Progress
+**Phase Completed: P02 — Application Layer** ✅
 
-P01 (Infrastructure Completion) and P02.1 (Application Layer Foundation) are complete. P02.2 is now in progress.
+P01 (Infrastructure Completion) and P02 (Application Layer: Foundation + Business Use Cases + Validation) are complete. **v0.3.0 is ready for release.** Next: P03 — Document Ingestion Pipeline.
 
 ---
 
@@ -64,7 +64,7 @@ P01 (Infrastructure Completion) and P02.1 (Application Layer Foundation) are com
 - [x] Commands: 13 command records across all packages
 - [x] Hexagonal boundaries verified (ArchUnit 8/8 pass)
 
-### P02.2 — Business Use Cases 🚧
+### P02.2 — Business Use Cases ✅
 
 - [x] `UploadDocumentUseCase` — filename + format-filename consistency validation
 - [x] `GetDocumentUseCase` — retrieves document scoped to tenant
@@ -83,8 +83,21 @@ P01 (Infrastructure Completion) and P02.1 (Application Layer Foundation) are com
 - [x] `RegisterUserUseCase` — email format, passwordHash, roles validation
 - [x] `GetUserUseCase` — retrieves user by ID
 - [x] `DeactivateUserUseCase` — deactivates user within tenant
-- [x] `docs/releases/v0.3.0.md` created (Work In Progress)
-- [x] BUILD SUCCESSFUL, all tests pass
+
+### P02.3 — Application Layer Validation & Readiness ✅
+
+- [x] Architecture review: no infrastructure imports in application layer confirmed
+- [x] `allowEmptyShould(true)` removed from ArchUnit rules — rules now strictly enforce full application layer
+- [x] Dependency review: no circular dependencies, no dead code
+- [x] 6 use-case unit test classes added (46 tests total, 0 failures)
+  - `UploadDocumentUseCaseTest` (8 tests — null/blank/format-mismatch/happy-path)
+  - `CreateConversationUseCaseTest` (6 tests — null/blank/length/happy-path)
+  - `DeleteConversationUseCaseTest` (4 tests — null/active-session-guard/happy-path)
+  - `StartChatSessionUseCaseTest` (5 tests — null/blank-modelId/happy-path)
+  - `CreateKnowledgeQueryUseCaseTest` (6 tests — null/blank/length/happy-path)
+  - `RegisterUserUseCaseTest` (9 tests — null/email-format/password/roles/happy-path)
+- [x] `docs/releases/v0.3.0.md` marked **Ready for Release**
+- [x] BUILD SUCCESSFUL — 46 tests, 0 failures, 0 errors
 
 ### P03 — Document Ingestion Pipeline ⏳
 
@@ -139,8 +152,8 @@ P01 (Infrastructure Completion) and P02.1 (Application Layer Foundation) are com
 | Version | Phase | Scope | Status |
 |---|---|---|---|
 | v0.1.0 | P01 | Infrastructure completion — persistence adapters, config properties | ✅ Complete |
-| v0.2.0 | P02 | Application layer — use case orchestrators | ⏳ Planned |
-| v0.3.0 | P03 | Document ingestion — Tika, chunking, async pipeline | ⏳ Planned |
+| v0.3.0 | P02 | Application layer — services, use cases, validation, 46 tests | ✅ Complete |
+| v0.4.0 | P03 | Document ingestion — Tika, chunking, async pipeline | ⏳ Planned |
 | v0.4.0 | P04 | Retrieval pipeline — hybrid search, re-rank, context assembly | ⏳ Planned |
 | v0.5.0 | P05 | REST API + Security — JWT, RBAC, controllers, OpenAPI | ⏳ Planned |
 | v0.6.0 | P06 | Conversational AI — memory, query rewriting, streaming, citations | ⏳ Planned |
@@ -172,7 +185,7 @@ The hexagonal architecture is **frozen**. The following may not be changed:
 | Persistence adapters | ✅ | All 7 adapters: Document, Chunk, Conversation, ChatSession, DocumentTag, AuditLog, User |
 | Weaviate adapter | ✅ | VectorStore port impl, MetadataFilterTranslator, batch indexing |
 | Config properties | ✅ | `AppProperties` covering ingestion, retrieval, conversation, storage |
-| Application layer | 🚧 | Foundation complete (P02.1) — business use cases pending (P02.2) |
+| Application layer | ✅ | Services, use cases, domain events, 46 tests — v0.3.0 released |
 | REST API | ⏳ | Not started (P05) |
 | Security | ⏳ | Not started (P05) |
 | Ingestion pipeline | ⏳ | Not started (P03) |
