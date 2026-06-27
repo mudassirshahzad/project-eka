@@ -28,9 +28,9 @@ Project EKA is designed from day one to support the full spectrum of modern ente
 
 ## Current Status
 
-**Phase Completed: P03.1 — Document Parsing & Storage** ✅
+**Phase Completed: P03.2 — Chunking & Embedding Pipeline** ✅
 
-P01, P02, and P03.1 are complete. **v0.3.0 is released.** P03.1 is the first stage of the ingestion pipeline: Upload → Validation → Storage → Tika Parsing → Metadata Extraction. **v0.4.0 in progress.** Next: P03.2 — Chunking.
+P01, P02, P03.1, and P03.2 are complete. **v0.4.0 in progress.** The ingestion pipeline now transforms uploaded documents all the way through parsing → chunking → embedding, leaving documents in `EMBEDDING` state with chunks saved to DB with full provenance. Next: P03.3 — Weaviate Indexing.
 
 ---
 
@@ -110,17 +110,30 @@ P01, P02, and P03.1 are complete. **v0.3.0 is released.** P03.1 is the first sta
 - [x] `DocumentParsedEvent` — signals chunking pipeline that text is ready
 - [x] `DocumentApplicationService.updateDocument()` — persists state changes after parsing
 - [x] Flyway V015 — `parsed_text_path` column + expanded format CHECK constraint
-- [x] 3 new test classes (14 new tests); total 62 tests, 0 failures
+- [x] 3 new test classes (16 new tests); total 62 tests, 0 failures after P03.1
 
-### P03.2 — Chunking ⏳
+### P03.2 — Chunking & Embedding Pipeline ✅
 
-- [ ] `ChunkingStrategy` port + implementations (semantic paragraph, slide, tabular row)
-- [ ] `ChunkDocumentUseCase` — reads parsed text, produces chunks, transitions to CHUNKING
+- [x] `EmbeddingProvider` domain port — `embed()`, `modelName()`, `dimension()`
+- [x] `Chunk` domain extended — embedding provenance fields + `assignEmbeddingProvenance()` + `isEmbedded()`
+- [x] `Document.updateChunkCount()` — updates chunk count and `updatedAt`
+- [x] `ChunkingStrategy` interface + `TextSegment` record + `EmbeddedChunk` record
+- [x] `SlidingWindowChunkingStrategy` — token-span sliding window, paragraph-boundary snapping, configurable size/overlap
+- [x] `ChunkingService` — wraps strategy output into `Chunk` domain objects
+- [x] `EmbeddingService` — batch processing, exponential backoff retry (3 attempts, 100ms–1000ms)
+- [x] `ChunkApplicationService` — transactional save + `ChunkCreatedEvent` / `ChunkEmbeddedEvent` per chunk
+- [x] `IngestionBenchmarkService` + `BenchmarkReport` — times chunk/embed/persist phases
+- [x] `OllamaEmbeddingProvider` — wraps Spring AI `EmbeddingModel`, delegates `dimension()` to Spring AI
+- [x] `EmbeddingException` — wraps Spring AI failures
+- [x] `ChunkEntity.vectorId` made nullable; `ChunkPersistenceMapper` propagates provenance
+- [x] Flyway V016 — `ALTER TABLE chunks ALTER COLUMN vector_id DROP NOT NULL`
+- [x] `UploadDocumentUseCase` extended — full 13-step pipeline ending at `EMBEDDING` state
+- [x] 4 new test classes (25 new tests); total **87 tests, 0 failures**
 
-### P03.3 — Embedding & Indexing ⏳
+### P03.3 — Weaviate Indexing ⏳
 
-- [ ] Batch embedding via nomic-embed-text (Ollama)
-- [ ] Weaviate indexing, state transitions to EMBEDDING → INDEXED
+- [ ] Index embedded chunks into Weaviate, assign `vector_id`
+- [ ] Document state transition: `EMBEDDING` → `INDEXED`
 
 ### P04 — Retrieval Pipeline ⏳
 

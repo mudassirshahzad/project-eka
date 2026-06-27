@@ -30,6 +30,9 @@ public class ChunkPersistenceMapper {
                 e.getContent(),
                 metadata,
                 e.getVectorId(),
+                e.getEmbeddingModel(),
+                e.getEmbeddingDimension(),
+                e.getEmbeddedAt(),
                 e.getCreatedAt()
         );
     }
@@ -47,6 +50,9 @@ public class ChunkPersistenceMapper {
                 .tokenCount(d.getMetadata().tokenCount())
                 .chunkingStrategy(d.getMetadata().chunkingStrategy())
                 .vectorId(d.getVectorId())
+                .embeddingModel(d.getEmbeddingModel())
+                .embeddingDimension(d.getEmbeddingDimension())
+                .embeddedAt(d.getEmbeddedAt())
                 .build();
         entity.setId(d.getId().value());
         return entity;

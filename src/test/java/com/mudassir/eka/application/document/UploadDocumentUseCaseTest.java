@@ -3,7 +3,10 @@ package com.mudassir.eka.application.document;
 import com.mudassir.eka.application.event.DocumentParsedEvent;
 import com.mudassir.eka.application.shared.ApplicationException;
 import com.mudassir.eka.application.shared.DomainEventPublisher;
+import com.mudassir.eka.domain.chunk.Chunk;
+import com.mudassir.eka.domain.chunk.ChunkMetadata;
 import com.mudassir.eka.domain.document.Document;
+import com.mudassir.eka.domain.document.DocumentId;
 import com.mudassir.eka.domain.document.DocumentMetadata;
 import com.mudassir.eka.domain.document.DocumentParser;
 import com.mudassir.eka.domain.document.FileStorage;
@@ -22,11 +25,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -39,6 +44,9 @@ class UploadDocumentUseCaseTest {
     @Mock private DocumentApplicationService documentService;
     @Mock private FileStorage                fileStorage;
     @Mock private DocumentParser             documentParser;
+    @Mock private ChunkingService            chunkingService;
+    @Mock private EmbeddingService           embeddingService;
+    @Mock private ChunkApplicationService    chunkApplicationService;
     @Mock private DomainEventPublisher       eventPublisher;
     @InjectMocks private UploadDocumentUseCase useCase;
 
@@ -108,18 +116,26 @@ class UploadDocumentUseCaseTest {
     void execute_orchestratesFullPipelineAndPublishesEvent() {
         var cmd = new UploadDocumentCommand(
                 tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata, content);
+
         Document registered = Document.create(tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata);
         Document updated    = Document.create(tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata);
         ParsedDocument parsed = new ParsedDocument(
                 "extracted text",
                 new ParsedMetadata("Doc Title", null, null, 1, 13),
-                SupportedFormat.PDF,
-                ParsingStatus.SUCCESS,
-                Instant.now());
+                SupportedFormat.PDF, ParsingStatus.SUCCESS, Instant.now());
+
+        Chunk chunk = Chunk.create(
+                registered.getId(), tenantId, 0, "extracted text", ChunkMetadata.of("sliding-window"));
+        chunk.assignEmbeddingProvenance("nomic-embed-text", 768, Instant.now());
+        EmbeddedChunk embeddedChunk = new EmbeddedChunk(chunk, new float[768]);
 
         when(documentService.registerDocument(any(RegisterDocumentCommand.class))).thenReturn(registered);
         when(documentParser.parse(content, SupportedFormat.PDF)).thenReturn(parsed);
         when(fileStorage.store(anyString(), any(byte[].class))).thenAnswer(inv -> inv.getArgument(0));
+        when(chunkingService.chunk(any(), any(DocumentId.class), any(TenantId.class)))
+                .thenReturn(List.of(chunk));
+        when(embeddingService.embed(anyList())).thenReturn(List.of(embeddedChunk));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
         when(documentService.updateDocument(any(Document.class))).thenReturn(updated);
 
         Document result = useCase.execute(cmd);
@@ -128,6 +144,9 @@ class UploadDocumentUseCaseTest {
         verify(documentService).registerDocument(any(RegisterDocumentCommand.class));
         verify(documentParser).parse(content, SupportedFormat.PDF);
         verify(fileStorage, times(2)).store(anyString(), any(byte[].class));
+        verify(chunkingService).chunk(any(), any(DocumentId.class), any(TenantId.class));
+        verify(embeddingService).embed(anyList());
+        verify(chunkApplicationService).saveAll(anyList());
         verify(documentService).updateDocument(any(Document.class));
 
         ArgumentCaptor<DocumentParsedEvent> eventCaptor = ArgumentCaptor.forClass(DocumentParsedEvent.class);
@@ -140,18 +159,44 @@ class UploadDocumentUseCaseTest {
     void execute_acceptsUnknownExtensionWithAnyDeclaredFormat() {
         var cmd = new UploadDocumentCommand(
                 tenantId, ownerId, "archive.xyz", SupportedFormat.TXT, metadata, content);
+
         Document registered = Document.create(tenantId, ownerId, "archive.xyz", SupportedFormat.TXT, metadata);
         Document updated    = Document.create(tenantId, ownerId, "archive.xyz", SupportedFormat.TXT, metadata);
         ParsedDocument parsed = new ParsedDocument(
                 "raw text", new ParsedMetadata(null, null, null, 0, 8),
                 SupportedFormat.TXT, ParsingStatus.SUCCESS, Instant.now());
 
+        Chunk chunk = Chunk.create(
+                registered.getId(), tenantId, 0, "raw text", ChunkMetadata.of("sliding-window"));
+        chunk.assignEmbeddingProvenance("nomic-embed-text", 768, Instant.now());
+
         when(documentService.registerDocument(any(RegisterDocumentCommand.class))).thenReturn(registered);
         when(documentParser.parse(content, SupportedFormat.TXT)).thenReturn(parsed);
         when(fileStorage.store(anyString(), any(byte[].class))).thenAnswer(inv -> inv.getArgument(0));
+        when(chunkingService.chunk(any(), any(DocumentId.class), any(TenantId.class)))
+                .thenReturn(List.of(chunk));
+        when(embeddingService.embed(anyList())).thenReturn(List.of(new EmbeddedChunk(chunk, new float[768])));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
         when(documentService.updateDocument(any(Document.class))).thenReturn(updated);
 
         assertThat(useCase.execute(cmd)).isSameAs(updated);
         verify(documentService).updateDocument(any(Document.class));
+        verify(chunkingService).chunk(any(), any(DocumentId.class), any(TenantId.class));
+    }
+
+    @Test
+    void execute_doesNotCallChunkingWhenParsingFails() {
+        var cmd = new UploadDocumentCommand(
+                tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata, content);
+        Document registered = Document.create(tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata);
+
+        when(documentService.registerDocument(any())).thenReturn(registered);
+        when(documentParser.parse(any(), any())).thenThrow(new RuntimeException("parse error"));
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> useCase.execute(cmd));
+
+        verify(chunkingService, never()).chunk(any(), any(), any());
+        verify(embeddingService, never()).embed(anyList());
     }
 }

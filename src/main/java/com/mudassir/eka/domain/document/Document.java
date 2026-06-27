@@ -110,6 +110,12 @@ public class Document {
         this.updatedAt = Instant.now();
     }
 
+    public void updateChunkCount(int count) {
+        if (count < 0) throw new IllegalArgumentException("chunkCount must not be negative");
+        this.chunkCount = count;
+        this.updatedAt  = Instant.now();
+    }
+
     public void softDelete() {
         this.deletedAt = Instant.now();
         this.updatedAt = Instant.now();

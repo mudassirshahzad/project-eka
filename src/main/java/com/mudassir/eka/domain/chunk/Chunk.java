@@ -15,6 +15,9 @@ public class Chunk {
     private final String       content;
     private final ChunkMetadata metadata;
     private String             vectorId;
+    private String             embeddingModel;
+    private Integer            embeddingDimension;
+    private Instant            embeddedAt;
     private final Instant      createdAt;
 
     public static Chunk create(
@@ -31,10 +34,14 @@ public class Chunk {
     public static Chunk reconstitute(
             ChunkId id, DocumentId documentId, TenantId tenantId,
             int sequenceNumber, String content, ChunkMetadata metadata,
-            String vectorId, Instant createdAt
+            String vectorId, String embeddingModel, Integer embeddingDimension, Instant embeddedAt,
+            Instant createdAt
     ) {
         Chunk chunk = new Chunk(id, documentId, tenantId, sequenceNumber, content, metadata, createdAt);
-        chunk.vectorId = vectorId;
+        chunk.vectorId           = vectorId;
+        chunk.embeddingModel     = embeddingModel;
+        chunk.embeddingDimension = embeddingDimension;
+        chunk.embeddedAt         = embeddedAt;
         return chunk;
     }
 
@@ -56,8 +63,14 @@ public class Chunk {
         this.vectorId = Objects.requireNonNull(vectorId, "vectorId");
     }
 
+    public void assignEmbeddingProvenance(String model, int dimension, Instant embeddedAt) {
+        this.embeddingModel     = Objects.requireNonNull(model,      "model");
+        this.embeddingDimension = dimension;
+        this.embeddedAt         = Objects.requireNonNull(embeddedAt, "embeddedAt");
+    }
+
     public boolean isEmbedded() {
-        return vectorId != null;
+        return embeddingModel != null;
     }
 
     public ChunkId       getId()             { return id; }
@@ -66,8 +79,11 @@ public class Chunk {
     public int           getSequenceNumber() { return sequenceNumber; }
     public String        getContent()        { return content; }
     public ChunkMetadata getMetadata()       { return metadata; }
-    public String        getVectorId()       { return vectorId; }
-    public Instant       getCreatedAt()      { return createdAt; }
+    public String        getVectorId()            { return vectorId; }
+    public String        getEmbeddingModel()      { return embeddingModel; }
+    public Integer       getEmbeddingDimension()  { return embeddingDimension; }
+    public Instant       getEmbeddedAt()          { return embeddedAt; }
+    public Instant       getCreatedAt()           { return createdAt; }
 
     @Override
     public boolean equals(Object o) {

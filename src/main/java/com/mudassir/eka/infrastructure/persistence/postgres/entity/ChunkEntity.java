@@ -55,7 +55,7 @@ public class ChunkEntity extends BaseUuidEntity {
     @Column(name = "chunking_strategy", nullable = false, length = 50)
     private String chunkingStrategy;
 
-    @Column(name = "vector_id", nullable = false, unique = true, length = 255)
+    @Column(name = "vector_id", unique = true, length = 255)
     private String vectorId;
 
     // ── Embedding provenance — populated when vector_id is assigned ───────────
