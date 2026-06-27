@@ -1,5 +1,6 @@
 package com.mudassir.eka.application.document;
 
+import com.mudassir.eka.application.event.DocumentIndexedEvent;
 import com.mudassir.eka.application.event.DocumentParsedEvent;
 import com.mudassir.eka.application.shared.ApplicationException;
 import com.mudassir.eka.application.shared.DomainEventPublisher;
@@ -30,6 +31,7 @@ public class UploadDocumentUseCase {
     private final ChunkingService            chunkingService;
     private final EmbeddingService           embeddingService;
     private final ChunkApplicationService    chunkApplicationService;
+    private final DocumentIndexingService    documentIndexingService;
     private final DomainEventPublisher       eventPublisher;
 
     public Document execute(UploadDocumentCommand cmd) {
@@ -68,8 +70,7 @@ public class UploadDocumentUseCase {
         // 2. Begin parsing
         document.startParsing();
 
-        // 3. Parse with Tika — if this throws, @Transactional rolls back the INSERT from step 1
-        //    and no files are written, so there are no orphaned artifacts
+        // 3. Parse with Tika — failure here rolls back the INSERT from step 1
         ParsedDocument parsed = documentParser.parse(cmd.content(), cmd.format());
         log.debug("Parsed document: id={} status={} chars={}",
                 document.getId(), parsed.status(), parsed.metadata().characterCount());
@@ -96,25 +97,29 @@ public class UploadDocumentUseCase {
         // 9. Transition to EMBEDDING
         document.startEmbedding();
 
-        // 10. Embed chunks and assign provenance in-memory
+        // 10. Embed chunks in memory — assigns provenance to each chunk domain object
         List<EmbeddedChunk> embeddedChunks = embeddingService.embed(chunks);
 
-        // 11. Persist all chunks (INSERT with embedding provenance already set)
+        // 11. Persist chunks with embedding provenance (vectorId still null at this point)
         List<Chunk> savedChunks = chunkApplicationService.saveAll(embeddedChunks);
 
-        // 12. Update document chunk count
-        document.updateChunkCount(savedChunks.size());
+        // 12. Index in Weaviate — assigns vectorIds; persists them to DB
+        List<Chunk> indexedChunks = documentIndexingService.index(savedChunks);
 
-        // 13. Persist document (status=EMBEDDING, paths set, chunkCount set)
+        // 13. Transition document to INDEXED
+        document.markIndexed(indexedChunks.size());
+
+        // 14. Persist final document state (INDEXED, all paths and count set)
         document = documentService.updateDocument(document);
 
         eventPublisher.publish(new DocumentParsedEvent(
-                document.getId(), document.getTenantId(),
-                parsed.detectedFormat(), parsedPath));
+                document.getId(), document.getTenantId(), parsed.detectedFormat(), parsedPath));
+        eventPublisher.publish(new DocumentIndexedEvent(
+                document.getId(), document.getTenantId(), indexedChunks.size()));
 
-        log.info("Document ingested: id={} filename={} chunks={} status={}",
+        log.info("Document fully ingested: id={} filename={} chunks={} status={}",
                 document.getId(), document.getFilename(),
-                savedChunks.size(), document.getStatus());
+                indexedChunks.size(), document.getStatus());
         return document;
     }
 

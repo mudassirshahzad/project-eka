@@ -28,9 +28,9 @@ Project EKA is designed from day one to support the full spectrum of modern ente
 
 ## Current Status
 
-**Phase Completed: P03.2 — Chunking & Embedding Pipeline** ✅
+**Phase Completed: P03.3 — Weaviate Indexing & Ingestion Validation** ✅
 
-P01, P02, P03.1, and P03.2 are complete. **v0.4.0 in progress.** The ingestion pipeline now transforms uploaded documents all the way through parsing → chunking → embedding, leaving documents in `EMBEDDING` state with chunks saved to DB with full provenance. Next: P03.3 — Weaviate Indexing.
+P01, P02, P03.1, P03.2, and P03.3 are complete. **v0.4.0 in progress.** The full ingestion pipeline is operational: uploaded documents are parsed, chunked, embedded via Ollama, indexed into Weaviate, and reach `INDEXED` state with all vector IDs persisted to PostgreSQL. 104 tests pass. Next: P04 — Retrieval Pipeline.
 
 ---
 
@@ -130,10 +130,16 @@ P01, P02, P03.1, and P03.2 are complete. **v0.4.0 in progress.** The ingestion p
 - [x] `UploadDocumentUseCase` extended — full 13-step pipeline ending at `EMBEDDING` state
 - [x] 4 new test classes (25 new tests); total **87 tests, 0 failures**
 
-### P03.3 — Weaviate Indexing ⏳
+### P03.3 — Weaviate Indexing ✅
 
-- [ ] Index embedded chunks into Weaviate, assign `vector_id`
-- [ ] Document state transition: `EMBEDDING` → `INDEXED`
+- [x] `DocumentIndexingService` — batch Weaviate indexing, idempotent re-index, stale vector deletion, vectorId assignment + DB persistence, `ChunkIndexedEvent` per chunk
+- [x] `IngestionValidationService` + `IngestionValidationResult` — count match, null vectorId, duplicate vectorId, provenance checks
+- [x] `Chunk.clearVectorId()` — enables safe re-index flow
+- [x] `DocumentIndexedEvent` + `ChunkIndexedEvent` — signals downstream consumers
+- [x] `DeleteDocumentUseCase` extended — delete synchronization: Weaviate vectors + chunks removed before soft-delete
+- [x] `UploadDocumentUseCase` extended — full 15-step pipeline; document reaches `INDEXED` state
+- [x] `BenchmarkReport` + `IngestionBenchmarkService` extended — `indexTime`, `vectorsPerSecond()` added
+- [x] 17 new tests (3 new classes + 2 updated); total **104 tests, 0 failures**
 
 ### P04 — Retrieval Pipeline ⏳
 
@@ -218,7 +224,7 @@ The hexagonal architecture is **frozen**. The following may not be changed:
 | Application layer | ✅ | Services, use cases, domain events, 46 tests — v0.3.0 released |
 | REST API | ⏳ | Not started (P05) |
 | Security | ⏳ | Not started (P05) |
-| Ingestion pipeline | ⏳ | Not started (P03) |
+| Ingestion pipeline | ✅ | P03.1–P03.3 complete — parse → chunk → embed → Weaviate index → INDEXED |
 | Retrieval pipeline | ⏳ | Not started (P04) |
 
 ---

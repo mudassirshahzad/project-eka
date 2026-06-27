@@ -1,5 +1,6 @@
 package com.mudassir.eka.application.document;
 
+import com.mudassir.eka.application.event.DocumentIndexedEvent;
 import com.mudassir.eka.application.event.DocumentParsedEvent;
 import com.mudassir.eka.application.shared.ApplicationException;
 import com.mudassir.eka.application.shared.DomainEventPublisher;
@@ -14,6 +15,7 @@ import com.mudassir.eka.domain.document.ParsedDocument;
 import com.mudassir.eka.domain.document.ParsedMetadata;
 import com.mudassir.eka.domain.document.ParsingStatus;
 import com.mudassir.eka.domain.document.SupportedFormat;
+import com.mudassir.eka.domain.shared.DomainEvent;
 import com.mudassir.eka.domain.shared.TenantId;
 import com.mudassir.eka.domain.user.UserId;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -33,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -47,6 +51,7 @@ class UploadDocumentUseCaseTest {
     @Mock private ChunkingService            chunkingService;
     @Mock private EmbeddingService           embeddingService;
     @Mock private ChunkApplicationService    chunkApplicationService;
+    @Mock private DocumentIndexingService    documentIndexingService;
     @Mock private DomainEventPublisher       eventPublisher;
     @InjectMocks private UploadDocumentUseCase useCase;
 
@@ -113,7 +118,7 @@ class UploadDocumentUseCaseTest {
     }
 
     @Test
-    void execute_orchestratesFullPipelineAndPublishesEvent() {
+    void execute_orchestratesFullPipelineAndPublishesBothEvents() {
         var cmd = new UploadDocumentCommand(
                 tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata, content);
 
@@ -136,6 +141,11 @@ class UploadDocumentUseCaseTest {
                 .thenReturn(List.of(chunk));
         when(embeddingService.embed(anyList())).thenReturn(List.of(embeddedChunk));
         when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        doAnswer(inv -> {
+            List<Chunk> chunks = inv.getArgument(0);
+            chunks.forEach(c -> c.assignVectorId(UUID.randomUUID().toString()));
+            return chunks;
+        }).when(documentIndexingService).index(anyList());
         when(documentService.updateDocument(any(Document.class))).thenReturn(updated);
 
         Document result = useCase.execute(cmd);
@@ -147,12 +157,15 @@ class UploadDocumentUseCaseTest {
         verify(chunkingService).chunk(any(), any(DocumentId.class), any(TenantId.class));
         verify(embeddingService).embed(anyList());
         verify(chunkApplicationService).saveAll(anyList());
+        verify(documentIndexingService).index(anyList());
         verify(documentService).updateDocument(any(Document.class));
 
-        ArgumentCaptor<DocumentParsedEvent> eventCaptor = ArgumentCaptor.forClass(DocumentParsedEvent.class);
-        verify(eventPublisher).publish(eventCaptor.capture());
-        assertThat(eventCaptor.getValue().getEventType()).isEqualTo("document.parsed");
-        assertThat(eventCaptor.getValue().getDetectedFormat()).isEqualTo(SupportedFormat.PDF);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<DomainEvent> eventCaptor = ArgumentCaptor.forClass(DomainEvent.class);
+        verify(eventPublisher, times(2)).publish(eventCaptor.capture());
+        List<DomainEvent> events = eventCaptor.getAllValues();
+        assertThat(events).extracting(DomainEvent::getEventType)
+                .containsExactlyInAnyOrder("document.parsed", "document.indexed");
     }
 
     @Test
@@ -177,15 +190,19 @@ class UploadDocumentUseCaseTest {
                 .thenReturn(List.of(chunk));
         when(embeddingService.embed(anyList())).thenReturn(List.of(new EmbeddedChunk(chunk, new float[768])));
         when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        doAnswer(inv -> {
+            List<Chunk> chunks = inv.getArgument(0);
+            chunks.forEach(c -> c.assignVectorId(UUID.randomUUID().toString()));
+            return chunks;
+        }).when(documentIndexingService).index(anyList());
         when(documentService.updateDocument(any(Document.class))).thenReturn(updated);
 
         assertThat(useCase.execute(cmd)).isSameAs(updated);
-        verify(documentService).updateDocument(any(Document.class));
-        verify(chunkingService).chunk(any(), any(DocumentId.class), any(TenantId.class));
+        verify(documentIndexingService).index(anyList());
     }
 
     @Test
-    void execute_doesNotCallChunkingWhenParsingFails() {
+    void execute_doesNotCallChunkingOrIndexingWhenParsingFails() {
         var cmd = new UploadDocumentCommand(
                 tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata, content);
         Document registered = Document.create(tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata);
@@ -198,5 +215,6 @@ class UploadDocumentUseCaseTest {
 
         verify(chunkingService, never()).chunk(any(), any(), any());
         verify(embeddingService, never()).embed(anyList());
+        verify(documentIndexingService, never()).index(anyList());
     }
 }

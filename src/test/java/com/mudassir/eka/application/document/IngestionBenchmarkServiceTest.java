@@ -29,6 +29,7 @@ class IngestionBenchmarkServiceTest {
     @Mock private ChunkingService         chunkingService;
     @Mock private EmbeddingService        embeddingService;
     @Mock private ChunkApplicationService chunkApplicationService;
+    @Mock private DocumentIndexingService documentIndexingService;
     @Mock private EmbeddingProvider       embeddingProvider;
     @InjectMocks private IngestionBenchmarkService benchmarkService;
 
@@ -50,11 +51,13 @@ class IngestionBenchmarkServiceTest {
         Chunk chunk = makeChunk();
         float[] v = {0.1f};
         chunk.assignEmbeddingProvenance("nomic-embed-text", 1, Instant.now());
+        chunk.assignVectorId("vector-1");
         EmbeddedChunk embedded = new EmbeddedChunk(chunk, v);
 
         when(chunkingService.chunk(any(), any(), any())).thenReturn(List.of(chunk));
         when(embeddingService.embed(anyList())).thenReturn(List.of(embedded));
         when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        when(documentIndexingService.index(anyList())).thenReturn(List.of(chunk));
         when(embeddingProvider.modelName()).thenReturn("nomic-embed-text");
         when(embeddingProvider.dimension()).thenReturn(1);
 
@@ -69,10 +72,12 @@ class IngestionBenchmarkServiceTest {
     void benchmark_timingsAreNonNegative() {
         Chunk chunk = makeChunk();
         chunk.assignEmbeddingProvenance("model", 2, Instant.now());
+        chunk.assignVectorId("v1");
 
         when(chunkingService.chunk(any(), any(), any())).thenReturn(List.of(chunk));
         when(embeddingService.embed(anyList())).thenReturn(List.of(new EmbeddedChunk(chunk, new float[]{0.0f})));
         when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        when(documentIndexingService.index(anyList())).thenReturn(List.of(chunk));
         when(embeddingProvider.modelName()).thenReturn("model");
         when(embeddingProvider.dimension()).thenReturn(2);
 
@@ -81,22 +86,28 @@ class IngestionBenchmarkServiceTest {
         assertThat(report.chunkTime().isNegative()).isFalse();
         assertThat(report.embedTime().isNegative()).isFalse();
         assertThat(report.persistTime().isNegative()).isFalse();
+        assertThat(report.indexTime().isNegative()).isFalse();
         assertThat(report.totalTime().isNegative()).isFalse();
     }
 
     @Test
-    void benchmark_summaryContainsModelAndDimension() {
+    void benchmark_summaryContainsModelDimensionAndIndexTime() {
         Chunk chunk = makeChunk();
         chunk.assignEmbeddingProvenance("nomic-embed-text", 768, Instant.now());
+        chunk.assignVectorId("v768");
 
         when(chunkingService.chunk(any(), any(), any())).thenReturn(List.of(chunk));
         when(embeddingService.embed(anyList())).thenReturn(List.of(new EmbeddedChunk(chunk, new float[768])));
         when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        when(documentIndexingService.index(anyList())).thenReturn(List.of(chunk));
         when(embeddingProvider.modelName()).thenReturn("nomic-embed-text");
         when(embeddingProvider.dimension()).thenReturn(768);
 
         BenchmarkReport report = benchmarkService.benchmark(parsed("content"), documentId, tenantId);
 
-        assertThat(report.summary()).contains("nomic-embed-text").contains("768");
+        assertThat(report.summary())
+                .contains("nomic-embed-text")
+                .contains("768")
+                .contains("index=");
     }
 }

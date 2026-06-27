@@ -63,6 +63,10 @@ public class Chunk {
         this.vectorId = Objects.requireNonNull(vectorId, "vectorId");
     }
 
+    public void clearVectorId() {
+        this.vectorId = null;
+    }
+
     public void assignEmbeddingProvenance(String model, int dimension, Instant embeddedAt) {
         this.embeddingModel     = Objects.requireNonNull(model,      "model");
         this.embeddingDimension = dimension;
