@@ -3,6 +3,22 @@
 All notable changes to Project EKA are documented here.
 For detailed release notes see [docs/releases/](docs/releases/).
 
+## [Unreleased] — v0.5.x Retrieval Foundation
+
+### Added
+
+- Retrieval domain model: `RetrievalOptions`, `RetrievedChunk`, `RetrievalResult`, `SearchMetadata`
+- Port interfaces: `RetrievalPort`, `RankingPort`, `QueryRewritePort`, `ContextAssemblyPort`
+- Application layer: `RetrievalRequest`, `RetrievalService`, `RetrievalException`, `InvalidRetrievalRequestException`
+- Production `WeaviateRetrievalAdapter` — first `RetrievalPort` implementation backed by Weaviate vector search
+- `RetrievedChunkMapper` — infrastructure mapper from `VectorSearchResult` + `Chunk` to `RetrievedChunk`
+- Mandatory tenant isolation: every retrieval query is scoped to the caller's `TenantId`; cross-tenant access is architecturally impossible
+- Score normalization: Weaviate certainty scores clamped to `[0.0, 1.0]` before entering the domain
+- `MetadataFilter` support: caller-supplied filter criteria merged with tenant isolation filter
+- `RetrievalOptions` enforcement: `topK` and `minimumScore` respected on every retrieval
+- Infrastructure exception translation: Weaviate and database errors wrapped as `RetrievalAdapterException`
+- 20 new automated tests across mapper and adapter; 145 total tests, 0 failures
+
 ## [v0.4.0] — Document Ingestion
 
 - Apache Tika multi-format document parsing with magic-byte detection

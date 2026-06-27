@@ -16,7 +16,11 @@ import com.mudassir.eka.domain.shared.TenantId;
  *                   scores (cosine similarity, BM25, RRF) to this range before
  *                   constructing a {@code RetrievedChunk}. Higher values indicate
  *                   greater relevance to the query.
- * @param rank       zero-based position in the result list prior to re-ranking
+ * @param rank       zero-based position of this item in the <em>raw retrieval output</em>
+ *                   returned by the underlying engine, before any post-filtering or
+ *                   re-ranking. Items that do not survive post-filtering are excluded
+ *                   from the result; surviving items may therefore have non-consecutive
+ *                   ranks. This invariant is required for correct Reciprocal Rank Fusion.
  */
 public record RetrievedChunk(
         ChunkId chunkId,
