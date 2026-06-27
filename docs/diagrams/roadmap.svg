@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 920" width="680" height="920"
+     font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+
+  <defs>
+    <marker id="arr-b" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/>
+    </marker>
+    <marker id="arr-g" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect width="680" height="920" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="340" y="36" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Project EKA — Release Roadmap</text>
+  <text x="340" y="56" text-anchor="middle" font-size="11" fill="#94a3b8">v0.1.0 → v1.0.0</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Layout: center spine at x=340                          -->
+  <!-- Milestone boxes: x=180, w=320, h=56, stride=80        -->
+  <!-- y positions: 80, 160, 240, 320, 400, 480, 560, 640, 720, 800 -->
+  <!-- Connector lines: bottom of box + 2 → top of next - 2  -->
+  <!-- COMPLETE (v0.1–v0.4): blue fill                        -->
+  <!-- PLANNED  (v0.5–v1.0): gray dashed                      -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <!-- ── v0.1.0 COMPLETE ── -->
+  <rect x="180" y="80" width="320" height="56" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="340" y="104" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">v0.1.0 · Architecture Foundation</text>
+  <text x="340" y="122" text-anchor="middle" font-size="10" fill="#3b82f6">Hexagonal scaffold · ArchUnit · Domain model · Port interfaces</text>
+  <text x="510" y="100" font-size="10" font-weight="700" fill="#16a34a">✅ Complete</text>
+  <line x1="340" y1="136" x2="340" y2="158" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-b)"/>
+
+  <!-- ── v0.2.0 COMPLETE ── -->
+  <rect x="180" y="160" width="320" height="56" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="340" y="184" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">v0.2.0 · Persistence Foundation</text>
+  <text x="340" y="202" text-anchor="middle" font-size="10" fill="#3b82f6">Flyway V001–V016 · JPA entities · Multi-tenant schema</text>
+  <text x="510" y="180" font-size="10" font-weight="700" fill="#16a34a">✅ Complete</text>
+  <line x1="340" y1="216" x2="340" y2="238" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-b)"/>
+
+  <!-- ── v0.3.0 COMPLETE ── -->
+  <rect x="180" y="240" width="320" height="56" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="340" y="264" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">v0.3.0 · Application Layer</text>
+  <text x="340" y="282" text-anchor="middle" font-size="10" fill="#3b82f6">Use cases · Domain events · Commands · 46 tests</text>
+  <text x="510" y="260" font-size="10" font-weight="700" fill="#16a34a">✅ Complete</text>
+  <line x1="340" y1="296" x2="340" y2="318" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-b)"/>
+
+  <!-- ── v0.4.0 COMPLETE ── -->
+  <rect x="180" y="320" width="320" height="56" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="340" y="344" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">v0.4.0 · Document Ingestion</text>
+  <text x="340" y="362" text-anchor="middle" font-size="10" fill="#3b82f6">Tika · Chunking · Ollama · Weaviate · 104 tests</text>
+  <text x="510" y="340" font-size="10" font-weight="700" fill="#16a34a">✅ Complete</text>
+
+  <!-- Transition: complete → planned -->
+  <line x1="340" y1="376" x2="340" y2="398" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+
+  <!-- ── v0.5.0 PLANNED ── -->
+  <rect x="180" y="400" width="320" height="56" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="340" y="424" text-anchor="middle" font-size="13" font-weight="700" fill="#64748b">v0.5.0 · Retrieval &amp; RAG</text>
+  <text x="340" y="442" text-anchor="middle" font-size="10" fill="#94a3b8">Hybrid search · Query rewriting · Context assembly</text>
+  <line x1="340" y1="456" x2="340" y2="478" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+
+  <!-- ── v0.6.0 PLANNED ── -->
+  <rect x="180" y="480" width="320" height="56" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="340" y="504" text-anchor="middle" font-size="13" font-weight="700" fill="#64748b">v0.6.0 · REST API &amp; Security</text>
+  <text x="340" y="522" text-anchor="middle" font-size="10" fill="#94a3b8">JWT RS256 · RBAC · OpenAPI · Observability</text>
+  <line x1="340" y1="536" x2="340" y2="558" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+
+  <!-- ── v0.7.0 PLANNED ── -->
+  <rect x="180" y="560" width="320" height="56" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="340" y="584" text-anchor="middle" font-size="13" font-weight="700" fill="#64748b">v0.7.0 · Conversational AI</text>
+  <text x="340" y="602" text-anchor="middle" font-size="10" fill="#94a3b8">Multi-turn memory · Streaming SSE · Source citations</text>
+  <line x1="340" y1="616" x2="340" y2="638" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+
+  <!-- ── v0.8.0 PLANNED ── -->
+  <rect x="180" y="640" width="320" height="56" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="340" y="664" text-anchor="middle" font-size="13" font-weight="700" fill="#64748b">v0.8.0 · MCP Integration</text>
+  <text x="340" y="682" text-anchor="middle" font-size="10" fill="#94a3b8">Knowledge base and ingestion as MCP tools</text>
+  <line x1="340" y1="696" x2="340" y2="718" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+
+  <!-- ── v0.9.0 PLANNED ── -->
+  <rect x="180" y="720" width="320" height="56" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="340" y="744" text-anchor="middle" font-size="13" font-weight="700" fill="#64748b">v0.9.0 · LangGraph &amp; Agentic AI</text>
+  <text x="340" y="762" text-anchor="middle" font-size="10" fill="#94a3b8">Graph orchestration · Self-correction · Multi-agent</text>
+  <line x1="340" y1="776" x2="340" y2="798" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+
+  <!-- ── v1.0.0 PLANNED ── -->
+  <rect x="180" y="800" width="320" height="56" rx="8" fill="#fafafa" stroke="#64748b" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="340" y="824" text-anchor="middle" font-size="13" font-weight="700" fill="#475569">v1.0.0 · Stable Enterprise Release</text>
+  <text x="340" y="842" text-anchor="middle" font-size="10" fill="#94a3b8">Production hardening · Observability · Load testing</text>
+
+  <!-- ── LEGEND ── -->
+  <rect x="180" y="876" width="320" height="30" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+
+  <rect x="196" y="886" width="18" height="12" rx="2" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="220" y="896" font-size="10" fill="#0f172a">Complete</text>
+
+  <rect x="296" y="886" width="18" height="12" rx="2" fill="#fafafa" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,2"/>
+  <text x="320" y="896" font-size="10" fill="#0f172a">Planned</text>
+
+
+</svg>

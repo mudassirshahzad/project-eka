@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 400" width="1400" height="400"
+     font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+
+  <rect width="1400" height="400" fill="#ffffff"/>
+
+  <!-- Left accent bar -->
+  <rect x="0" y="0" width="5" height="400" fill="#2563eb"/>
+
+  <!-- ── LEFT PANEL: Branding ────────────────────────────────── -->
+
+  <!-- Hexagon mark -->
+  <polygon points="80,72 124,97 124,147 80,172 36,147 36,97"
+           fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round"/>
+  <polygon points="80,84 112,101 112,135 80,152 48,135 48,101"
+           fill="none" stroke="#bfdbfe" stroke-width="1.2" stroke-linejoin="round"/>
+  <text x="80" y="133" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">EKA</text>
+
+  <!-- Project title -->
+  <text x="148" y="116" font-size="44" font-weight="700" letter-spacing="-1" fill="#0f172a">Project EKA</text>
+  <text x="148" y="148" font-size="18" font-weight="400" fill="#64748b">Enterprise Knowledge Assistant</text>
+
+  <!-- Divider -->
+  <line x1="36" y1="190" x2="640" y2="190" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- Tagline -->
+  <text x="36" y="220" font-size="14" fill="#475569">
+    Production-grade RAG platform · Hexagonal Architecture · On-premises AI · No external API dependencies
+  </text>
+
+  <!-- Technology chips -->
+  <!-- Spring Boot -->
+  <rect x="36"  y="248" width="110" height="28" rx="14" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+  <text x="91"  y="267" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">Spring Boot 3.5</text>
+
+  <!-- Spring AI -->
+  <rect x="156" y="248" width="96" height="28" rx="14" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+  <text x="204" y="267" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">Spring AI 1.0</text>
+
+  <!-- Weaviate -->
+  <rect x="262" y="248" width="92" height="28" rx="14" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+  <text x="308" y="267" text-anchor="middle" font-size="11" font-weight="600" fill="#c2410c">Weaviate 1.25</text>
+
+  <!-- Ollama -->
+  <rect x="364" y="248" width="76" height="28" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="1"/>
+  <text x="402" y="267" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">Ollama</text>
+
+  <!-- PostgreSQL -->
+  <rect x="450" y="248" width="104" height="28" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+  <text x="502" y="267" text-anchor="middle" font-size="11" font-weight="600" fill="#1d4ed8">PostgreSQL 16</text>
+
+  <!-- Apache Tika -->
+  <rect x="564" y="248" width="100" height="28" rx="14" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+  <text x="614" y="267" text-anchor="middle" font-size="11" font-weight="600" fill="#b91c1c">Apache Tika</text>
+
+  <!-- Status badges -->
+  <rect x="36"  y="302" width="130" height="24" rx="12" fill="#dcfce7" stroke="none"/>
+  <text x="101" y="319" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">104 Tests Passing</text>
+
+  <rect x="176" y="302" width="96" height="24" rx="12" fill="#eff6ff" stroke="none"/>
+  <text x="224" y="319" text-anchor="middle" font-size="11" font-weight="600" fill="#1d4ed8">v0.4.0 Current</text>
+
+  <rect x="282" y="302" width="78" height="24" rx="12" fill="#f8fafc" stroke="none"/>
+  <text x="321" y="319" text-anchor="middle" font-size="11" font-weight="600" fill="#64748b">MIT License</text>
+
+  <!-- ── RIGHT PANEL: Architecture illustration ─────────────── -->
+
+  <!-- Background panel -->
+  <rect x="740" y="40" width="620" height="320" rx="12" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- Panel label -->
+  <text x="1050" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="#94a3b8" letter-spacing="1">ARCHITECTURE</text>
+  <line x1="760" y1="80" x2="1340" y2="80" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- Infrastructure ring -->
+  <rect x="760" y="92" width="560" height="238" rx="10" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="790" y="112" font-size="10" font-weight="700" fill="#2563eb" letter-spacing="0.5">INFRASTRUCTURE</text>
+
+  <!-- Application ring -->
+  <rect x="840" y="124" width="420" height="178" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="868" y="143" font-size="10" font-weight="700" fill="#2563eb" letter-spacing="0.5">APPLICATION</text>
+
+  <!-- Domain core -->
+  <rect x="910" y="156" width="280" height="116" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="1050" y="178" text-anchor="middle" font-size="11" font-weight="700" fill="#1d4ed8" letter-spacing="0.5">DOMAIN</text>
+  <text x="1050" y="196" text-anchor="middle" font-size="9" fill="#2563eb">Pure Java · Zero framework deps</text>
+
+  <!-- Domain sub-packages -->
+  <rect x="924"  y="208" width="76" height="26" rx="4" fill="#bfdbfe" stroke="#2563eb" stroke-width="1"/>
+  <text x="962"  y="225" text-anchor="middle" font-size="9" font-weight="600" fill="#1d4ed8">document</text>
+
+  <rect x="1010" y="208" width="76" height="26" rx="4" fill="#bfdbfe" stroke="#2563eb" stroke-width="1"/>
+  <text x="1048" y="225" text-anchor="middle" font-size="9" font-weight="600" fill="#1d4ed8">conversation</text>
+
+  <rect x="1096" y="208" width="76" height="26" rx="4" fill="#bfdbfe" stroke="#2563eb" stroke-width="1"/>
+  <text x="1134" y="225" text-anchor="middle" font-size="9" font-weight="600" fill="#1d4ed8">query · user</text>
+
+  <!-- Adapter boxes left -->
+  <rect x="766" y="148" width="66" height="36" rx="5" fill="#ffffff" stroke="#2563eb" stroke-width="1.2"/>
+  <text x="799" y="163" text-anchor="middle" font-size="9" font-weight="600" fill="#0f172a">PostgreSQL</text>
+  <text x="799" y="177" text-anchor="middle" font-size="8" fill="#64748b">JPA</text>
+
+  <rect x="766" y="196" width="66" height="36" rx="5" fill="#ffffff" stroke="#2563eb" stroke-width="1.2"/>
+  <text x="799" y="211" text-anchor="middle" font-size="9" font-weight="600" fill="#0f172a">Weaviate</text>
+  <text x="799" y="225" text-anchor="middle" font-size="8" fill="#64748b">Vector</text>
+
+  <rect x="766" y="244" width="66" height="36" rx="5" fill="#ffffff" stroke="#2563eb" stroke-width="1.2"/>
+  <text x="799" y="259" text-anchor="middle" font-size="9" font-weight="600" fill="#0f172a">Ollama</text>
+  <text x="799" y="273" text-anchor="middle" font-size="8" fill="#64748b">Embed</text>
+
+  <!-- Adapter boxes right -->
+  <rect x="1268" y="148" width="66" height="36" rx="5" fill="#ffffff" stroke="#2563eb" stroke-width="1.2"/>
+  <text x="1301" y="163" text-anchor="middle" font-size="9" font-weight="600" fill="#0f172a">Tika</text>
+  <text x="1301" y="177" text-anchor="middle" font-size="8" fill="#64748b">Parser</text>
+
+  <rect x="1268" y="196" width="66" height="36" rx="5" fill="#ffffff" stroke="#2563eb" stroke-width="1.2"/>
+  <text x="1301" y="211" text-anchor="middle" font-size="9" font-weight="600" fill="#0f172a">Storage</text>
+  <text x="1301" y="225" text-anchor="middle" font-size="8" fill="#64748b">Local FS</text>
+
+  <rect x="1268" y="244" width="66" height="36" rx="5" fill="#ffffff" stroke="#2563eb" stroke-width="1.2"/>
+  <text x="1301" y="259" text-anchor="middle" font-size="9" font-weight="600" fill="#0f172a">Events</text>
+  <text x="1301" y="273" text-anchor="middle" font-size="8" fill="#64748b">Spring</text>
+
+  <!-- ArchUnit note -->
+  <text x="1050" y="336" text-anchor="middle" font-size="9" fill="#94a3b8">8 ArchUnit rules enforced at build time</text>
+
+</svg>

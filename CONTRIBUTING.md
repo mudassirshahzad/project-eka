@@ -232,7 +232,7 @@ Ask: which layer does this belong to? If the answer is "domain" and the library 
 2. Create a new adapter in `infrastructure/` implementing that port
 3. Register it as a Spring `@Component` with a `@ConditionalOnProperty` to allow switching between implementations
 4. Add an integration test with Testcontainers or a WireMock stub
-5. Update `docs/component-architecture.md` with the new provider in the pluggable extension points table
+5. Update `docs/architecture/components.md` with the new provider in the pluggable extension points table
 
 ---
 
@@ -244,10 +244,10 @@ Documentation is a first-class deliverable in Project EKA. A feature is not comp
 
 | Change type | Required documentation update |
 |---|---|
-| New port or adapter | Update `docs/component-architecture.md` pluggable extension points table |
-| New bounded context or aggregate | Update `docs/logical-architecture.md` domain model section |
-| Architectural decision | Add entry to Decision Log in `docs/roadmap.md` |
-| New pipeline stage | Update `docs/component-architecture.md` pipeline section + sequence diagram |
+| New port or adapter | Update `docs/architecture/components.md` pluggable extension points table |
+| New bounded context or aggregate | Update `docs/architecture/logical.md` domain model section |
+| Architectural decision | Add entry to `docs/decisions/` as a new ADR |
+| New pipeline stage | Update `docs/architecture/components.md` pipeline section + sequence diagram |
 | New API endpoint | Update OpenAPI specification |
 | Phase completion | Update progress table in `README.md` and `docs/roadmap.md` |
 | Security-relevant change | Update `SECURITY.md` if disclosure process is affected |

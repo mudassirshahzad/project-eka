@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 840" width="560" height="840"
+     font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect width="560" height="840" fill="#ffffff"/>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- TITLE                                                   -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <text x="280" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Document Ingestion Pipeline</text>
+  <text x="280" y="54" text-anchor="middle" font-size="11" fill="#64748b">v0.4.0 — Fully Implemented</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- STATE COLUMN HEADER                                     -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <text x="34" y="78" font-size="9" fill="#cbd5e1" font-weight="700" letter-spacing="0.8">STATE</text>
+  <line x1="34" y1="82" x2="100" y2="82" stroke="#f1f5f9" stroke-width="1"/>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Layout: box x=110 w=330 h=62 gap=18 stride=80          -->
+  <!-- Boxes: y=88,168,248,328,408,488,568,648                 -->
+  <!-- Arrows: bottom-of-box + 2px to bottom-of-box + 2 + 16  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <!-- ── STEP 1: Upload & Register ── -->
+  <text x="34" y="123" font-size="9" fill="#94a3b8" font-weight="600">PENDING</text>
+  <rect x="110" y="88" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="275" y="112" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">1 · Upload &amp; Register</text>
+  <text x="275" y="131" text-anchor="middle" font-size="10" fill="#3b82f6">Document registered in DB · PENDING status assigned</text>
+  <line x1="275" y1="150" x2="275" y2="166" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 2: Input Validation ── -->
+  <text x="34" y="203" font-size="9" fill="#94a3b8" font-weight="600">PENDING</text>
+  <rect x="110" y="168" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="275" y="192" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">2 · Input Validation</text>
+  <text x="275" y="211" text-anchor="middle" font-size="10" fill="#3b82f6">Filename · format · content · extension consistency</text>
+  <line x1="275" y1="230" x2="275" y2="246" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 3: Apache Tika Parsing ── -->
+  <!-- NOTE: Parsing runs BEFORE file storage. A parse failure rolls back  -->
+  <!-- the DB insert without writing any files — by design.                -->
+  <text x="34" y="283" font-size="9" fill="#64748b" font-weight="600">PARSING</text>
+  <rect x="110" y="248" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="275" y="272" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">3 · Apache Tika Parsing</text>
+  <text x="275" y="291" text-anchor="middle" font-size="10" fill="#3b82f6">Magic-byte detection · multi-format text extraction</text>
+  <line x1="275" y1="310" x2="275" y2="326" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 4: Metadata Extraction ── -->
+  <text x="34" y="363" font-size="9" fill="#64748b" font-weight="600">PARSING</text>
+  <rect x="110" y="328" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="275" y="352" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">4 · Metadata Extraction</text>
+  <text x="275" y="371" text-anchor="middle" font-size="10" fill="#3b82f6">Title · author · pageCount · characterCount</text>
+  <line x1="275" y1="390" x2="275" y2="406" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 5: Store Files ── -->
+  <text x="34" y="443" font-size="9" fill="#64748b" font-weight="600">PARSING</text>
+  <rect x="110" y="408" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="275" y="432" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">5 · Store Files</text>
+  <text x="275" y="451" text-anchor="middle" font-size="10" fill="#3b82f6">Raw file + extracted text → {tenantId}/{docId}/</text>
+  <line x1="275" y1="470" x2="275" y2="486" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 6: Chunking ── -->
+  <text x="34" y="523" font-size="9" fill="#2563eb" font-weight="600">CHUNKING</text>
+  <rect x="110" y="488" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="275" y="512" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">6 · Chunking</text>
+  <text x="275" y="531" text-anchor="middle" font-size="10" fill="#3b82f6">Token-aware sliding window · paragraph snapping</text>
+  <line x1="275" y1="550" x2="275" y2="566" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 7: Embedding Generation ── -->
+  <text x="34" y="603" font-size="9" fill="#2563eb" font-weight="600">EMBEDDING</text>
+  <rect x="110" y="568" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="275" y="592" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">7 · Embedding Generation</text>
+  <text x="275" y="611" text-anchor="middle" font-size="10" fill="#3b82f6">nomic-embed-text via Ollama · 768-dim · batch=32</text>
+  <line x1="275" y1="630" x2="275" y2="646" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 8: Weaviate Indexing ── -->
+  <text x="34" y="683" font-size="9" fill="#2563eb" font-weight="600">EMBEDDING</text>
+  <rect x="110" y="648" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="275" y="672" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">8 · Weaviate Indexing</text>
+  <text x="275" y="691" text-anchor="middle" font-size="10" fill="#3b82f6">Batch upsert · idempotent re-index · vectorId persisted</text>
+  <line x1="275" y1="710" x2="275" y2="726" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 9: INDEXED terminal ── -->
+  <text x="34" y="762" font-size="9" fill="#16a34a" font-weight="600">INDEXED</text>
+  <rect x="110" y="728" width="330" height="66" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+
+  <!-- Check icon (offset left, clear of text) -->
+  <circle cx="148" cy="761" r="12" fill="none" stroke="#16a34a" stroke-width="2"/>
+  <polyline points="141.5,761 146.5,767 155.5,753" fill="none" stroke="#16a34a" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Text shifted right to clear the check icon -->
+  <text x="300" y="756" text-anchor="middle" font-size="12" font-weight="700" fill="#15803d">Document Indexed</text>
+  <text x="300" y="775" text-anchor="middle" font-size="10" fill="#16a34a">Status: INDEXED · vectorIds persisted to PostgreSQL</text>
+
+</svg>
