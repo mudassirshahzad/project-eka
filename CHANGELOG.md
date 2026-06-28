@@ -12,12 +12,16 @@ For detailed release notes see [docs/releases/](docs/releases/).
 - Application layer: `RetrievalRequest`, `RetrievalService`, `RetrievalException`, `InvalidRetrievalRequestException`
 - Production `WeaviateRetrievalAdapter` — first `RetrievalPort` implementation backed by Weaviate vector search
 - `RetrievedChunkMapper` — infrastructure mapper from `VectorSearchResult` + `Chunk` to `RetrievedChunk`
-- Mandatory tenant isolation: every retrieval query is scoped to the caller's `TenantId`; cross-tenant access is architecturally impossible
-- Score normalization: Weaviate certainty scores clamped to `[0.0, 1.0]` before entering the domain
-- `MetadataFilter` support: caller-supplied filter criteria merged with tenant isolation filter
-- `RetrievalOptions` enforcement: `topK` and `minimumScore` respected on every retrieval
-- Infrastructure exception translation: Weaviate and database errors wrapped as `RetrievalAdapterException`
-- 20 new automated tests across mapper and adapter; 145 total tests, 0 failures
+- Production `PostgresBm25RetrievalAdapter` — second `RetrievalPort` implementation backed by PostgreSQL Full-Text Search
+- `Bm25ScoreNormalizer` — max-normalization of unbounded `ts_rank` scores to `[0.0, 1.0]`; the highest-scoring result in each result set maps to `1.0` with others scaled proportionally
+- `Bm25MetadataFilterTranslator` — translates `MetadataFilter` criteria (`department`, `classification`, `chunkingStrategy`, `tags`) to parameterized SQL predicates for safe, injection-free filter composition
+- Mandatory tenant isolation: `WeaviateRetrievalAdapter` enforces isolation via `MetadataFilter`; `PostgresBm25RetrievalAdapter` enforces isolation via `AND c.tenant_id = :tenantId` in the SQL skeleton — neither can be bypassed by the caller
+- Score normalization per adapter: Weaviate certainty scores clamped defensively to `[0.0, 1.0]`; BM25 `ts_rank` scores max-normalized over the result set (documented in `Bm25ScoreNormalizer`)
+- `MetadataFilter` support: caller-supplied filter criteria composed with tenant isolation in both adapters
+- `RetrievalOptions` enforcement: `topK` and `minimumScore` respected on every retrieval path
+- Infrastructure exception translation: Weaviate errors wrapped as `RetrievalAdapterException`; PostgreSQL JDBC errors wrapped as `Bm25RetrievalException`
+- Rank semantics established: `RetrievedChunk.rank` is the zero-based position in the raw retrieval engine output before post-filtering, preserved correctly for future RRF fusion
+- 36 new automated tests (24 adapter + 12 normalizer); 182 total tests, 0 failures
 
 ## [v0.4.0] — Document Ingestion
 
