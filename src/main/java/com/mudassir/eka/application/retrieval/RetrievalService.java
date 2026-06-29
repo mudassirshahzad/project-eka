@@ -6,10 +6,12 @@ import com.mudassir.eka.domain.retrieval.model.RetrievalResult;
 import com.mudassir.eka.domain.retrieval.port.RankingPort;
 import com.mudassir.eka.domain.retrieval.port.RetrievalPort;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 import java.util.Objects;
 
 @Slf4j
+@Service
 public class RetrievalService {
 
     private static final int MAX_QUERY_LENGTH = 10_000;

@@ -13,6 +13,7 @@ import com.mudassir.eka.infrastructure.retrieval.postgres.Bm25MetadataFilterTran
 import com.mudassir.eka.infrastructure.retrieval.postgres.exception.Bm25RetrievalException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -50,6 +51,7 @@ import java.util.UUID;
  * which matches nothing — the adapter returns an empty result rather than throwing.
  */
 @Slf4j
+@Qualifier("bm25Retrieval")
 @Component
 @RequiredArgsConstructor
 public class PostgresBm25RetrievalAdapter implements RetrievalPort {

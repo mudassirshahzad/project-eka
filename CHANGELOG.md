@@ -5,6 +5,18 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased] — v0.5.x Retrieval Foundation
 
+### Added (P04.5 — Hybrid Retrieval Orchestration)
+
+- `HybridRetrievalAdapter` — composite `RetrievalPort` that orchestrates vector and BM25 retrieval sequentially, concatenates results, and returns a unified `RetrievalResult` for downstream RRF ranking
+- Sequential execution chosen over parallel: latency gain (~50ms) does not currently justify `CompletableFuture` complexity, exception semantics, and executor lifecycle overhead — documented for future upgrade when measured data justifies it
+- Partial failure tolerance: if one engine fails, the surviving engine's results are used and `SearchMetadata.strategy()` reflects the degraded mode (`"hybrid:vector-only"` or `"hybrid:bm25-only"`); only total failure (both engines fail) raises `HybridRetrievalException`
+- `HybridRetrievalException` — infrastructure exception thrown when both retrieval engines fail simultaneously
+- `SearchMetadata` after fusion: `totalHits` = combined pre-deduplication count from both engines; `latencyMs` = total sequential retrieval wall-clock time; `strategy` = `"hybrid"` (or degraded variant) — `RetrievalService` preserves this metadata unchanged in the final ranked result
+- Spring wiring: `HybridRetrievalAdapter` annotated `@Primary`; `WeaviateRetrievalAdapter` and `PostgresBm25RetrievalAdapter` annotated `@Qualifier("vectorRetrieval")` / `@Qualifier("bm25Retrieval")` — no new interfaces or `@Configuration` classes required
+- `RetrievalService` promoted to `@Service` — now a Spring-managed bean automatically receiving `HybridRetrievalAdapter` as its `RetrievalPort`
+- Duplicate handling: chunks appearing in both engine results are passed to RRF twice; deduplication and contribution accumulation remain the sole responsibility of `RrfRankingAdapter`
+- 16 new tests in `HybridRetrievalAdapterTest` covering: both succeed, vector-only, BM25-only, both fail, empty results, ordering, duplicate passthrough, parameter propagation, sequential execution verification; 232 total tests, 0 failures
+
 ### Added
 
 - Retrieval domain model: `RetrievalOptions`, `RetrievedChunk`, `RetrievalResult`, `SearchMetadata`

@@ -15,6 +15,7 @@ import com.mudassir.eka.domain.shared.TenantId;
 import com.mudassir.eka.infrastructure.retrieval.weaviate.exception.RetrievalAdapterException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
+@Qualifier("vectorRetrieval")
 @Component
 @RequiredArgsConstructor
 public class WeaviateRetrievalAdapter implements RetrievalPort {
