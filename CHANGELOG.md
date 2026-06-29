@@ -23,6 +23,16 @@ For detailed release notes see [docs/releases/](docs/releases/).
 - Rank semantics established: `RetrievedChunk.rank` is the zero-based position in the raw retrieval engine output before post-filtering, preserved correctly for future RRF fusion
 - 36 new automated tests (24 adapter + 12 normalizer); 182 total tests, 0 failures
 
+### Added (P04.4 — Reciprocal Rank Fusion)
+
+- Production `RrfRankingAdapter` — first `RankingPort` implementation; merges multiple ranked retrieval lists using Reciprocal Rank Fusion (Cormack et al. 2009)
+- RRF formula: `score = Σ (1 / (k + rank_i))` summed over all retrieval engine occurrences of each chunk; `k` defaults to 60 and is configurable via `app.retrieval.rrf-k`
+- Duplicate chunk fusion: chunks appearing in multiple retrieval lists are merged by `ChunkId`; RRF contributions accumulate and metadata is preserved from the first occurrence
+- Max-normalization of raw RRF scores to `[0.0, 1.0]` satisfying the `RetrievedChunk.score` contract; the highest-scoring chunk in each fused result set maps to `1.0`
+- Deterministic tie-breaking: equal RRF scores resolved by ascending lexicographic order of `ChunkId` UUID — stable across JVM restarts
+- Output rank semantics: `RetrievedChunk.rank` in the fused output is the zero-based position in the RRF-ranked list; original per-engine ranks are consumed as formula inputs
+- 24 new automated tests covering mathematical correctness, duplicate accumulation, score normalization, tie-breaking, k-value sensitivity, and the classic two-list fusion example; 206 total tests, 0 failures
+
 ## [v0.4.0] — Document Ingestion
 
 - Apache Tika multi-format document parsing with magic-byte detection
