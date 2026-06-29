@@ -20,8 +20,11 @@ public class DocumentIndexingService {
     private final ChunkRepository      chunkRepository;
     private final DomainEventPublisher eventPublisher;
 
-    public List<Chunk> index(List<Chunk> chunks) {
-        if (chunks.isEmpty()) return List.of();
+    public List<Chunk> index(List<EmbeddedChunk> embeddedChunks) {
+        if (embeddedChunks.isEmpty()) return List.of();
+
+        List<Chunk>   chunks  = embeddedChunks.stream().map(EmbeddedChunk::chunk).toList();
+        List<float[]> vectors = embeddedChunks.stream().map(EmbeddedChunk::embedding).toList();
 
         // Idempotency: if any chunks carry a stale vectorId from a previous indexing
         // run, delete those vectors first so the UNIQUE constraint isn't violated.
@@ -35,8 +38,8 @@ public class DocumentIndexingService {
             log.debug("Cleared {} stale vector(s) before re-indexing", staleVectorIds.size());
         }
 
-        // Index into Weaviate — adapter assigns a new vectorId to each chunk via mutation
-        vectorStore.index(chunks);
+        // Index using the pre-computed vectors — no second embedding call.
+        vectorStore.index(chunks, vectors);
 
         // Persist the updated vectorIds in PostgreSQL
         List<Chunk> saved = chunkRepository.saveAll(chunks);

@@ -56,7 +56,7 @@ class IngestionBenchmarkServiceTest {
 
         when(chunkingService.chunk(any(), any(), any())).thenReturn(List.of(chunk));
         when(embeddingService.embed(anyList())).thenReturn(List.of(embedded));
-        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(embedded));
         when(documentIndexingService.index(anyList())).thenReturn(List.of(chunk));
         when(embeddingProvider.modelName()).thenReturn("nomic-embed-text");
         when(embeddingProvider.dimension()).thenReturn(1);
@@ -74,9 +74,10 @@ class IngestionBenchmarkServiceTest {
         chunk.assignEmbeddingProvenance("model", 2, Instant.now());
         chunk.assignVectorId("v1");
 
+        EmbeddedChunk emb2 = new EmbeddedChunk(chunk, new float[]{0.0f});
         when(chunkingService.chunk(any(), any(), any())).thenReturn(List.of(chunk));
-        when(embeddingService.embed(anyList())).thenReturn(List.of(new EmbeddedChunk(chunk, new float[]{0.0f})));
-        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        when(embeddingService.embed(anyList())).thenReturn(List.of(emb2));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(emb2));
         when(documentIndexingService.index(anyList())).thenReturn(List.of(chunk));
         when(embeddingProvider.modelName()).thenReturn("model");
         when(embeddingProvider.dimension()).thenReturn(2);
@@ -96,9 +97,10 @@ class IngestionBenchmarkServiceTest {
         chunk.assignEmbeddingProvenance("nomic-embed-text", 768, Instant.now());
         chunk.assignVectorId("v768");
 
+        EmbeddedChunk emb3 = new EmbeddedChunk(chunk, new float[768]);
         when(chunkingService.chunk(any(), any(), any())).thenReturn(List.of(chunk));
-        when(embeddingService.embed(anyList())).thenReturn(List.of(new EmbeddedChunk(chunk, new float[768])));
-        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        when(embeddingService.embed(anyList())).thenReturn(List.of(emb3));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(emb3));
         when(documentIndexingService.index(anyList())).thenReturn(List.of(chunk));
         when(embeddingProvider.modelName()).thenReturn("nomic-embed-text");
         when(embeddingProvider.dimension()).thenReturn(768);

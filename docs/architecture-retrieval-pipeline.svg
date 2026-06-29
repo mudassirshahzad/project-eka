@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1080" viewBox="0 0 1200 1080"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#b0b8c4"/>
+    </marker>
+  </defs>
+
+  <!-- White background -->
+  <rect width="1200" height="1080" fill="#ffffff"/>
+
+  <!-- ── Title ─────────────────────────────────────────────────────────────── -->
+  <text x="600" y="44" text-anchor="middle" font-size="20" font-weight="700" fill="#111111" letter-spacing="-0.3">Project EKA — Retrieval Pipeline</text>
+  <text x="600" y="66" text-anchor="middle" font-size="12" fill="#999999">Enterprise Retrieval &amp; Ranking Architecture</text>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!--  Section backgrounds                                                   -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Knowledge Preparation  (col 1, x 40–340) -->
+  <rect x="40"  y="90" width="300" height="560" rx="14" fill="#eef4fd" stroke="#ccdaf0" stroke-width="1"/>
+  <text x="190" y="114" text-anchor="middle" font-size="10" font-weight="600" letter-spacing="0.9" fill="#4a7abb">KNOWLEDGE PREPARATION</text>
+
+  <!-- Knowledge Retrieval  (col 2+3, x 380–820) -->
+  <rect x="380" y="90" width="440" height="560" rx="14" fill="#eef8f2" stroke="#c2dfc9" stroke-width="1"/>
+  <text x="600" y="114" text-anchor="middle" font-size="10" font-weight="600" letter-spacing="0.9" fill="#3a9457">KNOWLEDGE RETRIEVAL</text>
+
+  <!-- Answer Generation  (col 4, x 860–1160) -->
+  <rect x="860" y="90" width="300" height="560" rx="14" fill="#f3eeff" stroke="#d4c4ed" stroke-width="1"/>
+  <text x="1010" y="114" text-anchor="middle" font-size="10" font-weight="600" letter-spacing="0.9" fill="#7050b8">ANSWER GENERATION</text>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!--  Helper macros — each card: rect + title + subtitle                   -->
+  <!--  Cards are 220×64, centered in their column                           -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- ── KNOWLEDGE PREPARATION cards (center x=190) ─────────────────────── -->
+
+  <!-- Document  y=130 -->
+  <rect x="80"  y="130" width="220" height="64" rx="9" fill="#ffffff" stroke="#d4dde8" stroke-width="1.1"/>
+  <text x="190" y="156" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Document</text>
+  <text x="190" y="174" text-anchor="middle" font-size="10.5" fill="#888888">PDF, Word &amp; text source files</text>
+
+  <!-- ↓ arrow -->
+  <line x1="190" y1="194" x2="190" y2="218" stroke="#c0ccd8" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- Chunking  y=222 -->
+  <rect x="80"  y="222" width="220" height="64" rx="9" fill="#ffffff" stroke="#d4dde8" stroke-width="1.1"/>
+  <text x="190" y="248" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Chunking</text>
+  <text x="190" y="266" text-anchor="middle" font-size="10.5" fill="#888888">Split documents into semantic chunks</text>
+
+  <!-- ↓ arrow -->
+  <line x1="190" y1="286" x2="190" y2="310" stroke="#c0ccd8" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- Embeddings  y=314 -->
+  <rect x="80"  y="314" width="220" height="64" rx="9" fill="#ffffff" stroke="#d4dde8" stroke-width="1.1"/>
+  <text x="190" y="340" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Embeddings</text>
+  <text x="190" y="358" text-anchor="middle" font-size="10.5" fill="#888888">Convert chunks into vectors</text>
+
+  <!-- ↓ arrow -->
+  <line x1="190" y1="378" x2="190" y2="402" stroke="#c0ccd8" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- Vector Database  y=406 -->
+  <rect x="80"  y="406" width="220" height="64" rx="9" fill="#ffffff" stroke="#d4dde8" stroke-width="1.1"/>
+  <text x="190" y="430" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Vector Database</text>
+  <text x="190" y="448" text-anchor="middle" font-size="10.5" fill="#888888">Weaviate vector index</text>
+
+  <!-- ── KNOWLEDGE RETRIEVAL cards ────────────────────────────────────────── -->
+  <!--  Vector Retrieval  (left lane, center x=490)  -->
+  <!--  BM25 Retrieval    (right lane, center x=710) -->
+
+  <!-- Vector Retrieval  y=130 -->
+  <rect x="396" y="130" width="188" height="64" rx="9" fill="#ffffff" stroke="#c2dfc9" stroke-width="1.1"/>
+  <text x="490" y="156" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Vector Retrieval</text>
+  <text x="490" y="174" text-anchor="middle" font-size="10.5" fill="#888888">Semantic similarity search</text>
+
+  <!-- BM25 Retrieval  y=130 -->
+  <rect x="616" y="130" width="188" height="64" rx="9" fill="#ffffff" stroke="#c2dfc9" stroke-width="1.1"/>
+  <text x="710" y="156" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">BM25 Retrieval</text>
+  <text x="710" y="174" text-anchor="middle" font-size="10.5" fill="#888888">PostgreSQL full-text search</text>
+
+  <!-- ↓ arrows from both lanes converging to RRF -->
+  <!-- Vector lane down to merge point -->
+  <line x1="490" y1="194" x2="490" y2="280" stroke="#c0ccd8" stroke-width="1.4"/>
+  <!-- BM25 lane down to merge point -->
+  <line x1="710" y1="194" x2="710" y2="280" stroke="#c0ccd8" stroke-width="1.4"/>
+  <!-- horizontal bar -->
+  <line x1="490" y1="280" x2="710" y2="280" stroke="#c0ccd8" stroke-width="1.4"/>
+  <!-- center drop to RRF -->
+  <line x1="600" y1="280" x2="600" y2="310" stroke="#c0ccd8" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- RRF  y=314 -->
+  <rect x="490" y="314" width="220" height="64" rx="9" fill="#ffffff" stroke="#c2dfc9" stroke-width="1.1"/>
+  <text x="600" y="340" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Reciprocal Rank Fusion</text>
+  <text x="600" y="358" text-anchor="middle" font-size="10.5" fill="#888888">Merge ranked retrieval results</text>
+
+  <!-- ↓ arrow -->
+  <line x1="600" y1="378" x2="600" y2="402" stroke="#c0ccd8" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- Hybrid Retrieval  y=406 -->
+  <rect x="490" y="406" width="220" height="64" rx="9" fill="#ffffff" stroke="#c2dfc9" stroke-width="1.1"/>
+  <text x="600" y="432" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Hybrid Retrieval</text>
+  <text x="600" y="450" text-anchor="middle" font-size="10.5" fill="#888888">Unified ranked retrieval</text>
+
+  <!-- ── ANSWER GENERATION cards (center x=1010) ──────────────────────────── -->
+
+  <!-- Context Assembly  y=130 -->
+  <rect x="900" y="130" width="220" height="64" rx="9" fill="#ffffff" stroke="#d4c4ed" stroke-width="1.1"/>
+  <text x="1010" y="156" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Context Assembly</text>
+  <text x="1010" y="174" text-anchor="middle" font-size="10.5" fill="#888888">Build token-aware context window</text>
+
+  <!-- ↓ arrow -->
+  <line x1="1010" y1="194" x2="1010" y2="218" stroke="#c8bedd" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- Prompt Builder  y=222 -->
+  <rect x="900" y="222" width="220" height="64" rx="9" fill="#ffffff" stroke="#d4c4ed" stroke-width="1.1"/>
+  <text x="1010" y="248" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Prompt Builder</text>
+  <text x="1010" y="266" text-anchor="middle" font-size="10.5" fill="#888888">Construct grounded prompt</text>
+
+  <!-- ↓ arrow -->
+  <line x1="1010" y1="286" x2="1010" y2="310" stroke="#c8bedd" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- LLM Ollama  y=314 -->
+  <rect x="900" y="314" width="220" height="64" rx="9" fill="#ffffff" stroke="#d4c4ed" stroke-width="1.1"/>
+  <text x="1010" y="340" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">LLM (Ollama)</text>
+  <text x="1010" y="358" text-anchor="middle" font-size="10.5" fill="#888888">Generate final answer</text>
+
+  <!-- ↓ arrow -->
+  <line x1="1010" y1="378" x2="1010" y2="402" stroke="#c8bedd" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- Grounded Response  y=406 -->
+  <rect x="900" y="406" width="220" height="64" rx="9" fill="#ffffff" stroke="#d4c4ed" stroke-width="1.1"/>
+  <text x="1010" y="432" text-anchor="middle" font-size="13" font-weight="600" fill="#111111">Grounded Response</text>
+  <text x="1010" y="450" text-anchor="middle" font-size="10.5" fill="#888888">Answer with citations</text>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!--  Cross-section connectors                                              -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Weaviate → Vector Retrieval  (right side of prep col → left side of retrieval col) -->
+  <line x1="300" y1="438" x2="340" y2="438" stroke="#c0ccd8" stroke-width="1.4"/>
+  <line x1="340" y1="438" x2="340" y2="162" stroke="#c0ccd8" stroke-width="1.4"/>
+  <line x1="340" y1="162" x2="396" y2="162" stroke="#c0ccd8" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- PostgreSQL DB hint box (below BM25, same col) -->
+  <rect x="616" y="222" width="188" height="56" rx="9" fill="#ffffff" stroke="#c2dfc9" stroke-width="1.1" stroke-dasharray="5,3"/>
+  <text x="710" y="246" text-anchor="middle" font-size="12" font-weight="600" fill="#3a9457">PostgreSQL</text>
+  <text x="710" y="263" text-anchor="middle" font-size="10" fill="#888888">GIN full-text index</text>
+  <!-- arrow from PostgreSQL up to BM25 bottom -->
+  <line x1="710" y1="222" x2="710" y2="194" stroke="#c0ccd8" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- Hybrid Retrieval → Context Assembly  (right edge of retrieval → left edge of answer) -->
+  <line x1="710" y1="438" x2="860" y2="438" stroke="#c0ccd8" stroke-width="1.4"/>
+  <line x1="860" y1="438" x2="860" y2="162" stroke="#c0ccd8" stroke-width="1.4"/>
+  <line x1="860" y1="162" x2="900" y2="162" stroke="#c0ccd8" stroke-width="1.4" marker-end="url(#arr)"/>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!--  Section labels inside cards (already embedded above)                  -->
+  <!--  Footer                                                                -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+
+  <line x1="80" y1="672" x2="1120" y2="672" stroke="#eeeeee" stroke-width="1"/>
+  <text x="600" y="692" text-anchor="middle" font-size="11" font-weight="600" fill="#aaaaaa">Project EKA</text>
+  <text x="600" y="708" text-anchor="middle" font-size="10" fill="#bbbbbb">Enterprise AI Architecture</text>
+
+</svg>

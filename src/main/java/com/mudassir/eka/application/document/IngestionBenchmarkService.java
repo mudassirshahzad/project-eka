@@ -37,13 +37,13 @@ public class IngestionBenchmarkService {
         List<EmbeddedChunk> embedded = embeddingService.embed(chunks);
         Duration embedTime      = Duration.between(embedStart, Instant.now());
 
-        Instant persistStart = Instant.now();
-        List<Chunk> saved    = chunkApplicationService.saveAll(embedded);
-        Duration persistTime = Duration.between(persistStart, Instant.now());
+        Instant persistStart             = Instant.now();
+        List<EmbeddedChunk> savedEmbedded = chunkApplicationService.saveAll(embedded);
+        Duration persistTime             = Duration.between(persistStart, Instant.now());
 
-        Instant indexStart    = Instant.now();
-        List<Chunk> indexed   = documentIndexingService.index(saved);
-        Duration indexTime    = Duration.between(indexStart, Instant.now());
+        Instant indexStart  = Instant.now();
+        List<Chunk> indexed = documentIndexingService.index(savedEmbedded);
+        Duration indexTime  = Duration.between(indexStart, Instant.now());
 
         Duration totalTime = Duration.between(totalStart, Instant.now());
 

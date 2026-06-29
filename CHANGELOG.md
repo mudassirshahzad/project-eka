@@ -23,6 +23,16 @@ For detailed release notes see [docs/releases/](docs/releases/).
 - Rank semantics established: `RetrievedChunk.rank` is the zero-based position in the raw retrieval engine output before post-filtering, preserved correctly for future RRF fusion
 - 36 new automated tests (24 adapter + 12 normalizer); 182 total tests, 0 failures
 
+### Fixed (P04.AC1 Fix #1 — Eliminate Double-Embedding)
+
+- **Critical bug fix**: chunks were embedded twice per ingestion — once by `EmbeddingService.embed()` and again unconditionally by `WeaviateVectorStore.doAdd()` inside Spring AI 1.0.0; this doubled embedding cost and silently discarded provenance-carrying vectors
+- `VectorStore.index()` port signature changed from `index(List<Chunk>)` to `index(List<Chunk>, List<float[]>)` — callers supply pre-computed vectors and the vector store no longer triggers a second `EmbeddingModel.embed()` call
+- `ChunkApplicationService.saveAll()` return type changed from `List<Chunk>` to `List<EmbeddedChunk>` — embedding vectors are preserved through the persistence step and forwarded to the indexing step
+- `DocumentIndexingService.index()` parameter changed from `List<Chunk>` to `List<EmbeddedChunk>` — extracts `Chunk` and `float[]` lists and passes pre-computed vectors directly to `VectorStore.index()`
+- `WeaviateVectorStoreAdapter.index()` rewritten: bypasses `springVectorStore.add()` entirely; calls the Weaviate Java client batch API directly with pre-computed vectors and replicates Spring AI's storage format (`content`, `metadata`, `meta_*` fields) so that `search()` — which still delegates to Spring AI — deserialises results correctly
+- `WeaviateVectorStoreAdapter.search()` null-guards the `filterExpression` before passing it to `SearchRequest.builder()` — Spring AI 1.0.0 throws on a null filter expression
+- 10 new regression tests in `WeaviateVectorStoreAdapterTest` verify: Weaviate client (not Spring AI) is called; pre-computed vectors are forwarded exactly; vectorId is assigned post-success; vectorId is not assigned on batch failure; content and `meta_*` properties are stored; mismatch between chunk/vector counts is rejected; search still delegates to Spring AI; null filter expression is safe; 216 total tests, 0 failures
+
 ### Added (P04.4 — Reciprocal Rank Fusion)
 
 - Production `RrfRankingAdapter` — first `RankingPort` implementation; merges multiple ranked retrieval lists using Reciprocal Rank Fusion (Cormack et al. 2009)

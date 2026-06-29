@@ -140,11 +140,11 @@ class UploadDocumentUseCaseTest {
         when(chunkingService.chunk(any(), any(DocumentId.class), any(TenantId.class)))
                 .thenReturn(List.of(chunk));
         when(embeddingService.embed(anyList())).thenReturn(List.of(embeddedChunk));
-        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(embeddedChunk));
         doAnswer(inv -> {
-            List<Chunk> chunks = inv.getArgument(0);
-            chunks.forEach(c -> c.assignVectorId(UUID.randomUUID().toString()));
-            return chunks;
+            List<EmbeddedChunk> embedded = inv.getArgument(0);
+            embedded.forEach(ec -> ec.chunk().assignVectorId(UUID.randomUUID().toString()));
+            return embedded.stream().map(EmbeddedChunk::chunk).toList();
         }).when(documentIndexingService).index(anyList());
         when(documentService.updateDocument(any(Document.class))).thenReturn(updated);
 
@@ -188,12 +188,13 @@ class UploadDocumentUseCaseTest {
         when(fileStorage.store(anyString(), any(byte[].class))).thenAnswer(inv -> inv.getArgument(0));
         when(chunkingService.chunk(any(), any(DocumentId.class), any(TenantId.class)))
                 .thenReturn(List.of(chunk));
-        when(embeddingService.embed(anyList())).thenReturn(List.of(new EmbeddedChunk(chunk, new float[768])));
-        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(chunk));
+        EmbeddedChunk ec = new EmbeddedChunk(chunk, new float[768]);
+        when(embeddingService.embed(anyList())).thenReturn(List.of(ec));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(ec));
         doAnswer(inv -> {
-            List<Chunk> chunks = inv.getArgument(0);
-            chunks.forEach(c -> c.assignVectorId(UUID.randomUUID().toString()));
-            return chunks;
+            List<EmbeddedChunk> embedded = inv.getArgument(0);
+            embedded.forEach(e -> e.chunk().assignVectorId(UUID.randomUUID().toString()));
+            return embedded.stream().map(EmbeddedChunk::chunk).toList();
         }).when(documentIndexingService).index(anyList());
         when(documentService.updateDocument(any(Document.class))).thenReturn(updated);
 

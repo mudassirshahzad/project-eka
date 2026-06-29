@@ -97,14 +97,14 @@ public class UploadDocumentUseCase {
         // 9. Transition to EMBEDDING
         document.startEmbedding();
 
-        // 10. Embed chunks in memory — assigns provenance to each chunk domain object
+        // 10. Embed chunks — assigns provenance; vectors are returned for single-use indexing
         List<EmbeddedChunk> embeddedChunks = embeddingService.embed(chunks);
 
-        // 11. Persist chunks with embedding provenance (vectorId still null at this point)
-        List<Chunk> savedChunks = chunkApplicationService.saveAll(embeddedChunks);
+        // 11. Persist chunks with embedding provenance; vectors are preserved in the result
+        List<EmbeddedChunk> savedEmbeddedChunks = chunkApplicationService.saveAll(embeddedChunks);
 
-        // 12. Index in Weaviate — assigns vectorIds; persists them to DB
-        List<Chunk> indexedChunks = documentIndexingService.index(savedChunks);
+        // 12. Index in Weaviate using pre-computed vectors — no second embedding call
+        List<Chunk> indexedChunks = documentIndexingService.index(savedEmbeddedChunks);
 
         // 13. Transition document to INDEXED
         document.markIndexed(indexedChunks.size());
