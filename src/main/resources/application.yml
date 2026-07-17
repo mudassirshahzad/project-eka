@@ -99,6 +99,8 @@ app:
     top-k-results: 5
     hybrid-alpha: 0.75
     rrf-k: 60
+    query-rewrite:
+      enabled: true
   conversation:
     memory-window-size: 10
   storage:

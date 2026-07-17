@@ -3,6 +3,7 @@ package com.mudassir.eka.application.retrieval;
 import com.mudassir.eka.domain.query.MetadataFilter;
 import com.mudassir.eka.domain.retrieval.model.RetrievalOptions;
 import com.mudassir.eka.domain.retrieval.model.RetrievalResult;
+import com.mudassir.eka.domain.retrieval.port.QueryRewritePort;
 import com.mudassir.eka.domain.retrieval.port.RankingPort;
 import com.mudassir.eka.domain.retrieval.port.RetrievalPort;
 import lombok.extern.slf4j.Slf4j;
@@ -16,28 +17,36 @@ public class RetrievalService {
 
     private static final int MAX_QUERY_LENGTH = 10_000;
 
-    private final RetrievalPort retrievalPort;
-    private final RankingPort   rankingPort;
+    private final RetrievalPort    retrievalPort;
+    private final RankingPort      rankingPort;
+    private final QueryRewritePort queryRewritePort;
 
-    public RetrievalService(RetrievalPort retrievalPort, RankingPort rankingPort) {
-        this.retrievalPort = Objects.requireNonNull(retrievalPort, "retrievalPort must not be null");
-        this.rankingPort   = Objects.requireNonNull(rankingPort,   "rankingPort must not be null");
+    public RetrievalService(
+            RetrievalPort    retrievalPort,
+            RankingPort      rankingPort,
+            QueryRewritePort queryRewritePort) {
+        this.retrievalPort    = Objects.requireNonNull(retrievalPort,    "retrievalPort must not be null");
+        this.rankingPort      = Objects.requireNonNull(rankingPort,      "rankingPort must not be null");
+        this.queryRewritePort = Objects.requireNonNull(queryRewritePort, "queryRewritePort must not be null");
     }
 
     public RetrievalResult retrieve(RetrievalRequest request) {
         validate(request);
 
-        String           queryText = request.queryText();
-        RetrievalOptions options   = request.options() != null ? request.options() : RetrievalOptions.DEFAULT;
-        MetadataFilter   filter    = request.filter()  != null ? request.filter()  : MetadataFilter.NONE;
+        String           originalQuery = request.queryText();
+        RetrievalOptions options       = request.options() != null ? request.options() : RetrievalOptions.DEFAULT;
+        MetadataFilter   filter        = request.filter()  != null ? request.filter()  : MetadataFilter.NONE;
 
-        log.debug("Retrieving: tenant={} topK={} queryLength={}",
-                request.tenantId(), options.topK(), queryText.length());
+        String effectiveQuery = queryRewritePort.rewrite(originalQuery, request.tenantId());
 
-        RetrievalResult raw = retrievalPort.retrieve(queryText, request.tenantId(), filter, options);
+        log.debug("Retrieving: tenant={} topK={} queryLength={} rewritten={}",
+                request.tenantId(), options.topK(), originalQuery.length(),
+                !effectiveQuery.equals(originalQuery));
+
+        RetrievalResult raw = retrievalPort.retrieve(effectiveQuery, request.tenantId(), filter, options);
 
         RetrievalResult result = raw.hasResults()
-                ? new RetrievalResult(rankingPort.rank(raw.items(), queryText), raw.metadata())
+                ? new RetrievalResult(rankingPort.rank(raw.items(), effectiveQuery), raw.metadata())
                 : raw;
 
         log.debug("Retrieval complete: tenant={} hits={} latencyMs={}",

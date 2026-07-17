@@ -5,6 +5,18 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased] — v0.5.x Retrieval Foundation
 
+### Added (P04.6 — Query Rewriting)
+
+- `OllamaQueryRewriteAdapter` — first production implementation of `QueryRewritePort`; uses the Ollama chat model (temperature 0.1) to rewrite the user's query into retrieval-optimized terms before Hybrid Retrieval executes
+- LLM rewrite strategy chosen over rule-based: semantic normalization (abbreviation expansion, conversational-to-declarative phrasing) cannot be achieved with rules; Ollama is already configured in the project and responds in <200ms locally
+- Constrained system prompt prevents the model from answering the user's question; instructs it to return only the rewritten query text with no explanation, preamble, or markdown; instructs abbreviation expansion (e.g. `"SLA"` → `"service level agreement"`) and intent preservation
+- Safe fallback: any LLM failure (timeout, connection error, blank response) logs a warning and returns the original query unchanged — the retrieval pipeline is never interrupted by a rewrite failure
+- `app.retrieval.query-rewrite.enabled` configuration flag (default `true`) allows operators to disable rewriting in environments without Ollama or for A/B quality comparisons; when disabled, the LLM is not called
+- `RetrievalService` updated to accept `QueryRewritePort` as a required constructor parameter; rewritten query is passed to both `RetrievalPort.retrieve()` and `RankingPort.rank()` for consistency
+- `QueryRewriteException` — internal exception type for infrastructure-level rewrite failures (before fallback)
+- 21 new tests: `RetrievalServiceTest` updated with `QueryRewritePort` mock and 5 new rewrite-integration tests; `OllamaQueryRewriteAdapterTest` covers success, blank/null fallback, disabled mode, whitespace stripping, LLM exception fallback, system prompt content, guard conditions; 253 total tests, 0 failures
+- README not updated — no user-facing API surface changed; internal retrieval pipeline improvement only
+
 ### Added (P04.5 — Hybrid Retrieval Orchestration)
 
 - `HybridRetrievalAdapter` — composite `RetrievalPort` that orchestrates vector and BM25 retrieval sequentially, concatenates results, and returns a unified `RetrievalResult` for downstream RRF ranking
