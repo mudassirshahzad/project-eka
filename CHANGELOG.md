@@ -5,6 +5,17 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased] — v0.5.x Retrieval Foundation
 
+### Added (P04.7 — Context Assembly)
+
+- `AssembledChunk` — immutable domain record carrying the full citation identity (`ChunkId`, `DocumentId`, `TenantId`), raw content, relevance score, and zero-based assembly position; position is distinct from `RetrievedChunk.rank()` — it records where the chunk appears in the assembled context, not where it appeared in raw retrieval output
+- `AssembledContext` — immutable domain record produced by Context Assembly; carries the ordered list of `AssembledChunk`s, the effective query text (post-rewrite), the applied token budget, and the estimated token count of included chunks; `chunks` list is always unmodifiable; Prompt Builder must consume this object directly without accessing retrieval internals
+- `ContextAssemblyPort` signature evolved from `String assemble(...)` to `AssembledContext assemble(...)` — the previous `String` return type discarded all citation metadata; since no code called this port at the time of evolution, the change is non-breaking
+- `DefaultContextAssemblyAdapter` — pure Java adapter implementing the assembly rules: (1) iterate ranked chunks in input order; (2) skip chunks with a `ChunkId` already seen (deduplication); (3) stop when the next chunk would cause cumulative estimated token count to exceed `tokenBudget` (budget is strict — the overflowing chunk and all subsequent chunks are excluded to preserve ranking order); (4) stop when the number of included chunks would exceed `app.context.max-chunks`
+- Token estimation uses the 4-chars-per-token heuristic: `max(1, text.length() / 4)` — deterministic and zero-dependency; precise tokenization deferred to P04.8 (requires external tokenizer)
+- `app.context.max-chunks: 10` configuration property (default 10); overridable per deployment
+- Assembly never calls an LLM, never generates prose, and never modifies chunk content — this is explicitly enforced by the adapter design
+- 28 new tests in `DefaultContextAssemblyAdapterTest` covering: ordering and sequential positions, deduplication (keeps first occurrence), max-chunks limit, token budget enforcement, stop-at-first-overflow budget behaviour, combined dedup + max-chunks constraint, metadata preservation (all fields), immutable result list, token estimation edge cases (empty, null, short, exact heuristic), constructor validation; 281 total tests, 0 failures
+
 ### Added (P04.6 — Query Rewriting)
 
 - `OllamaQueryRewriteAdapter` — first production implementation of `QueryRewritePort`; uses the Ollama chat model (temperature 0.1) to rewrite the user's query into retrieval-optimized terms before Hybrid Retrieval executes

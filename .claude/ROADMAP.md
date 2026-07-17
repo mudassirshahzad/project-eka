@@ -16,9 +16,11 @@ Completed
 
 ✅ P04.6 Query Rewriting
 
+✅ P04.7 Context Assembly
+
 Upcoming
 
-P04.7 Context Assembly
+P04.8 Prompt Builder
 
 P04.8 Prompt Builder
 

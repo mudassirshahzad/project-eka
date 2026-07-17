@@ -101,6 +101,8 @@ app:
     rrf-k: 60
     query-rewrite:
       enabled: true
+  context:
+    max-chunks: 10
   conversation:
     memory-window-size: 10
   storage:
