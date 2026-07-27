@@ -5,6 +5,29 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased] — v0.5.x Retrieval Foundation
 
+### Added (P04.9 — Chat Generation)
+
+- `LlmException` — domain base exception in `domain.generation.exception`; infrastructure subtypes extend this so all LLM errors are catchable at the domain boundary without importing infrastructure types
+- `LlmTimeoutException`, `LlmRateLimitException`, `LlmProviderUnavailableException`, `LlmInvalidResponseException`, `LlmModelNotFoundException` — five infrastructure subtypes in `infrastructure.llm.exception`; `LlmProviderUnavailableException` is the catch-all wrap for unknown adapter failures
+- `FinishReason` — domain enum: `STOP`, `LENGTH`, `TOOL_CALL`, `CONTENT_FILTER`, `ERROR`; unknown provider finish reason strings default to `STOP` (defensive mapping)
+- `GenerationOptions` — domain record: `maxTokens` (default 2048), `temperature` (default 0.1), `topP` (default 1.0), `modelNameOverride` (default null); compact constructor validates ranges (`maxTokens ≥ 1`, `temperature ∈ [0.0, 2.0]`, `topP ∈ [0.0, 1.0]`); `GenerationOptions.DEFAULT` constant
+- `LlmRequest` — domain record wrapping `PromptRequest` + `GenerationOptions`; null guards on both fields (ADR G09)
+- `LlmResponse` — domain record: `generatedText`, `finishReason`, `modelName`, `promptTokens`, `completionTokens`, `latencyMs`; derived `totalTokens()` method; null guards on text, reason, and model name (ADR G10)
+- `GuardrailStatus` — domain enum: `PASS`, `BLOCK`
+- `GuardrailResult` — domain record: `status` + `text`; factory methods `pass(String text)` and `block(String safeText)`; query methods `isPassed()` and `isBlocked()`
+- `GeneratedResponse` — domain record: `generatedText`, `citations` (defensively copied to unmodifiable list), `modelName`, `totalTokens`, `latencyMs`; query method `hasCitations()`
+- `LlmPort` — domain port: `LlmResponse generate(LlmRequest request)`; synchronous per ADR G11; streaming deferred to future `StreamingLlmPort`
+- `OutputGuardrailsPort` — domain port: `GuardrailResult apply(String generatedText, TenantId tenantId)`; receives generated text only per ADR G16
+- `CitationPort` — domain port: `List<Citation> resolve(String generatedText, AssembledContext context, TenantId tenantId)`; receives text + `AssembledContext` passenger per ADR G16
+- `OllamaLlmAdapter` — primary `LlmPort` implementation; converts `LlmRequest` to Spring AI `Prompt` (single conversion point, no Spring AI types leak to domain); maps all five `FinishReason` values; wraps provider exceptions as `LlmProviderUnavailableException`; reads `promptTokens`/`completionTokens` as `Integer` (Spring AI 1.0.0 Usage API); extracts model name from `ChatResponseMetadata.getModel()`; uses `OllamaOptions.builder()` with `model`, `temperature`, `numPredict`, `topP`; resolves active model from `GenerationOptions.modelNameOverride` or falls back to `${spring.ai.ollama.chat.model:qwen3}`; all metadata extraction is try-catch wrapped for resilience; generated text, prompt text, and LLM response content are never logged (ADR G13, G14, G15)
+- `PassthroughOutputGuardrailsAdapter` — named seam implementing `OutputGuardrailsPort`; always returns `GuardrailResult.pass(generatedText)`; explicit architectural placeholder for P04.11 Output Guardrails
+- `PassthroughCitationAdapter` — named seam implementing `CitationPort`; always returns `List.of()`; explicit architectural placeholder for P04.11 Citation Generation
+- `GenerationRequest` — application-layer record: `assembledContext`, `originalQueryText` (validated non-blank), `tenantId`, `options` (normalised to `GenerationOptions.DEFAULT` if null)
+- `GenerationException` — application-layer exception extending `ApplicationException`
+- `GenerationService` — pure orchestration service; calls ports in sequence: `PromptBuilderPort.build()` → `LlmPort.generate()` → `OutputGuardrailsPort.apply()` → `CitationPort.resolve()`; `AssembledContext` is carried as a read-only passenger from `GenerationRequest` to `CitationPort` without modification; no Spring AI types imported — provider independence is structural; `memoryMessages` and `tools` are empty `List.of()` stubs (populated in P04.10 and agent milestone respectively)
+- ADRs G09–G16 frozen (documented in architecture review artifact preceding this milestone)
+- 82 new tests across 9 test classes — `GenerationOptionsTest` (12): range validation, DEFAULT constant; `LlmRequestTest` (5): null guards, field preservation; `LlmResponseTest` (8): null guards, totalTokens derived; `GuardrailResultTest` (5): factory methods, query methods; `GeneratedResponseTest` (8): null guards, defensive copy, hasCitations; `OllamaLlmAdapterTest` (14): all FinishReason mappings, token counts, model override, error wrapping, prompt forwarding; `PassthroughOutputGuardrailsAdapterTest` (5): null guards, always PASS; `PassthroughCitationAdapterTest` (5): null guards, always empty list; `GenerationServiceTest` (20): constructor null guards, pipeline ordering, guardrail block path, LLM exception propagation, AssembledContext passenger wiring, default options; 413 total tests, 0 failures
+
 ### Added (P04.8 — Prompt Builder)
 
 - `ToolDefinition` — stub domain record (`name`, `description`) reserving the tool-calling contract for the agent milestone; both `PromptBuildRequest` and `PromptRequest` carry `List<ToolDefinition>` as an empty passthrough today per ADR G07; no prompt injection or execution occurs in P04.8

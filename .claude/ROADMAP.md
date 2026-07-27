@@ -18,13 +18,11 @@ Completed
 
 ✅ P04.7 Context Assembly
 
+✅ P04.8 Prompt Builder
+
+✅ P04.9 Chat Generation
+
 Upcoming
-
-P04.8 Prompt Builder
-
-P04.8 Prompt Builder
-
-P04.9 Chat Generation
 
 P04.10 Conversation Memory
 
