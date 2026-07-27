@@ -22,9 +22,9 @@ Completed
 
 ✅ P04.9 Chat Generation
 
-Upcoming
+✅ P04.10 Conversation Memory
 
-P04.10 Conversation Memory
+Upcoming
 
 P04.11 Citation Generation
 

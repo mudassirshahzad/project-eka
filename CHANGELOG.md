@@ -5,6 +5,16 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased] — v0.5.x Retrieval Foundation
 
+### Added (P04.10 — Conversation Memory)
+
+- `ConversationHistoryPort` — read-only domain port in `domain.generation.port`; signature: `List<Message> getRecentMessages(ConversationId conversationId, TenantId tenantId, int maxMessages)`; returns an unmodifiable chronological list, empty (not null, not exception) when the conversation does not exist; storage-independent — replaceable by PostgreSQL, Redis, MongoDB, or an external memory service without any change to domain or application (ADR M01, ADR M04)
+- `GenerationRequest` — extended with `conversationId` field (`ConversationId`, nullable); null means stateless generation with no memory window (ADR M02); null `options` continues to be normalised to `GenerationOptions.DEFAULT`
+- `GenerationService` — adds `ConversationHistoryPort` constructor parameter and `memoryWindowSize` parameter (`${app.conversation.memory-window-size:10}`); fetches recent messages via `fetchHistory()` before building `PromptBuildRequest`; when `conversationId` is null, history port is not called and an empty list is passed to `PromptBuildRequest.memoryMessages`; when `conversationId` is present, `conversationHistoryPort.getRecentMessages()` is called with the configured window size; `PromptBuildRequest.memoryMessages` now carries live history to `TemplateBasedPromptBuilderAdapter` → `OllamaLlmAdapter`, which already inserts memory messages between the SystemMessage and the final UserMessage (no changes to either adapter required); invalid `memoryWindowSize < 0` rejected in constructor; `memoryWindowSize == 0` is valid (disables memory)
+- `InMemoryConversationHistoryAdapter` — development-grade `ConversationHistoryPort` implementation; `java.util.HashMap` store with `synchronized` on all read/write operations for thread safety; `getRecentMessages()` returns `List.copyOf(subList(max(0, size-maxMessages), size))` — always chronological, always unmodifiable; `addMessage()` and `clearConversation()` are infrastructure-level seeding/cleanup methods outside the port contract (ADR M04 seam)
+- `app.conversation.memory-window-size: 10` property already existed in `application.yml` — wired via `@Value` in `GenerationService`; no new config required
+- ADRs M01–M04 frozen (see `.claude/DECISIONS.md`)
+- 23 new tests across 2 test classes — `InMemoryConversationHistoryAdapterTest` (13): null guards, negative max, missing conversation returns empty, max=0 returns empty, single message, all messages below max, last-N windowing, chronological ordering, unmodifiable result, conversation isolation, clear conversation, clear does not affect others; `GenerationServiceTest` additions (10): new constructor null guards (conversationHistoryPort, memoryWindowSize negative, memoryWindowSize=0 accepted), does-not-call-history-when-null, passes-empty-memory-when-null, calls-history-port-when-present, populates-memoryMessages-from-history, passes-empty-memory-when-history-empty, preserves-memory-message-order, respects-window-size; 436 total tests, 0 failures
+
 ### Added (P04.9 — Chat Generation)
 
 - `LlmException` — domain base exception in `domain.generation.exception`; infrastructure subtypes extend this so all LLM errors are catchable at the domain boundary without importing infrastructure types

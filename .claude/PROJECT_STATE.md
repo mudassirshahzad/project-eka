@@ -20,14 +20,15 @@ v0.5.0 (In Progress)
 | P04.7     | Context Assembly                   | +28       | ✅ Complete |
 | P04.8     | Prompt Builder                     | +50       | ✅ Complete |
 | P04.9     | Chat Generation (LLM + Guardrails) | +82       | ✅ Complete |
+| P04.10    | Conversation Memory                | +23       | ✅ Complete |
 
-**Total tests: 413 — 0 failures**
+**Total tests: 436 — 0 failures**
 
 ---
 
 ## Current Milestone
 
-**P04.10 — Conversation Memory** ← next to implement
+**P04.11 — Citation Generation** ← next to implement
 
 ---
 
@@ -57,6 +58,38 @@ Security layer (Authorization Filter) is planned but not implemented.
 | G14  | `GenerationOptions.DEFAULT` = (maxTokens=2048, temperature=0.1, topP=1.0, modelNameOverride=null) |
 | G15  | Multi-model routing via future `RoutingLlmAdapter` pattern (mirrors `HybridRetrievalAdapter`)    |
 | G16  | `OutputGuardrailsPort` receives text only; `CitationPort` receives text + `AssembledContext`     |
+| M01  | `ConversationHistoryPort` is read-only; writing history is a separate concern                    |
+| M02  | `conversationId` is optional on `GenerationRequest`; null = stateless generation                 |
+| M03  | Memory window size (`app.conversation.memory-window-size`) is application config, not per-request |
+| M04  | `InMemoryConversationHistoryAdapter` is the P04.10 seam; replaceable without domain/app changes  |
+
+---
+
+## Generation Pipeline (P04.10)
+
+```
+GenerationRequest (with optional conversationId)
+       │
+       ▼
+ConversationHistoryPort.getRecentMessages()  ← InMemoryConversationHistoryAdapter
+       │ List<Message> (empty when conversationId is null)
+       ▼
+PromptBuilderPort.build()           ← TemplateBasedPromptBuilderAdapter
+       │ PromptRequest (memoryMessages now populated)
+       ▼
+LlmPort.generate()                  ← OllamaLlmAdapter (inserts memory msgs between system + user)
+       │ LlmResponse
+       ▼
+OutputGuardrailsPort.apply()        ← PassthroughOutputGuardrailsAdapter (seam → P04.11)
+       │ GuardrailResult
+       ▼
+CitationPort.resolve()              ← PassthroughCitationAdapter (seam → P04.11)
+       │ List<Citation>
+       ▼
+GeneratedResponse
+```
+
+`tools` remain an empty passthrough (populated at agent milestone).
 
 ---
 
@@ -89,6 +122,7 @@ GeneratedResponse
 
 - `HybridRetrievalAdapter` is `@Primary`; `WeaviateRetrievalAdapter` is `@Qualifier("vectorRetrieval")`; `PostgresBm25RetrievalAdapter` is `@Qualifier("bm25Retrieval")`
 - `OllamaLlmAdapter` is the sole `LlmPort` implementation
+- `InMemoryConversationHistoryAdapter` is the sole `ConversationHistoryPort` implementation (seam → durable store)
 - `PassthroughOutputGuardrailsAdapter` implements `OutputGuardrailsPort` (always PASS — seam for P04.11)
 - `PassthroughCitationAdapter` implements `CitationPort` (always empty list — seam for P04.11)
 
@@ -119,6 +153,7 @@ com.mudassir.eka
 │                                      InvalidRetrievalRequestException, RetrievalService
 └── infrastructure
     ├── citation                     — PassthroughCitationAdapter
+    ├── conversation                 — InMemoryConversationHistoryAdapter
     ├── guardrails                   — PassthroughOutputGuardrailsAdapter
     ├── llm
     │   ├── exception                — LlmTimeoutException, LlmRateLimitException,
