@@ -21,14 +21,15 @@ v0.5.0 (In Progress)
 | P04.8     | Prompt Builder                     | +50       | ✅ Complete |
 | P04.9     | Chat Generation (LLM + Guardrails) | +82       | ✅ Complete |
 | P04.10    | Conversation Memory                | +23       | ✅ Complete |
+| P04.11    | Citation Engine                    | +20       | ✅ Complete |
 
-**Total tests: 436 — 0 failures**
+**Total tests: 456 — 0 failures**
 
 ---
 
 ## Current Milestone
 
-**P04.11 — Citation Generation** ← next to implement
+**P04.12 — End-to-End RAG** ← next to implement
 
 ---
 
@@ -62,6 +63,11 @@ Security layer (Authorization Filter) is planned but not implemented.
 | M02  | `conversationId` is optional on `GenerationRequest`; null = stateless generation                 |
 | M03  | Memory window size (`app.conversation.memory-window-size`) is application config, not per-request |
 | M04  | `InMemoryConversationHistoryAdapter` is the P04.10 seam; replaceable without domain/app changes  |
+| C01  | `PositionalCitationAdapter` parses `[SOURCE:N]` via hand-written scan, not regex                 |
+| C02  | Marker resolution keys off `AssembledChunk.position()`, not list index                           |
+| C03  | Duplicate marker references dedupe by `chunkId`, keeping first-appearance order                  |
+| C04  | Malformed/out-of-range markers are silently ignored; `CitationPort` never throws                 |
+| C05  | `PositionalCitationAdapter` is the sole `CitationPort` implementation; passthrough seam removed  |
 
 ---
 
@@ -83,7 +89,7 @@ LlmPort.generate()                  ← OllamaLlmAdapter (inserts memory msgs be
 OutputGuardrailsPort.apply()        ← PassthroughOutputGuardrailsAdapter (seam → P04.11)
        │ GuardrailResult
        ▼
-CitationPort.resolve()              ← PassthroughCitationAdapter (seam → P04.11)
+CitationPort.resolve()              ← PositionalCitationAdapter (P04.11: parses [SOURCE:N], resolves against AssembledContext)
        │ List<Citation>
        ▼
 GeneratedResponse
@@ -123,8 +129,8 @@ GeneratedResponse
 - `HybridRetrievalAdapter` is `@Primary`; `WeaviateRetrievalAdapter` is `@Qualifier("vectorRetrieval")`; `PostgresBm25RetrievalAdapter` is `@Qualifier("bm25Retrieval")`
 - `OllamaLlmAdapter` is the sole `LlmPort` implementation
 - `InMemoryConversationHistoryAdapter` is the sole `ConversationHistoryPort` implementation (seam → durable store)
-- `PassthroughOutputGuardrailsAdapter` implements `OutputGuardrailsPort` (always PASS — seam for P04.11)
-- `PassthroughCitationAdapter` implements `CitationPort` (always empty list — seam for P04.11)
+- `PassthroughOutputGuardrailsAdapter` implements `OutputGuardrailsPort` (always PASS — seam for a future guardrails milestone)
+- `PositionalCitationAdapter` implements `CitationPort` (parses `[SOURCE:N]` markers, resolves against `AssembledContext` by `AssembledChunk.position()` — P04.11)
 
 ---
 

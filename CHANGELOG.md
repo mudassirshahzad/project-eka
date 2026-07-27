@@ -5,6 +5,17 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased] — v0.5.x Retrieval Foundation
 
+### Added (P04.11 — Citation Engine)
+
+- `PositionalCitationAdapter` — production `CitationPort` implementation replacing `PassthroughCitationAdapter`; parses `[SOURCE:N]` markers (ADR G03) out of the LLM's generated text using a hand-written left-to-right scan for the literal `[SOURCE:` prefix and the next `]` — no regex, so there is no catastrophic-backtracking risk on adversarial or malformed LLM output (ADR C01)
+- Marker resolution keys off `AssembledChunk.position()` via a `position -> AssembledChunk` map built from `AssembledContext.chunks()`, not list index, so resolution stays correct independent of list ordering (ADR C02)
+- Citations are returned in first-appearance order; repeated markers for the same chunk (identical or duplicate `[SOURCE:N]` references) dedupe to a single `Citation`, since a citation list represents distinct sources referenced, not mention counts (ADR C03)
+- Malformed input is never fatal: empty index (`[SOURCE:]`), non-digit index (`[SOURCE:abc]`), whitespace inside brackets, a missing closing bracket, a zero or negative index, numeric overflow, and out-of-range or unknown chunk references are all silently skipped — a single bad marker never blocks resolution of later, well-formed markers in the same response, and `resolve()` never throws (ADR C04)
+- `PassthroughCitationAdapter` removed outright — no dual-adapter transition period; `PositionalCitationAdapter` is the sole `CitationPort` implementation (ADR C05)
+- ADRs C01–C05 frozen (see `.claude/DECISIONS.md`)
+- 25 new tests in `PositionalCitationAdapterTest`: null guards, single citation, multi-citation ordering, out-of-numeric-order marker ordering, duplicate-marker dedup, repeated-markers-in-arbitrary-order dedup, unknown/out-of-range reference, zero index, mixed valid/invalid markers, non-digit marker, empty index, missing closing bracket, whitespace-in-brackets, negative sign, numeric overflow, malformed-then-valid marker sequencing, adjacent markers with no separator, no markers, empty generated text, empty context with markers present, deterministic repeat-call parsing, unmodifiable result; `PassthroughCitationAdapterTest` (5 tests) removed with the adapter it covered; net 456 total tests, 0 failures
+- README not updated — no new user-facing API surface; `GeneratedResponse.citations` was already part of the public domain model since P04.9, only its population behaviour changed
+
 ### Added (P04.10 — Conversation Memory)
 
 - `ConversationHistoryPort` — read-only domain port in `domain.generation.port`; signature: `List<Message> getRecentMessages(ConversationId conversationId, TenantId tenantId, int maxMessages)`; returns an unmodifiable chronological list, empty (not null, not exception) when the conversation does not exist; storage-independent — replaceable by PostgreSQL, Redis, MongoDB, or an external memory service without any change to domain or application (ADR M01, ADR M04)

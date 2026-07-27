@@ -24,9 +24,9 @@ Completed
 
 ✅ P04.10 Conversation Memory
 
-Upcoming
+✅ P04.11 Citation Engine
 
-P04.11 Citation Generation
+Upcoming
 
 P04.12 End-to-End RAG
 
