@@ -1,0 +1,221 @@
+package com.mudassirshahzad.eka.application.document;
+
+import com.mudassirshahzad.eka.application.event.DocumentIndexedEvent;
+import com.mudassirshahzad.eka.application.event.DocumentParsedEvent;
+import com.mudassirshahzad.eka.application.shared.ApplicationException;
+import com.mudassirshahzad.eka.application.shared.DomainEventPublisher;
+import com.mudassirshahzad.eka.domain.chunk.Chunk;
+import com.mudassirshahzad.eka.domain.chunk.ChunkMetadata;
+import com.mudassirshahzad.eka.domain.document.Document;
+import com.mudassirshahzad.eka.domain.document.DocumentId;
+import com.mudassirshahzad.eka.domain.document.DocumentMetadata;
+import com.mudassirshahzad.eka.domain.document.DocumentParser;
+import com.mudassirshahzad.eka.domain.document.FileStorage;
+import com.mudassirshahzad.eka.domain.document.ParsedDocument;
+import com.mudassirshahzad.eka.domain.document.ParsedMetadata;
+import com.mudassirshahzad.eka.domain.document.ParsingStatus;
+import com.mudassirshahzad.eka.domain.document.SupportedFormat;
+import com.mudassirshahzad.eka.domain.shared.DomainEvent;
+import com.mudassirshahzad.eka.domain.shared.TenantId;
+import com.mudassirshahzad.eka.domain.user.UserId;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class UploadDocumentUseCaseTest {
+
+    @Mock private DocumentApplicationService documentService;
+    @Mock private FileStorage                fileStorage;
+    @Mock private DocumentParser             documentParser;
+    @Mock private ChunkingService            chunkingService;
+    @Mock private EmbeddingService           embeddingService;
+    @Mock private ChunkApplicationService    chunkApplicationService;
+    @Mock private DocumentIndexingService    documentIndexingService;
+    @Mock private DomainEventPublisher       eventPublisher;
+    @InjectMocks private UploadDocumentUseCase useCase;
+
+    private final TenantId         tenantId = TenantId.generate();
+    private final UserId           ownerId  = UserId.generate();
+    private final DocumentMetadata metadata = DocumentMetadata.EMPTY;
+    private final byte[]           content  = "test content".getBytes(StandardCharsets.UTF_8);
+
+    @Test
+    void execute_rejectsNullCommand() {
+        assertThatNullPointerException().isThrownBy(() -> useCase.execute(null));
+    }
+
+    @Test
+    void execute_rejectsNullTenantId() {
+        var cmd = new UploadDocumentCommand(null, ownerId, "file.pdf", SupportedFormat.PDF, metadata, content);
+        assertThatNullPointerException().isThrownBy(() -> useCase.execute(cmd));
+    }
+
+    @Test
+    void execute_rejectsBlankFilename() {
+        var cmd = new UploadDocumentCommand(tenantId, ownerId, "   ", SupportedFormat.PDF, metadata, content);
+        assertThatExceptionOfType(ApplicationException.class)
+                .isThrownBy(() -> useCase.execute(cmd))
+                .withMessageContaining("filename");
+    }
+
+    @Test
+    void execute_rejectsNullFilename() {
+        var cmd = new UploadDocumentCommand(tenantId, ownerId, null, SupportedFormat.PDF, metadata, content);
+        assertThatExceptionOfType(ApplicationException.class)
+                .isThrownBy(() -> useCase.execute(cmd))
+                .withMessageContaining("filename");
+    }
+
+    @Test
+    void execute_rejectsNullFormat() {
+        var cmd = new UploadDocumentCommand(tenantId, ownerId, "report.pdf", null, metadata, content);
+        assertThatNullPointerException().isThrownBy(() -> useCase.execute(cmd));
+    }
+
+    @Test
+    void execute_rejectsNullContent() {
+        var cmd = new UploadDocumentCommand(tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata, null);
+        assertThatExceptionOfType(ApplicationException.class)
+                .isThrownBy(() -> useCase.execute(cmd))
+                .withMessageContaining("content");
+    }
+
+    @Test
+    void execute_rejectsEmptyContent() {
+        var cmd = new UploadDocumentCommand(tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata, new byte[0]);
+        assertThatExceptionOfType(ApplicationException.class)
+                .isThrownBy(() -> useCase.execute(cmd))
+                .withMessageContaining("content");
+    }
+
+    @Test
+    void execute_rejectsFormatFilenameExtensionMismatch() {
+        var cmd = new UploadDocumentCommand(tenantId, ownerId, "report.pdf", SupportedFormat.DOCX, metadata, content);
+        assertThatExceptionOfType(ApplicationException.class)
+                .isThrownBy(() -> useCase.execute(cmd))
+                .withMessageContaining("Format mismatch");
+    }
+
+    @Test
+    void execute_orchestratesFullPipelineAndPublishesBothEvents() {
+        var cmd = new UploadDocumentCommand(
+                tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata, content);
+
+        Document registered = Document.create(tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata);
+        Document updated    = Document.create(tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata);
+        ParsedDocument parsed = new ParsedDocument(
+                "extracted text",
+                new ParsedMetadata("Doc Title", null, null, 1, 13),
+                SupportedFormat.PDF, ParsingStatus.SUCCESS, Instant.now());
+
+        Chunk chunk = Chunk.create(
+                registered.getId(), tenantId, 0, "extracted text", ChunkMetadata.of("sliding-window"));
+        chunk.assignEmbeddingProvenance("nomic-embed-text", 768, Instant.now());
+        EmbeddedChunk embeddedChunk = new EmbeddedChunk(chunk, new float[768]);
+
+        when(documentService.registerDocument(any(RegisterDocumentCommand.class))).thenReturn(registered);
+        when(documentParser.parse(content, SupportedFormat.PDF)).thenReturn(parsed);
+        when(fileStorage.store(anyString(), any(byte[].class))).thenAnswer(inv -> inv.getArgument(0));
+        when(chunkingService.chunk(any(), any(DocumentId.class), any(TenantId.class)))
+                .thenReturn(List.of(chunk));
+        when(embeddingService.embed(anyList())).thenReturn(List.of(embeddedChunk));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(embeddedChunk));
+        doAnswer(inv -> {
+            List<EmbeddedChunk> embedded = inv.getArgument(0);
+            embedded.forEach(ec -> ec.chunk().assignVectorId(UUID.randomUUID().toString()));
+            return embedded.stream().map(EmbeddedChunk::chunk).toList();
+        }).when(documentIndexingService).index(anyList());
+        when(documentService.updateDocument(any(Document.class))).thenReturn(updated);
+
+        Document result = useCase.execute(cmd);
+
+        assertThat(result).isSameAs(updated);
+        verify(documentService).registerDocument(any(RegisterDocumentCommand.class));
+        verify(documentParser).parse(content, SupportedFormat.PDF);
+        verify(fileStorage, times(2)).store(anyString(), any(byte[].class));
+        verify(chunkingService).chunk(any(), any(DocumentId.class), any(TenantId.class));
+        verify(embeddingService).embed(anyList());
+        verify(chunkApplicationService).saveAll(anyList());
+        verify(documentIndexingService).index(anyList());
+        verify(documentService).updateDocument(any(Document.class));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<DomainEvent> eventCaptor = ArgumentCaptor.forClass(DomainEvent.class);
+        verify(eventPublisher, times(2)).publish(eventCaptor.capture());
+        List<DomainEvent> events = eventCaptor.getAllValues();
+        assertThat(events).extracting(DomainEvent::getEventType)
+                .containsExactlyInAnyOrder("document.parsed", "document.indexed");
+    }
+
+    @Test
+    void execute_acceptsUnknownExtensionWithAnyDeclaredFormat() {
+        var cmd = new UploadDocumentCommand(
+                tenantId, ownerId, "archive.xyz", SupportedFormat.TXT, metadata, content);
+
+        Document registered = Document.create(tenantId, ownerId, "archive.xyz", SupportedFormat.TXT, metadata);
+        Document updated    = Document.create(tenantId, ownerId, "archive.xyz", SupportedFormat.TXT, metadata);
+        ParsedDocument parsed = new ParsedDocument(
+                "raw text", new ParsedMetadata(null, null, null, 0, 8),
+                SupportedFormat.TXT, ParsingStatus.SUCCESS, Instant.now());
+
+        Chunk chunk = Chunk.create(
+                registered.getId(), tenantId, 0, "raw text", ChunkMetadata.of("sliding-window"));
+        chunk.assignEmbeddingProvenance("nomic-embed-text", 768, Instant.now());
+
+        when(documentService.registerDocument(any(RegisterDocumentCommand.class))).thenReturn(registered);
+        when(documentParser.parse(content, SupportedFormat.TXT)).thenReturn(parsed);
+        when(fileStorage.store(anyString(), any(byte[].class))).thenAnswer(inv -> inv.getArgument(0));
+        when(chunkingService.chunk(any(), any(DocumentId.class), any(TenantId.class)))
+                .thenReturn(List.of(chunk));
+        EmbeddedChunk ec = new EmbeddedChunk(chunk, new float[768]);
+        when(embeddingService.embed(anyList())).thenReturn(List.of(ec));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(ec));
+        doAnswer(inv -> {
+            List<EmbeddedChunk> embedded = inv.getArgument(0);
+            embedded.forEach(e -> e.chunk().assignVectorId(UUID.randomUUID().toString()));
+            return embedded.stream().map(EmbeddedChunk::chunk).toList();
+        }).when(documentIndexingService).index(anyList());
+        when(documentService.updateDocument(any(Document.class))).thenReturn(updated);
+
+        assertThat(useCase.execute(cmd)).isSameAs(updated);
+        verify(documentIndexingService).index(anyList());
+    }
+
+    @Test
+    void execute_doesNotCallChunkingOrIndexingWhenParsingFails() {
+        var cmd = new UploadDocumentCommand(
+                tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata, content);
+        Document registered = Document.create(tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata);
+
+        when(documentService.registerDocument(any())).thenReturn(registered);
+        when(documentParser.parse(any(), any())).thenThrow(new RuntimeException("parse error"));
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> useCase.execute(cmd));
+
+        verify(chunkingService, never()).chunk(any(), any(), any());
+        verify(embeddingService, never()).embed(anyList());
+        verify(documentIndexingService, never()).index(anyList());
+    }
+}

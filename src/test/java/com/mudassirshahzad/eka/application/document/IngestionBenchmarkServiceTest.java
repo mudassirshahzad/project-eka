@@ -1,0 +1,115 @@
+package com.mudassirshahzad.eka.application.document;
+
+import com.mudassirshahzad.eka.domain.chunk.Chunk;
+import com.mudassirshahzad.eka.domain.chunk.ChunkMetadata;
+import com.mudassirshahzad.eka.domain.chunk.EmbeddingProvider;
+import com.mudassirshahzad.eka.domain.document.DocumentId;
+import com.mudassirshahzad.eka.domain.document.ParsedDocument;
+import com.mudassirshahzad.eka.domain.document.ParsedMetadata;
+import com.mudassirshahzad.eka.domain.document.ParsingStatus;
+import com.mudassirshahzad.eka.domain.document.SupportedFormat;
+import com.mudassirshahzad.eka.domain.shared.TenantId;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class IngestionBenchmarkServiceTest {
+
+    @Mock private ChunkingService         chunkingService;
+    @Mock private EmbeddingService        embeddingService;
+    @Mock private ChunkApplicationService chunkApplicationService;
+    @Mock private DocumentIndexingService documentIndexingService;
+    @Mock private EmbeddingProvider       embeddingProvider;
+    @InjectMocks private IngestionBenchmarkService benchmarkService;
+
+    private final DocumentId documentId = DocumentId.generate();
+    private final TenantId   tenantId   = TenantId.generate();
+
+    private ParsedDocument parsed(String text) {
+        return new ParsedDocument(text,
+                new ParsedMetadata(null, null, null, 0, text.length()),
+                SupportedFormat.TXT, ParsingStatus.SUCCESS, Instant.now());
+    }
+
+    private Chunk makeChunk() {
+        return Chunk.create(documentId, tenantId, 0, "content", ChunkMetadata.of("sliding-window"));
+    }
+
+    @Test
+    void benchmark_returnsReportWithCorrectChunkCount() {
+        Chunk chunk = makeChunk();
+        float[] v = {0.1f};
+        chunk.assignEmbeddingProvenance("nomic-embed-text", 1, Instant.now());
+        chunk.assignVectorId("vector-1");
+        EmbeddedChunk embedded = new EmbeddedChunk(chunk, v);
+
+        when(chunkingService.chunk(any(), any(), any())).thenReturn(List.of(chunk));
+        when(embeddingService.embed(anyList())).thenReturn(List.of(embedded));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(embedded));
+        when(documentIndexingService.index(anyList())).thenReturn(List.of(chunk));
+        when(embeddingProvider.modelName()).thenReturn("nomic-embed-text");
+        when(embeddingProvider.dimension()).thenReturn(1);
+
+        BenchmarkReport report = benchmarkService.benchmark(parsed("some text"), documentId, tenantId);
+
+        assertThat(report.chunkCount()).isEqualTo(1);
+        assertThat(report.embeddingModel()).isEqualTo("nomic-embed-text");
+        assertThat(report.embeddingDimension()).isEqualTo(1);
+    }
+
+    @Test
+    void benchmark_timingsAreNonNegative() {
+        Chunk chunk = makeChunk();
+        chunk.assignEmbeddingProvenance("model", 2, Instant.now());
+        chunk.assignVectorId("v1");
+
+        EmbeddedChunk emb2 = new EmbeddedChunk(chunk, new float[]{0.0f});
+        when(chunkingService.chunk(any(), any(), any())).thenReturn(List.of(chunk));
+        when(embeddingService.embed(anyList())).thenReturn(List.of(emb2));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(emb2));
+        when(documentIndexingService.index(anyList())).thenReturn(List.of(chunk));
+        when(embeddingProvider.modelName()).thenReturn("model");
+        when(embeddingProvider.dimension()).thenReturn(2);
+
+        BenchmarkReport report = benchmarkService.benchmark(parsed("text"), documentId, tenantId);
+
+        assertThat(report.chunkTime().isNegative()).isFalse();
+        assertThat(report.embedTime().isNegative()).isFalse();
+        assertThat(report.persistTime().isNegative()).isFalse();
+        assertThat(report.indexTime().isNegative()).isFalse();
+        assertThat(report.totalTime().isNegative()).isFalse();
+    }
+
+    @Test
+    void benchmark_summaryContainsModelDimensionAndIndexTime() {
+        Chunk chunk = makeChunk();
+        chunk.assignEmbeddingProvenance("nomic-embed-text", 768, Instant.now());
+        chunk.assignVectorId("v768");
+
+        EmbeddedChunk emb3 = new EmbeddedChunk(chunk, new float[768]);
+        when(chunkingService.chunk(any(), any(), any())).thenReturn(List.of(chunk));
+        when(embeddingService.embed(anyList())).thenReturn(List.of(emb3));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(emb3));
+        when(documentIndexingService.index(anyList())).thenReturn(List.of(chunk));
+        when(embeddingProvider.modelName()).thenReturn("nomic-embed-text");
+        when(embeddingProvider.dimension()).thenReturn(768);
+
+        BenchmarkReport report = benchmarkService.benchmark(parsed("content"), documentId, tenantId);
+
+        assertThat(report.summary())
+                .contains("nomic-embed-text")
+                .contains("768")
+                .contains("index=");
+    }
+}

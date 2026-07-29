@@ -122,7 +122,7 @@ management:
 
 logging:
   level:
-    com.mudassir.eka: INFO
+    com.mudassirshahzad.eka: INFO
     org.springframework.ai: INFO
     org.hibernate.SQL: WARN
 
@@ -139,7 +139,7 @@ spring:
 
 logging:
   level:
-    com.mudassir.eka: DEBUG
+    com.mudassirshahzad.eka: DEBUG
     org.springframework.ai: DEBUG
 
 ---

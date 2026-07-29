@@ -137,7 +137,7 @@ GeneratedResponse
 ## Package Structure (production code)
 
 ```
-com.mudassir.eka
+com.mudassirshahzad.eka
 ├── domain
 │   ├── chunk                        — ChunkId, Chunk
 │   ├── conversation                 — Message, MessageRole, Citation

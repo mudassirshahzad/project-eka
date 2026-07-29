@@ -5,6 +5,10 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased] — v0.5.x Retrieval Foundation
 
+### Changed (R01 — Rename Root Package)
+
+- Root package renamed `com.mudassir` → `com.mudassirshahzad` across all source, test, and configuration files (Gradle `group`, `application.yml` logging levels, ArchUnit's `ROOT` constant, `@EnableJpaRepositories`/`@EntityScan` `basePackages`); pure namespace refactor — no behavioral, architectural, or API change; 456 tests pass unchanged, all 8 ArchUnit rules pass unchanged
+
 ### Added (P04.11 — Citation Engine)
 
 - `PositionalCitationAdapter` — production `CitationPort` implementation replacing `PassthroughCitationAdapter`; parses `[SOURCE:N]` markers (ADR G03) out of the LLM's generated text using a hand-written left-to-right scan for the literal `[SOURCE:` prefix and the next `]` — no regex, so there is no catastrophic-backtracking risk on adversarial or malformed LLM output (ADR C01)
