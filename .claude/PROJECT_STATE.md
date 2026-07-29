@@ -4,6 +4,8 @@ Current Version
 
 v0.5.0 (In Progress)
 
+**Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
+
 ---
 
 ## Completed Milestones
@@ -158,7 +160,7 @@ com.mudassirshahzad.eka
 │   └── retrieval                    — RetrievalRequest, RetrievalException,
 │                                      InvalidRetrievalRequestException, RetrievalService
 └── infrastructure
-    ├── citation                     — PassthroughCitationAdapter
+    ├── citation                     — PositionalCitationAdapter
     ├── conversation                 — InMemoryConversationHistoryAdapter
     ├── guardrails                   — PassthroughOutputGuardrailsAdapter
     ├── llm
