@@ -36,12 +36,24 @@ import java.util.Objects;
  * {@code application.yml}. The active model name is taken from {@link GenerationOptions#modelNameOverride()}
  * when present, otherwise from the {@code spring.ai.ollama.chat.model} property.
  *
- * <p>Logging: model name, finish reason, and token counts are logged at DEBUG. Prompt content,
- * system text, and generated text are never logged.
+ * <p><b>Retry (ADR G13 / P04.13.5 reconciliation):</b> transient failures from
+ * {@link ChatModel#call(Prompt)} are retried up to {@value #MAX_RETRIES} times with exponential
+ * backoff ({@value #INITIAL_BACKOFF_MS}ms initial, capped at {@value #MAX_BACKOFF_MS}ms) before
+ * being wrapped as {@link LlmProviderUnavailableException}. This mirrors the retry shape already
+ * established in {@code EmbeddingService.embedWithRetry} elsewhere in this codebase — a plain
+ * bounded retry loop, not a resilience framework. Only the provider call itself is retried;
+ * prompt construction is pure and retrying it would serve no purpose.
+ *
+ * <p>Logging: model name, finish reason, and token counts are logged at DEBUG; retry attempts are
+ * logged at WARN. Prompt content, system text, and generated text are never logged.
  */
 @Slf4j
 @Component
 public class OllamaLlmAdapter implements LlmPort {
+
+    private static final long INITIAL_BACKOFF_MS = 100L;
+    private static final long MAX_BACKOFF_MS     = 1000L;
+    private static final int  MAX_RETRIES        = 3;
 
     private final ChatModel chatModel;
     private final String    defaultModelName;
@@ -62,7 +74,7 @@ public class OllamaLlmAdapter implements LlmPort {
 
         try {
             Prompt       prompt   = buildPrompt(request.promptRequest(), request.options(), activeModel);
-            ChatResponse response = chatModel.call(prompt);
+            ChatResponse response = callWithRetry(prompt);
             long         latency  = elapsedMs(startNano);
 
             LlmResponse result = toResponse(response, activeModel, latency);
@@ -82,6 +94,35 @@ public class OllamaLlmAdapter implements LlmPort {
 
     private String resolveModel(GenerationOptions options) {
         return options.hasModelOverride() ? options.modelNameOverride() : defaultModelName;
+    }
+
+    private ChatResponse callWithRetry(Prompt prompt) {
+        long             backoff       = INITIAL_BACKOFF_MS;
+        RuntimeException lastException = null;
+
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                return chatModel.call(prompt);
+            } catch (RuntimeException ex) {
+                lastException = ex;
+                if (attempt < MAX_RETRIES) {
+                    log.warn("LLM call attempt {}/{} failed, retrying in {}ms: {}",
+                            attempt, MAX_RETRIES, backoff, ex.getMessage());
+                    sleepBackoff(backoff);
+                    backoff = Math.min(backoff * 2, MAX_BACKOFF_MS);
+                }
+            }
+        }
+        throw lastException;
+    }
+
+    private void sleepBackoff(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted during LLM retry", ie);
+        }
     }
 
     private Prompt buildPrompt(PromptRequest promptRequest, GenerationOptions options, String modelName) {

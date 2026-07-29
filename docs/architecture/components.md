@@ -2,6 +2,8 @@
 
 > Service responsibilities, RAG pipeline internals, sequence flows, and the pluggable extension points of Project EKA (Enterprise Knowledge Assistant).
 
+**Note (P04.13 reconciliation):** this document predates implementation and records original Phase 3 design intent. Class names below (e.g. `SourceCitationService`, `[SOURCE-N]`) are illustrative and do not all match what was actually built — for example, citation resolution shipped as `CitationPort` / `PositionalCitationAdapter` using `[SOURCE:N]` (colon, 1-based; see ADR G03, C01–C05 in `.claude/DECISIONS.md`). For current, accurate class names and package locations, see `.claude/PROJECT_STATE.md`.
+
 ---
 
 ## Table of Contents

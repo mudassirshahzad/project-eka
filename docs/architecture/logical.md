@@ -2,6 +2,8 @@
 
 > Layer responsibilities, dependency rules, data flow, and the Ports & Adapters contract for Project EKA (Enterprise Knowledge Assistant).
 
+**Note (P04.13 reconciliation):** this document predates implementation and records original Phase 3 design intent. Some class names (e.g. `SourceCitationService`) are illustrative and do not match what was actually built (`CitationPort` / `PositionalCitationAdapter` — see `.claude/DECISIONS.md`). For current, accurate class names and package locations, see `.claude/PROJECT_STATE.md`.
+
 ---
 
 ## Table of Contents

@@ -152,5 +152,3 @@ spring:
   datasource:
     url: jdbc:tc:postgresql:16:///project_eka_test
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
-  flyway:
-    clean-on-validation-error: true

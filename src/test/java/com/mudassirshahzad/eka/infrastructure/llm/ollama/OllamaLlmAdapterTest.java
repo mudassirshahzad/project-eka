@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -172,6 +173,47 @@ class OllamaLlmAdapterTest {
                 .isInstanceOf(LlmException.class)
                 .isInstanceOf(LlmProviderUnavailableException.class)
                 .hasMessageContaining("LLM generation failed");
+    }
+
+    // ── Retry (ADR G13 / P04.13.5) ────────────────────────────────────────────
+
+    @Test
+    void generate_retriesOnTransientFailureThenSucceeds() {
+        AssistantMessage output = mock(AssistantMessage.class);
+        when(output.getText()).thenReturn("answer");
+        ChatGenerationMetadata genMeta = mock(ChatGenerationMetadata.class);
+        when(genMeta.getFinishReason()).thenReturn("stop");
+        Generation generation = mock(Generation.class);
+        when(generation.getOutput()).thenReturn(output);
+        when(generation.getMetadata()).thenReturn(genMeta);
+        Usage usage = mock(Usage.class);
+        when(usage.getPromptTokens()).thenReturn(100);
+        when(usage.getCompletionTokens()).thenReturn(50);
+        ChatResponseMetadata responseMeta = mock(ChatResponseMetadata.class);
+        when(responseMeta.getUsage()).thenReturn(usage);
+        when(responseMeta.getModel()).thenReturn(DEFAULT_MODEL);
+        ChatResponse response = mock(ChatResponse.class);
+        when(response.getResult()).thenReturn(generation);
+        when(response.getMetadata()).thenReturn(responseMeta);
+
+        when(chatModel.call(any(Prompt.class)))
+                .thenThrow(new RuntimeException("transient connection error"))
+                .thenReturn(response);
+
+        LlmResponse result = adapter.generate(defaultRequest());
+
+        assertThat(result.generatedText()).isEqualTo("answer");
+        verify(chatModel, times(2)).call(any(Prompt.class));
+    }
+
+    @Test
+    void generate_exhaustsRetriesThenThrows() {
+        when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("provider down"));
+
+        assertThatThrownBy(() -> adapter.generate(defaultRequest()))
+                .isInstanceOf(LlmProviderUnavailableException.class);
+
+        verify(chatModel, times(3)).call(any(Prompt.class));
     }
 
     // ── Unknown finish reason defaults to STOP ───────────────────────────────

@@ -82,18 +82,7 @@ dependencies {
     testImplementation 'org.testcontainers:junit-jupiter'
 }
 
-// ── Compiler: enable Java 21 preview features ──────────────────────────────
-tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs << '--enable-preview'
-}
-
 // ── Tests ──────────────────────────────────────────────────────────────────
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
-    jvmArgs '--enable-preview'
-}
-
-// ── Local dev run ──────────────────────────────────────────────────────────
-tasks.named('bootRun') {
-    jvmArgs '--enable-preview'
 }

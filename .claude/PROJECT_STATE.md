@@ -25,14 +25,15 @@ v0.5.0 (In Progress)
 | P04.10    | Conversation Memory                | +23       | ✅ Complete |
 | P04.11    | Citation Engine                    | +20       | ✅ Complete |
 | P04.12    | Enterprise Output Guardrails       | +14       | ✅ Complete |
+| P04.13    | Architecture Reconciliation        | +19       | ✅ Complete |
 
-**Total tests: 470 — 0 failures**
+**Total tests: 489 — 0 failures**
 
 ---
 
 ## Current Milestone
 
-**P04.13 — End-to-End RAG** ← next to implement
+**P04.14 — End-to-End RAG** ← next to implement
 
 ---
 
@@ -76,6 +77,11 @@ Security layer (Authorization Filter) is planned but not implemented.
 | GR03 | Oversized responses are truncated and `PASS`ed, not blocked                                      |
 | GR04 | Malformed-output normalisation strips non-printable control chars only (not `\r\n\t`)             |
 | GR05 | `PolicyBasedOutputGuardrailsAdapter` is the sole `OutputGuardrailsPort` implementation            |
+| R01  | `PersistentConversationHistoryAdapter` is the sole `ConversationHistoryPort` impl; reads via `ConversationRepository` |
+| R02  | `OllamaLlmAdapter` retries transient failures (3 attempts, exponential backoff) — reconciles G13  |
+| R03  | `roles.created_at` schema drift fixed via `V017` migration, not documented as debt                |
+| R04  | `test` profile's `flyway.clean-on-validation-error` removed (property no longer exists)          |
+| R05  | `--enable-preview` removed from Gradle build; zero preview features were ever used                |
 
 ---
 
@@ -85,8 +91,8 @@ Security layer (Authorization Filter) is planned but not implemented.
 GenerationRequest (with optional conversationId)
        │
        ▼
-ConversationHistoryPort.getRecentMessages()  ← InMemoryConversationHistoryAdapter
-       │ List<Message> (empty when conversationId is null)
+ConversationHistoryPort.getRecentMessages()  ← PersistentConversationHistoryAdapter (P04.13: reads via ConversationRepository)
+       │ List<Message> (empty when conversationId is null, unknown, or belongs to another tenant)
        ▼
 PromptBuilderPort.build()           ← TemplateBasedPromptBuilderAdapter
        │ PromptRequest (memoryMessages now populated)
@@ -136,7 +142,7 @@ GeneratedResponse
 
 - `HybridRetrievalAdapter` is `@Primary`; `WeaviateRetrievalAdapter` is `@Qualifier("vectorRetrieval")`; `PostgresBm25RetrievalAdapter` is `@Qualifier("bm25Retrieval")`
 - `OllamaLlmAdapter` is the sole `LlmPort` implementation
-- `InMemoryConversationHistoryAdapter` is the sole `ConversationHistoryPort` implementation (seam → durable store)
+- `PersistentConversationHistoryAdapter` is the sole `ConversationHistoryPort` implementation (reads via `ConversationRepository`, tenant-checked — P04.13)
 - `PolicyBasedOutputGuardrailsAdapter` implements `OutputGuardrailsPort` (blocks null/blank output, strips control characters, truncates to `app.guardrails.max-response-length` — P04.12)
 - `PositionalCitationAdapter` implements `CitationPort` (parses `[SOURCE:N]` markers, resolves against `AssembledContext` by `AssembledChunk.position()` — P04.11)
 
@@ -167,7 +173,8 @@ com.mudassirshahzad.eka
 │                                      InvalidRetrievalRequestException, RetrievalService
 └── infrastructure
     ├── citation                     — PositionalCitationAdapter
-    ├── conversation                 — InMemoryConversationHistoryAdapter
+    ├── context                      — DefaultContextAssemblyAdapter
+    ├── conversation                 — PersistentConversationHistoryAdapter
     ├── guardrails                   — PolicyBasedOutputGuardrailsAdapter
     ├── llm
     │   ├── exception                — LlmTimeoutException, LlmRateLimitException,
@@ -176,13 +183,45 @@ com.mudassirshahzad.eka
     │   └── ollama                   — OllamaLlmAdapter
     ├── prompt                       — TemplateBasedPromptBuilderAdapter
     ├── query.rewrite                — OllamaQueryRewriteAdapter, QueryRewriteException
+    ├── ranking                      — RrfRankingAdapter
     └── retrieval
         ├── hybrid                   — HybridRetrievalAdapter, HybridRetrievalException
         ├── postgres                 — PostgresBm25RetrievalAdapter, Bm25MetadataFilterTranslator,
         │                              Bm25ScoreNormalizer
-        ├── ranking                  — RrfRankingAdapter
         └── weaviate                 — WeaviateRetrievalAdapter, WeaviateVectorStoreAdapter
 ```
+
+*(P04.13 correction: `ranking` and `context` were shown incorrectly/missing above — they are top-level `infrastructure` packages, not nested under `infrastructure.retrieval`.)*
+
+### Repository Scope (P04.13.3)
+
+This file's Milestone/ADR tracking above covers the **retrieval/generation pipeline** (P04.x). It does not cover a second, larger body of code — pre-existing Phase 1/2 foundation work (`docs/roadmap.md`) that predates the P04.x milestone-tracking discipline. Full detail on that layer is not duplicated here; this section exists solely so its existence and status are unambiguous.
+
+| Package (domain / application / infrastructure) | Contents | Status |
+|---|---|---|
+| `domain.document`, `domain.chunk` | `Document`, `Chunk` aggregates | Used by both threads |
+| `domain.user`, `domain.query` | `User`, `KnowledgeQuery` aggregates | Foundation-only |
+| `application.document` | `ChunkingService`, `EmbeddingService`, `DocumentIndexingService`, ingestion use cases | Foundation-only, self-contained ingestion pipeline |
+| `application.conversation` | `ConversationApplicationService` + CRUD use cases | Foundation-only; **write side of P04.13's `ConversationHistoryPort` fix** (ADR R01) |
+| `application.chat`, `application.query`, `application.user` | Chat session, knowledge-query, and user-management use cases | Foundation-only, not yet wired to `application.generation`/`application.retrieval` (see P04.13.8) |
+| `application.event` + `infrastructure.event` | 17 domain event records + `SpringDomainEventPublisher` | Built, unused — no `@EventListener` anywhere (see P04.13.8) |
+| `infrastructure.parsing`, `.embedding`, `.storage`, `.vectorstore` | Tika parsing, Ollama embedding, local file storage, Weaviate vector store (ingestion side) | Foundation-only ingestion adapters |
+| `infrastructure.persistence.postgres` | 8 repository adapters, 12 entities, 7 mappers, 11 JPA repositories | Foundation-only; now has baseline tests (P04.13.4) |
+| `infrastructure.config` | `DatabaseConfig`, `AsyncConfig`, `AppProperties` | Spring wiring for the foundation layer |
+
+No REST controller exists anywhere in the codebase yet — the entire foundation layer above is provisioned but has no external entry point, consistent with `docs/roadmap.md` Phase 3 ("QueryController"/"ConversationController") being future work, not a defect.
+
+### Deferred Items (P04.13.8)
+
+Reviewed without implementing — each classified so none of these become a future undocumented surprise:
+
+| Item | Classification | Notes |
+|---|---|---|
+| Domain event system (17 events, zero `@EventListener` consumers) | Future roadmap | Not broken — built ahead of its consumers. Revisit when an analytics/audit/notification feature needs it. |
+| `application.chat` (ChatSession) not wired to `application.generation` | Future roadmap (P04.14 — End-to-End RAG) | `RecordTurnCommand` is designed to receive exactly what `LlmResponse` already produces; natural fit for the next milestone, not this one. |
+| `application.query` (KnowledgeQuery) not wired to `application.retrieval` | Future roadmap (P04.14 — End-to-End RAG) | Same reasoning — audit/tracking layer built ahead of the entry point that would call it. |
+| `UploadDocumentUseCase`'s `@Transactional` spanning Tika/Ollama/Weaviate calls | Genuine technical debt | Real connection-pool-exhaustion and dual-write risk; not urgent (ingestion has no external caller yet) but should be fixed before ingestion is load-bearing. |
+| `AppProperties` (`@ConfigurationProperties`) vs. scattered `@Value` config binding | No action required | Both patterns are valid Spring idioms already in active use; forcing one convention across every adapter is cosmetic churn without measurable long-term value (rejected per review philosophy). |
 
 ---
 
@@ -192,7 +231,7 @@ Gradle 8.12 — no `gradlew` wrapper present.
 
 Binary: `~/.gradle/wrapper/dists/gradle-8.12-bin/cetblhg4pflnnks72fxwobvgv/gradle-8.12/bin/gradle`
 
-Java 21 with `--enable-preview` in compiler and test JVM args.
+Java 21. `--enable-preview` removed in P04.13 (ADR R05) — no preview language feature was ever used.
 
 ---
 

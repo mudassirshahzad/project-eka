@@ -31,7 +31,7 @@
 - Hybrid Search *(v0.5.0)*
 - MCP Ready *(v0.8.0)*
 - LangGraph Ready *(v0.9.0)*
-- 104 Automated Tests, 0 failures
+- 489 Automated Tests, 0 failures
 
 ---
 
@@ -62,13 +62,13 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.4.0 — Document Ingestion |
+| **Current Release** | v0.5.0 — Retrieval, Generation & RAG Foundation |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 104 passing, 0 failures · 16 test classes |
+| **Automated Tests** | 489 passing, 0 failures · 44 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
-| **Schema Migrations** | Flyway V001–V016 (16 migrations) |
-| **Current Focus** | v0.5.0 — Retrieval & RAG Pipeline |
-| **Next Milestone** | Hybrid search, query rewriting, context assembly |
+| **Schema Migrations** | Flyway V001–V017 (17 migrations) |
+| **Current Focus** | P04.13 — Architecture Reconciliation (complete) |
+| **Next Milestone** | P04.14 — End-to-End RAG |
 
 ---
 
