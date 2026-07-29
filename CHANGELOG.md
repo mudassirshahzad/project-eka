@@ -5,6 +5,19 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased] — v0.5.x Retrieval Foundation
 
+### Added (P04.12 — Enterprise Output Guardrails)
+
+- `PolicyBasedOutputGuardrailsAdapter` — production `OutputGuardrailsPort` implementation replacing `PassthroughOutputGuardrailsAdapter`; a deterministic, provider-independent enterprise policy layer — not AI moderation, not a classifier, not a semantic validator (ADR GR05)
+- Null, empty, or whitespace-only generated text (including text that becomes whitespace-only after control-character stripping) resolves to `GuardrailResult.block(SAFE_FALLBACK_TEXT)`; `apply()` never throws for malformed or absent LLM output — only `tenantId == null` throws, consistent with every other port in the codebase (ADR GR02)
+- Malformed-output normalisation strips Unicode control characters other than `\r`, `\n`, `\t` before any blank or length check runs; no HTML/Markdown sanitisation, PII redaction, or semantic validation is attempted — narrowest deterministic interpretation of "malformed output" (ADR GR04)
+- Responses exceeding `app.guardrails.max-response-length` (new config, default 8192) are truncated to that limit and returned as `GuardrailResult.pass(truncatedText)`; length alone is never a blocking condition — reuses the existing two-value `GuardrailStatus` rather than inventing a third state (ADR GR03)
+- Finish-reason-aware blocking (e.g. treating `FinishReason.ERROR` as a policy violation) is intentionally deferred: `OutputGuardrailsPort.apply()` keeps its frozen text-only signature (ADR G16, unchanged) since `FinishReason` is a closed enum already defensively mapped upstream in `OllamaLlmAdapter` — there is no "invalid" value that can structurally reach this layer, and evolving the port for a business rule nobody has specified yet would be premature (ADR GR01, documented technical debt)
+- `PassthroughOutputGuardrailsAdapter` removed outright — no dual-adapter transition period; `PolicyBasedOutputGuardrailsAdapter` is the sole `OutputGuardrailsPort` implementation (ADR GR05)
+- ADRs GR01–GR05 frozen (see `.claude/DECISIONS.md`)
+- `app.guardrails.max-response-length: 8192` new configuration property in `application.yml`
+- 19 new tests in `PolicyBasedOutputGuardrailsAdapterTest`: constructor validation (zero/negative/positive max length), null tenantId guard, null text blocked without throwing, empty/whitespace-only/control-characters-only blocked, valid text passed unchanged, leading/trailing whitespace trimmed, control characters stripped while `\r`/`\n`/`\t` preserved, oversized text truncated (including exact-boundary and off-by-one cases), long single-line text truncation, blocked results never leak original malformed content, deterministic repeat-call output; `PassthroughOutputGuardrailsAdapterTest` (5 tests) removed with the adapter it covered; net 470 total tests, 0 failures
+- README not updated — no new user-facing API surface; `GeneratedResponse` was already part of the public domain model, only guardrail enforcement behaviour changed
+
 ### Changed (R01 — Rename Root Package)
 
 - Root package renamed `com.mudassir` → `com.mudassirshahzad` across all source, test, and configuration files (Gradle `group`, `application.yml` logging levels, ArchUnit's `ROOT` constant, `@EnableJpaRepositories`/`@EntityScan` `basePackages`); pure namespace refactor — no behavioral, architectural, or API change; 456 tests pass unchanged, all 8 ArchUnit rules pass unchanged

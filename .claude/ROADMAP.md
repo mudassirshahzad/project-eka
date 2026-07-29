@@ -26,9 +26,11 @@ Completed
 
 ✅ P04.11 Citation Engine
 
+✅ P04.12 Enterprise Output Guardrails
+
 Upcoming
 
-P04.12 End-to-End RAG
+P04.13 End-to-End RAG
 
 Future
 

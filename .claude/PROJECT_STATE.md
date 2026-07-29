@@ -24,14 +24,15 @@ v0.5.0 (In Progress)
 | P04.9     | Chat Generation (LLM + Guardrails) | +82       | ✅ Complete |
 | P04.10    | Conversation Memory                | +23       | ✅ Complete |
 | P04.11    | Citation Engine                    | +20       | ✅ Complete |
+| P04.12    | Enterprise Output Guardrails       | +14       | ✅ Complete |
 
-**Total tests: 456 — 0 failures**
+**Total tests: 470 — 0 failures**
 
 ---
 
 ## Current Milestone
 
-**P04.12 — End-to-End RAG** ← next to implement
+**P04.13 — End-to-End RAG** ← next to implement
 
 ---
 
@@ -70,6 +71,11 @@ Security layer (Authorization Filter) is planned but not implemented.
 | C03  | Duplicate marker references dedupe by `chunkId`, keeping first-appearance order                  |
 | C04  | Malformed/out-of-range markers are silently ignored; `CitationPort` never throws                 |
 | C05  | `PositionalCitationAdapter` is the sole `CitationPort` implementation; passthrough seam removed  |
+| GR01 | `OutputGuardrailsPort` stays text-only (G16); finish-reason-aware blocking deferred              |
+| GR02 | Null/blank generated text resolves to `GuardrailResult.block(...)`; `apply()` never throws       |
+| GR03 | Oversized responses are truncated and `PASS`ed, not blocked                                      |
+| GR04 | Malformed-output normalisation strips non-printable control chars only (not `\r\n\t`)             |
+| GR05 | `PolicyBasedOutputGuardrailsAdapter` is the sole `OutputGuardrailsPort` implementation            |
 
 ---
 
@@ -88,7 +94,7 @@ PromptBuilderPort.build()           ← TemplateBasedPromptBuilderAdapter
 LlmPort.generate()                  ← OllamaLlmAdapter (inserts memory msgs between system + user)
        │ LlmResponse
        ▼
-OutputGuardrailsPort.apply()        ← PassthroughOutputGuardrailsAdapter (seam → P04.11)
+OutputGuardrailsPort.apply()        ← PolicyBasedOutputGuardrailsAdapter (P04.12: blocks null/blank, strips control chars, truncates oversized text)
        │ GuardrailResult
        ▼
 CitationPort.resolve()              ← PositionalCitationAdapter (P04.11: parses [SOURCE:N], resolves against AssembledContext)
@@ -131,7 +137,7 @@ GeneratedResponse
 - `HybridRetrievalAdapter` is `@Primary`; `WeaviateRetrievalAdapter` is `@Qualifier("vectorRetrieval")`; `PostgresBm25RetrievalAdapter` is `@Qualifier("bm25Retrieval")`
 - `OllamaLlmAdapter` is the sole `LlmPort` implementation
 - `InMemoryConversationHistoryAdapter` is the sole `ConversationHistoryPort` implementation (seam → durable store)
-- `PassthroughOutputGuardrailsAdapter` implements `OutputGuardrailsPort` (always PASS — seam for a future guardrails milestone)
+- `PolicyBasedOutputGuardrailsAdapter` implements `OutputGuardrailsPort` (blocks null/blank output, strips control characters, truncates to `app.guardrails.max-response-length` — P04.12)
 - `PositionalCitationAdapter` implements `CitationPort` (parses `[SOURCE:N]` markers, resolves against `AssembledContext` by `AssembledChunk.position()` — P04.11)
 
 ---
@@ -162,7 +168,7 @@ com.mudassirshahzad.eka
 └── infrastructure
     ├── citation                     — PositionalCitationAdapter
     ├── conversation                 — InMemoryConversationHistoryAdapter
-    ├── guardrails                   — PassthroughOutputGuardrailsAdapter
+    ├── guardrails                   — PolicyBasedOutputGuardrailsAdapter
     ├── llm
     │   ├── exception                — LlmTimeoutException, LlmRateLimitException,
     │   │                              LlmProviderUnavailableException, LlmInvalidResponseException,

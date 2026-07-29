@@ -105,6 +105,8 @@ app:
     max-chunks: 10
   conversation:
     memory-window-size: 10
+  guardrails:
+    max-response-length: 8192
   storage:
     document-root: ${DOCUMENT_STORAGE_ROOT:/data/documents}
 
