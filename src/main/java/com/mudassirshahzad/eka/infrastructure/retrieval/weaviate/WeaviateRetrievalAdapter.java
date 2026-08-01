@@ -58,7 +58,7 @@ public class WeaviateRetrievalAdapter implements RetrievalPort {
         if (rawResults.isEmpty()) {
             long latencyMs = elapsedMs(startNano);
             log.debug("Retrieval: tenant={} topK={} hits=0 latencyMs={}", tenantId, options.topK(), latencyMs);
-            return RetrievalResult.empty(STRATEGY, latencyMs);
+            return RetrievalResult.empty(STRATEGY, latencyMs, queryText);
         }
 
         List<ChunkId> chunkIds = rawResults.stream()
@@ -70,7 +70,7 @@ public class WeaviateRetrievalAdapter implements RetrievalPort {
         if (chunkIds.isEmpty()) {
             long latencyMs = elapsedMs(startNano);
             log.debug("Retrieval: tenant={} topK={} hits=0 latencyMs={}", tenantId, options.topK(), latencyMs);
-            return RetrievalResult.empty(STRATEGY, latencyMs);
+            return RetrievalResult.empty(STRATEGY, latencyMs, queryText);
         }
 
         Map<ChunkId, Chunk> chunkById;
@@ -99,7 +99,7 @@ public class WeaviateRetrievalAdapter implements RetrievalPort {
         log.debug("Retrieval: tenant={} topK={} hits={} latencyMs={}",
                 tenantId, options.topK(), chunks.size(), latencyMs);
 
-        return new RetrievalResult(chunks, new SearchMetadata(chunks.size(), latencyMs, STRATEGY));
+        return new RetrievalResult(chunks, new SearchMetadata(chunks.size(), latencyMs, STRATEGY), queryText);
     }
 
     /**

@@ -20,6 +20,7 @@ ext {
     mapstructVersion       = '1.6.3'
     archunitVersion        = '1.3.0'
     lombokMapstructBinding = '0.2.0'
+    springdocVersion       = '2.7.0'
 }
 
 repositories {
@@ -73,6 +74,9 @@ dependencies {
 
     // ── Observability ──────────────────────────────────────────────────────
     implementation 'io.micrometer:micrometer-registry-prometheus'
+
+    // ── API documentation ──────────────────────────────────────────────────
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
 
     // ── Test ───────────────────────────────────────────────────────────────
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

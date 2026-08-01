@@ -122,7 +122,7 @@ class RetrievalServiceTest {
     void retrieve_appliesDefaultOptionsWhenNull() {
         var request = new RetrievalRequest("what is a contract?", tenantId, userId, MetadataFilter.NONE, null);
         when(retrievalPort.retrieve("what is a contract?", tenantId, MetadataFilter.NONE, RetrievalOptions.DEFAULT))
-                .thenReturn(RetrievalResult.empty("hybrid", 5L));
+                .thenReturn(RetrievalResult.empty("hybrid", 5L, "what is a contract?"));
 
         service.retrieve(request);
 
@@ -133,7 +133,7 @@ class RetrievalServiceTest {
     void retrieve_appliesDefaultFilterWhenNull() {
         var request = new RetrievalRequest("what is a contract?", tenantId, userId, null, RetrievalOptions.DEFAULT);
         when(retrievalPort.retrieve("what is a contract?", tenantId, MetadataFilter.NONE, RetrievalOptions.DEFAULT))
-                .thenReturn(RetrievalResult.empty("hybrid", 5L));
+                .thenReturn(RetrievalResult.empty("hybrid", 5L, "what is a contract?"));
 
         service.retrieve(request);
 
@@ -146,7 +146,7 @@ class RetrievalServiceTest {
     void retrieve_skipsRankingAndReturnsRawResultWhenNoHits() {
         var request = new RetrievalRequest("unknown topic", tenantId, userId, MetadataFilter.NONE, RetrievalOptions.DEFAULT);
         when(retrievalPort.retrieve(any(), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("hybrid", 8L));
+                .thenReturn(RetrievalResult.empty("hybrid", 8L, "unknown topic"));
 
         RetrievalResult result = service.retrieve(request);
 
@@ -157,7 +157,7 @@ class RetrievalServiceTest {
     @Test
     void retrieve_appliesRankingWhenResultsExist() {
         RetrievedChunk chunk = sampleChunk(0);
-        var raw = new RetrievalResult(List.of(chunk), new SearchMetadata(1, 10L, "hybrid"));
+        var raw = new RetrievalResult(List.of(chunk), new SearchMetadata(1, 10L, "hybrid"), "what is a contract?");
         when(retrievalPort.retrieve(any(), any(), any(), any())).thenReturn(raw);
         when(rankingPort.rank(raw.items(), "what is a contract?")).thenReturn(List.of(chunk));
 
@@ -172,7 +172,7 @@ class RetrievalServiceTest {
     void retrieve_preservesMetadataFromRetrievalPortAfterRanking() {
         RetrievedChunk chunk = sampleChunk(0);
         var metadata = new SearchMetadata(1, 22L, "hybrid");
-        var raw = new RetrievalResult(List.of(chunk), metadata);
+        var raw = new RetrievalResult(List.of(chunk), metadata, "find policy");
         when(retrievalPort.retrieve(any(), any(), any(), any())).thenReturn(raw);
         when(rankingPort.rank(any(), any())).thenReturn(List.of(chunk));
 
@@ -183,6 +183,37 @@ class RetrievalServiceTest {
         assertThat(result.metadata().strategy()).isEqualTo("hybrid");
     }
 
+    // ── Effective query text propagation ──────────────────────────────────────
+
+    @Test
+    void retrieve_resultCarriesEffectiveQueryText_whenNoResults() {
+        String rewritten = "service level agreement definition";
+        when(queryRewritePort.rewrite(anyString(), any())).thenReturn(rewritten);
+        when(retrievalPort.retrieve(eq(rewritten), any(), any(), any()))
+                .thenReturn(RetrievalResult.empty("hybrid", 5L, rewritten));
+
+        var request = new RetrievalRequest("what's the SLA?", tenantId, userId, MetadataFilter.NONE, RetrievalOptions.DEFAULT);
+        RetrievalResult result = service.retrieve(request);
+
+        assertThat(result.effectiveQueryText()).isEqualTo(rewritten);
+    }
+
+    @Test
+    void retrieve_resultCarriesEffectiveQueryText_afterRanking() {
+        String rewritten = "service level agreement violation procedure";
+        RetrievedChunk chunk = sampleChunk(0);
+        var raw = new RetrievalResult(List.of(chunk), new SearchMetadata(1, 5L, "hybrid"), rewritten);
+
+        when(queryRewritePort.rewrite(anyString(), any())).thenReturn(rewritten);
+        when(retrievalPort.retrieve(eq(rewritten), any(), any(), any())).thenReturn(raw);
+        when(rankingPort.rank(any(), eq(rewritten))).thenReturn(List.of(chunk));
+
+        var request = new RetrievalRequest("SLA violation?", tenantId, userId, MetadataFilter.NONE, RetrievalOptions.DEFAULT);
+        RetrievalResult result = service.retrieve(request);
+
+        assertThat(result.effectiveQueryText()).isEqualTo(rewritten);
+    }
+
     // ── Query rewrite integration ─────────────────────────────────────────────
 
     @Test
@@ -191,7 +222,7 @@ class RetrievalServiceTest {
         when(queryRewritePort.rewrite("what's the SLA?", tenantId))
                 .thenReturn("service level agreement definition");
         when(retrievalPort.retrieve(eq("service level agreement definition"), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("hybrid", 5L));
+                .thenReturn(RetrievalResult.empty("hybrid", 5L, "service level agreement definition"));
 
         service.retrieve(request);
 
@@ -203,7 +234,7 @@ class RetrievalServiceTest {
     void retrieve_passesRewrittenQueryToRetrievalAndRanking() {
         String rewritten = "service level agreement violation procedure";
         RetrievedChunk chunk = sampleChunk(0);
-        var raw = new RetrievalResult(List.of(chunk), new SearchMetadata(1, 5L, "hybrid"));
+        var raw = new RetrievalResult(List.of(chunk), new SearchMetadata(1, 5L, "hybrid"), rewritten);
 
         when(queryRewritePort.rewrite(anyString(), any())).thenReturn(rewritten);
         when(retrievalPort.retrieve(eq(rewritten), any(), any(), any())).thenReturn(raw);
@@ -221,7 +252,7 @@ class RetrievalServiceTest {
         String original = "what is a non-disclosure agreement?";
         when(queryRewritePort.rewrite(original, tenantId)).thenReturn(original);
         when(retrievalPort.retrieve(eq(original), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("hybrid", 3L));
+                .thenReturn(RetrievalResult.empty("hybrid", 3L, original));
 
         var request = new RetrievalRequest(original, tenantId, userId, MetadataFilter.NONE, RetrievalOptions.DEFAULT);
         service.retrieve(request);
@@ -233,7 +264,7 @@ class RetrievalServiceTest {
     void retrieve_passesTenantIdToQueryRewritePort() {
         var request = new RetrievalRequest("query", tenantId, userId, MetadataFilter.NONE, RetrievalOptions.DEFAULT);
         when(retrievalPort.retrieve(any(), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("hybrid", 1L));
+                .thenReturn(RetrievalResult.empty("hybrid", 1L, "query"));
 
         service.retrieve(request);
 

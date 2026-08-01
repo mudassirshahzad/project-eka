@@ -63,6 +63,25 @@ public class ConversationApplicationService {
         return saved;
     }
 
+    /**
+     * Persists a generated assistant reply. Deliberately symmetrical with
+     * {@link #addUserMessage(AddUserMessageCommand)} — same ownership check via
+     * {@code findByIdAndUserId}, same aggregate mutation, same {@link MessageAddedEvent}
+     * publication, differing only in {@link MessageRole} and citation payload (ADR O02).
+     */
+    public Conversation addAssistantMessage(AddAssistantMessageCommand cmd) {
+        Conversation conversation = conversationRepository.findByIdAndUserId(
+                        cmd.conversationId(), cmd.userId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Conversation", cmd.conversationId().value().toString()));
+        Message message = Message.assistantMessage(cmd.content(), cmd.citations(), null);
+        conversation.addMessage(message);
+        Conversation saved = conversationRepository.save(conversation);
+        eventPublisher.publish(new MessageAddedEvent(
+                saved.getId(), message.id(), cmd.userId(), MessageRole.ASSISTANT));
+        return saved;
+    }
+
     public Conversation renameConversation(RenameConversationCommand cmd) {
         Conversation conversation = conversationRepository.findByIdAndUserId(
                         cmd.conversationId(), cmd.userId())

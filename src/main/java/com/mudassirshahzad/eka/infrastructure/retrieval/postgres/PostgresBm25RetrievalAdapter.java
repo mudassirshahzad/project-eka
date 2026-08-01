@@ -126,7 +126,7 @@ public class PostgresBm25RetrievalAdapter implements RetrievalPort {
             long latencyMs = elapsedMs(startNano);
             log.debug("BM25 retrieval: tenant={} topK={} hits=0 latencyMs={}",
                     tenantId, options.topK(), latencyMs);
-            return RetrievalResult.empty(STRATEGY, latencyMs);
+            return RetrievalResult.empty(STRATEGY, latencyMs, queryText);
         }
 
         double[] rawScores = rows.stream().mapToDouble(Bm25ResultRow::rawScore).toArray();
@@ -151,7 +151,7 @@ public class PostgresBm25RetrievalAdapter implements RetrievalPort {
         log.debug("BM25 retrieval: tenant={} topK={} hits={} latencyMs={}",
                 tenantId, options.topK(), chunks.size(), latencyMs);
 
-        return new RetrievalResult(chunks, new SearchMetadata(chunks.size(), latencyMs, STRATEGY));
+        return new RetrievalResult(chunks, new SearchMetadata(chunks.size(), latencyMs, STRATEGY), queryText);
     }
 
     private static long elapsedMs(long startNano) {

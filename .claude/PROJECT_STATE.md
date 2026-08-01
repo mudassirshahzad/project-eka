@@ -2,13 +2,13 @@
 
 Current Version
 
-v0.5.0 (In Progress)
+v0.5.1 (In Progress) — Phase 5: Application Platform
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
 ---
 
-## Completed Milestones
+## Phase 4 — Foundation (Complete)
 
 | Milestone | Description                        | New Tests | Status     |
 |-----------|------------------------------------|-----------|------------|
@@ -27,13 +27,23 @@ v0.5.0 (In Progress)
 | P04.12    | Enterprise Output Guardrails       | +14       | ✅ Complete |
 | P04.13    | Architecture Reconciliation        | +19       | ✅ Complete |
 
-**Total tests: 489 — 0 failures**
+**Phase 4 total tests: 489 — 0 failures**
+
+---
+
+## Phase 5 — Application Platform
+
+| Milestone | Description                                     | New Tests | Status     |
+|-----------|--------------------------------------------------|-----------|------------|
+| P05.1     | End-to-End RAG Orchestration & REST Exposure     | +41       | ✅ Complete |
+
+**Grand total tests: 530 — 0 failures**
 
 ---
 
 ## Current Milestone
 
-**P04.14 — End-to-End RAG** ← next to implement
+**P05.2 — Authentication Foundation** ← next to implement
 
 ---
 
@@ -82,6 +92,36 @@ Security layer (Authorization Filter) is planned but not implemented.
 | R03  | `roles.created_at` schema drift fixed via `V017` migration, not documented as debt                |
 | R04  | `test` profile's `flyway.clean-on-validation-error` removed (property no longer exists)          |
 | R05  | `--enable-preview` removed from Gradle build; zero preview features were ever used                |
+| O01  | `RagOrchestrationService` is the sole cross-cutting turn coordinator; existing services unchanged |
+| O02  | `addAssistantMessage` mirrors `addUserMessage` exactly — same ownership check, same event         |
+| O03  | REST API versioned by `/api/v1` path prefix; errors are RFC 7807 `ProblemDetail` via one handler  |
+| O04  | `RetrievalResult` carries `effectiveQueryText`; `RetrievalPort` interface itself unchanged         |
+| O05  | Temporary permissive `SecurityFilterChain` (ADR-approved) — replaced outright in P05.2, not layered |
+
+---
+
+## RAG Orchestration Pipeline (P05.1 — current, outermost)
+
+```
+HTTP POST /api/v1/conversations/{id}/messages
+       │
+       ▼
+ConversationController.sendMessage()         ← api.controller (thin: validate, convert, invoke, convert)
+       │ SendMessageCommand
+       ▼
+RagOrchestrationService.handleUserMessage()  ← application.orchestration (P05.1, ADR O01)
+       │
+       ├─▶ ConversationApplicationService.addUserMessage()        — persist user turn
+       ├─▶ RetrievalService.retrieve()                             — ranked chunks + effectiveQueryText (ADR O04)
+       ├─▶ ContextAssemblyPort.assemble()                          — AssembledContext
+       ├─▶ GenerationService.generate()                            — see "Generation Pipeline" below
+       └─▶ ConversationApplicationService.addAssistantMessage()   — persist assistant turn (ADR O02)
+       │
+       ▼
+GeneratedAnswerResponse (DTO — never a domain model, ADR O03)
+```
+
+Errors from any step surface as an RFC 7807 `ProblemDetail` via `api.exception.GlobalExceptionHandler` (ADR O03). Every request currently reaches the controller unauthenticated — `api.config.SecurityConfig` is a deliberate, temporary, ADR-approved seam (ADR O05) replaced outright in P05.2.
 
 ---
 
@@ -145,6 +185,10 @@ GeneratedResponse
 - `PersistentConversationHistoryAdapter` is the sole `ConversationHistoryPort` implementation (reads via `ConversationRepository`, tenant-checked — P04.13)
 - `PolicyBasedOutputGuardrailsAdapter` implements `OutputGuardrailsPort` (blocks null/blank output, strips control characters, truncates to `app.guardrails.max-response-length` — P04.12)
 - `PositionalCitationAdapter` implements `CitationPort` (parses `[SOURCE:N]` markers, resolves against `AssembledContext` by `AssembledChunk.position()` — P04.11)
+- `RagOrchestrationService` is the sole caller wiring `ConversationApplicationService` + `RetrievalService` + `ContextAssemblyPort` + `GenerationService` together (P05.1, ADR O01)
+- `ConversationController` is the sole REST entry point (`/api/v1/conversations`); `GlobalExceptionHandler` is the sole `@RestControllerAdvice` (P05.1, ADR O03)
+- `SecurityConfig` permits every request — temporary, ADR-approved, replaced outright in P05.2 (ADR O05)
+- `springdoc-openapi-starter-webmvc-ui` auto-exposes `/v3/api-docs` and `/swagger-ui.html` from the same controller/DTO annotations — no separate spec to keep in sync (P05.1)
 
 ---
 
@@ -169,26 +213,34 @@ com.mudassirshahzad.eka
 │   └── shared                       — TenantId
 ├── application
 │   ├── generation                   — GenerationRequest, GenerationException, GenerationService
+│   ├── orchestration                — SendMessageCommand, RagTurnResult, RagOrchestrationService (P05.1)
 │   └── retrieval                    — RetrievalRequest, RetrievalException,
 │                                      InvalidRetrievalRequestException, RetrievalService
-└── infrastructure
-    ├── citation                     — PositionalCitationAdapter
-    ├── context                      — DefaultContextAssemblyAdapter
-    ├── conversation                 — PersistentConversationHistoryAdapter
-    ├── guardrails                   — PolicyBasedOutputGuardrailsAdapter
-    ├── llm
-    │   ├── exception                — LlmTimeoutException, LlmRateLimitException,
-    │   │                              LlmProviderUnavailableException, LlmInvalidResponseException,
-    │   │                              LlmModelNotFoundException
-    │   └── ollama                   — OllamaLlmAdapter
-    ├── prompt                       — TemplateBasedPromptBuilderAdapter
-    ├── query.rewrite                — OllamaQueryRewriteAdapter, QueryRewriteException
-    ├── ranking                      — RrfRankingAdapter
-    └── retrieval
-        ├── hybrid                   — HybridRetrievalAdapter, HybridRetrievalException
-        ├── postgres                 — PostgresBm25RetrievalAdapter, Bm25MetadataFilterTranslator,
-        │                              Bm25ScoreNormalizer
-        └── weaviate                 — WeaviateRetrievalAdapter, WeaviateVectorStoreAdapter
+├── infrastructure
+│   ├── citation                     — PositionalCitationAdapter
+│   ├── context                      — DefaultContextAssemblyAdapter
+│   ├── conversation                 — PersistentConversationHistoryAdapter
+│   ├── guardrails                   — PolicyBasedOutputGuardrailsAdapter
+│   ├── llm
+│   │   ├── exception                — LlmTimeoutException, LlmRateLimitException,
+│   │   │                              LlmProviderUnavailableException, LlmInvalidResponseException,
+│   │   │                              LlmModelNotFoundException
+│   │   └── ollama                   — OllamaLlmAdapter
+│   ├── prompt                       — TemplateBasedPromptBuilderAdapter
+│   ├── query.rewrite                — OllamaQueryRewriteAdapter, QueryRewriteException
+│   ├── ranking                      — RrfRankingAdapter
+│   └── retrieval
+│       ├── hybrid                   — HybridRetrievalAdapter, HybridRetrievalException
+│       ├── postgres                 — PostgresBm25RetrievalAdapter, Bm25MetadataFilterTranslator,
+│       │                              Bm25ScoreNormalizer
+│       └── weaviate                 — WeaviateRetrievalAdapter, WeaviateVectorStoreAdapter
+└── api                              — first REST surface (P05.1)
+    ├── config                       — SecurityConfig (temporary, ADR O05), OpenApiConfig
+    ├── controller                   — ConversationController
+    ├── dto                          — CreateConversationRequest, SendMessageRequest,
+    │                                  ConversationResponse, ConversationDetailResponse,
+    │                                  MessageResponse, CitationResponse, GeneratedAnswerResponse
+    └── exception                    — GlobalExceptionHandler (ADR O03)
 ```
 
 *(P04.13 correction: `ranking` and `context` were shown incorrectly/missing above — they are top-level `infrastructure` packages, not nested under `infrastructure.retrieval`.)*
@@ -202,14 +254,14 @@ This file's Milestone/ADR tracking above covers the **retrieval/generation pipel
 | `domain.document`, `domain.chunk` | `Document`, `Chunk` aggregates | Used by both threads |
 | `domain.user`, `domain.query` | `User`, `KnowledgeQuery` aggregates | Foundation-only |
 | `application.document` | `ChunkingService`, `EmbeddingService`, `DocumentIndexingService`, ingestion use cases | Foundation-only, self-contained ingestion pipeline |
-| `application.conversation` | `ConversationApplicationService` + CRUD use cases | Foundation-only; **write side of P04.13's `ConversationHistoryPort` fix** (ADR R01) |
+| `application.conversation` | `ConversationApplicationService` + CRUD use cases | Write side of P04.13's `ConversationHistoryPort` fix (ADR R01); **now also reachable via REST** — `ConversationController` calls `createConversation`/`getConversation` directly and indirectly via `RagOrchestrationService` (P05.1) |
 | `application.chat`, `application.query`, `application.user` | Chat session, knowledge-query, and user-management use cases | Foundation-only, not yet wired to `application.generation`/`application.retrieval` (see P04.13.8) |
 | `application.event` + `infrastructure.event` | 17 domain event records + `SpringDomainEventPublisher` | Built, unused — no `@EventListener` anywhere (see P04.13.8) |
 | `infrastructure.parsing`, `.embedding`, `.storage`, `.vectorstore` | Tika parsing, Ollama embedding, local file storage, Weaviate vector store (ingestion side) | Foundation-only ingestion adapters |
 | `infrastructure.persistence.postgres` | 8 repository adapters, 12 entities, 7 mappers, 11 JPA repositories | Foundation-only; now has baseline tests (P04.13.4) |
 | `infrastructure.config` | `DatabaseConfig`, `AsyncConfig`, `AppProperties` | Spring wiring for the foundation layer |
 
-No REST controller exists anywhere in the codebase yet — the entire foundation layer above is provisioned but has no external entry point, consistent with `docs/roadmap.md` Phase 3 ("QueryController"/"ConversationController") being future work, not a defect.
+**Update (P05.1):** `com.mudassirshahzad.eka.api.controller.ConversationController` is now the first REST entry point (`/api/v1/conversations`), reaching `application.conversation` and `application.orchestration` directly. `application.chat`, `application.query`, `application.document`, `application.user`, and `application.event` remain unreached — no endpoint calls them yet, consistent with the P04.13.8 classification below (chat/query integration is P05-future, not this milestone).
 
 ### Deferred Items (P04.13.8)
 

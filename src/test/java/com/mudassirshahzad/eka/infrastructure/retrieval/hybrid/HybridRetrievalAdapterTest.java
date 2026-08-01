@@ -111,9 +111,9 @@ class HybridRetrievalAdapterTest {
     @Test
     void retrieve_returnsEmptyCombinedResult_whenBothEnginesReturnEmpty() {
         when(vectorPort.retrieve(any(), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("vector", 1L));
+                .thenReturn(RetrievalResult.empty("vector", 1L, "query"));
         when(bm25Port.retrieve(any(), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("bm25", 1L));
+                .thenReturn(RetrievalResult.empty("bm25", 1L, "query"));
 
         RetrievalResult result = adapter.retrieve("query", tenantId, MetadataFilter.NONE, options);
 
@@ -157,7 +157,7 @@ class HybridRetrievalAdapterTest {
         when(vectorPort.retrieve(any(), any(), any(), any()))
                 .thenThrow(new RetrievalAdapterException("timeout", null));
         when(bm25Port.retrieve(any(), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("bm25", 1L));
+                .thenReturn(RetrievalResult.empty("bm25", 1L, "query"));
 
         RetrievalResult result = adapter.retrieve("query", tenantId, MetadataFilter.NONE, options);
 
@@ -167,7 +167,7 @@ class HybridRetrievalAdapterTest {
     @Test
     void retrieve_strategyReflectsDegradation_whenBm25Fails() {
         when(vectorPort.retrieve(any(), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("vector", 1L));
+                .thenReturn(RetrievalResult.empty("vector", 1L, "query"));
         when(bm25Port.retrieve(any(), any(), any(), any()))
                 .thenThrow(new Bm25RetrievalException("timeout", null));
 
@@ -227,9 +227,9 @@ class HybridRetrievalAdapterTest {
     void retrieve_passesQueryTextToBothEngines() {
         String query = "what is a service level agreement?";
         when(vectorPort.retrieve(eq(query), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("vector", 1L));
+                .thenReturn(RetrievalResult.empty("vector", 1L, "query"));
         when(bm25Port.retrieve(eq(query), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("bm25", 1L));
+                .thenReturn(RetrievalResult.empty("bm25", 1L, "query"));
 
         adapter.retrieve(query, tenantId, MetadataFilter.NONE, options);
 
@@ -241,9 +241,9 @@ class HybridRetrievalAdapterTest {
     void retrieve_passesTenantIdAndFilterToBothEngines() {
         MetadataFilter filter = MetadataFilter.builder().put("department", "legal").build();
         when(vectorPort.retrieve(any(), eq(tenantId), eq(filter), eq(options)))
-                .thenReturn(RetrievalResult.empty("vector", 1L));
+                .thenReturn(RetrievalResult.empty("vector", 1L, "query"));
         when(bm25Port.retrieve(any(), eq(tenantId), eq(filter), eq(options)))
-                .thenReturn(RetrievalResult.empty("bm25", 1L));
+                .thenReturn(RetrievalResult.empty("bm25", 1L, "query"));
 
         adapter.retrieve("query", tenantId, filter, options);
 
@@ -259,7 +259,7 @@ class HybridRetrievalAdapterTest {
         when(vectorPort.retrieve(any(), any(), any(), any()))
                 .thenThrow(new RetrievalAdapterException("timeout", null));
         when(bm25Port.retrieve(any(), any(), any(), any()))
-                .thenReturn(RetrievalResult.empty("bm25", 1L));
+                .thenReturn(RetrievalResult.empty("bm25", 1L, "query"));
 
         adapter.retrieve("query", tenantId, MetadataFilter.NONE, options);
 
@@ -288,6 +288,6 @@ class HybridRetrievalAdapterTest {
     }
 
     private RetrievalResult resultOf(List<RetrievedChunk> chunks, String strategy) {
-        return new RetrievalResult(chunks, new SearchMetadata(chunks.size(), 5L, strategy));
+        return new RetrievalResult(chunks, new SearchMetadata(chunks.size(), 5L, strategy), "query");
     }
 }

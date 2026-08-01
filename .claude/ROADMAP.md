@@ -28,23 +28,25 @@ Completed
 
 ✅ P04.12 Enterprise Output Guardrails
 
+✅ P04.13 Architecture Reconciliation
+
+✅ P05.1 End-to-End RAG Orchestration & REST Exposure
+
 Upcoming
 
-P04.13 End-to-End RAG
+P05.2 Authentication Foundation
+
+P05.3 Tenant & Role Authorization Boundary
 
 Future
 
-Authorization Filter
+Full Authorization Filter (fine-grained, metadata-based content filtering)
 
-REST API
+Observability Foundation
 
-Authentication
-
-Security
+Resilience & Operational Hardening
 
 Streaming Responses
-
-Observability
 
 Caching
 

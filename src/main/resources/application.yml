@@ -103,6 +103,7 @@ app:
       enabled: true
   context:
     max-chunks: 10
+    token-budget: 4096
   conversation:
     memory-window-size: 10
   guardrails:

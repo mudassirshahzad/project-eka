@@ -122,7 +122,7 @@ public class HybridRetrievalAdapter implements RetrievalPort {
         log.info("Hybrid retrieval: tenant={} vectorHits={} bm25Hits={} totalHits={} latencyMs={} strategy={}",
                 tenantId, vectorChunks.size(), bm25Chunks.size(), combined.size(), latencyMs, strategy);
 
-        return new RetrievalResult(combined, new SearchMetadata(combined.size(), latencyMs, strategy));
+        return new RetrievalResult(combined, new SearchMetadata(combined.size(), latencyMs, strategy), queryText);
     }
 
     private static String effectiveStrategy(boolean vectorOk, boolean bm25Ok) {

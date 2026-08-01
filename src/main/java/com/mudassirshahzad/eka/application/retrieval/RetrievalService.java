@@ -46,7 +46,7 @@ public class RetrievalService {
         RetrievalResult raw = retrievalPort.retrieve(effectiveQuery, request.tenantId(), filter, options);
 
         RetrievalResult result = raw.hasResults()
-                ? new RetrievalResult(rankingPort.rank(raw.items(), effectiveQuery), raw.metadata())
+                ? new RetrievalResult(rankingPort.rank(raw.items(), effectiveQuery), raw.metadata(), effectiveQuery)
                 : raw;
 
         log.debug("Retrieval complete: tenant={} hits={} latencyMs={}",
