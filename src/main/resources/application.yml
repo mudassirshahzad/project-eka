@@ -140,6 +140,10 @@ spring:
     ollama:
       base-url: http://localhost:11434
 
+security:
+  jwt:
+    secret-key: dev-only-secret-key-do-not-use-in-production-environments-0123456789
+
 logging:
   level:
     com.mudassirshahzad.eka: DEBUG
@@ -153,3 +157,7 @@ spring:
   datasource:
     url: jdbc:tc:postgresql:16:///project_eka_test
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+security:
+  jwt:
+    secret-key: test-only-secret-key-not-for-production-use-abcdefghijklmnopqrstuv

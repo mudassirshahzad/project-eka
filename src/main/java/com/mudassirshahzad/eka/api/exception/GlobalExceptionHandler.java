@@ -3,6 +3,7 @@ package com.mudassirshahzad.eka.api.exception;
 import com.mudassirshahzad.eka.application.generation.GenerationException;
 import com.mudassirshahzad.eka.application.retrieval.RetrievalException;
 import com.mudassirshahzad.eka.application.shared.DuplicateResourceException;
+import com.mudassirshahzad.eka.application.shared.InvalidCredentialsException;
 import com.mudassirshahzad.eka.application.shared.ResourceNotFoundException;
 import com.mudassirshahzad.eka.domain.generation.exception.LlmException;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateResourceException.class)
     public ProblemDetail handleDuplicate(DuplicateResourceException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

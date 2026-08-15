@@ -173,3 +173,37 @@ ADR O05: Temporary permissive SecurityFilterChain — see api.config.SecurityCon
 
 Decision: A single SecurityFilterChain bean permits every request and disables CSRF (the API is stateless — no session, no cookies). It exists specifically to prevent Spring Boot's default security auto-configuration (a generated password, HTTP Basic on every route) from silently activating now that spring-boot-starter-security has its first consuming controller. tenantId/userId travel as explicit fields on every P05.1 request DTO rather than being derived from an authenticated principal, because there is no authentication context to derive them from yet.
 Rationale: P05.2 (Authentication Foundation) replaces this class outright with real JWT validation — not layered on top of it. Shipping the REST layer without this bean was not an option: the classpath trap is real and immediate the moment the first @RestController exists, per the Phase 5 roadmap's own risk analysis.
+
+---
+
+# P05.2 ADRs — Authentication Foundation
+
+ADR A01: HS256 (HMAC-SHA256) signs and verifies access tokens; RS256 is deferred
+
+Decision: `JwtTokenProvider` signs and verifies tokens with a single symmetric key (HMAC-SHA256) derived from `security.jwt.secret-key`. RS256 (asymmetric key pair) — the target described in `docs/roadmap.md`'s Phase 5 "Enterprise Hardening" aspiration — is not implemented in this milestone.
+Rationale: `application.yml` already scaffolded `security.jwt.secret-key` as a single string ahead of this milestone, matching HS256's shape, not a key pair. HMAC-SHA256 needs no additional key-management infrastructure (PEM key pairs, a JWKS endpoint, key rotation) that an asymmetric scheme would require, and nothing in P05.2's scope needs one: verification happens only inside this same monolith that signs the tokens. Introducing a key pair now, with no second service that needs to verify tokens independently, would be a speculative abstraction ahead of any real consumer. RS256 remains a legitimate future upgrade if/when an external verifying service appears — `docs/roadmap.md`'s own stated rationale for it.
+
+ADR A02: Login issues an access token only; refresh tokens are deferred
+
+Decision: `POST /api/v1/auth/login` authenticates email + password + tenantId and returns a single short-lived access token (`security.jwt.access-token-expiry-ms`, default 15 minutes). There is no `/api/v1/auth/refresh` or `/api/v1/auth/logout` endpoint, and `security.jwt.refresh-token-expiry-ms` (already scaffolded in `application.yml`) remains unused.
+Rationale: The milestone is explicitly scoped to "Authentication Foundation," excluding "Operational hardening." Refresh-token rotation, revocation-on-logout, and reuse detection (`docs/roadmap.md`'s stated target design) are session-lifecycle/operational concerns, not "prove who's calling" concerns. Shipping only access-token issuance keeps this milestone's surface to exactly what every other endpoint needs to require authentication.
+
+ADR A03: `AuthenticateUserUseCase` verifies identity in `application.user`; only `api.security.JwtTokenProvider` ever produces a JWT
+
+Decision: `AuthenticateUserUseCase` (new, `application.user`) checks email/password/tenantId/active-flag and returns the domain `User` or throws `InvalidCredentialsException`. `api.security.JwtTokenProvider` is the only class that turns a verified identity into a signed token. `AuthController` is the sole caller of both, always in that order.
+Rationale: Keeps the application layer technology-agnostic, matching every other use case in this codebase (none of them know about HTTP, JWT, or any other delivery mechanism) and satisfying the ArchUnit-enforced rule that `application` must never depend on `api`. "Is this a valid login" and "mint a token for it" are different responsibilities — the first is a business rule, the second is a delivery-layer encoding of that rule's outcome.
+
+ADR A04: `JwtAuthenticationFilter` never rejects a request itself; only `RestAuthenticationEntryPoint` produces a 401
+
+Decision: On any missing, malformed, or invalid bearer token, `JwtAuthenticationFilter` clears the `SecurityContext` and continues the filter chain — it never writes a response or throws. `RestAuthenticationEntryPoint`, invoked automatically by Spring Security's authorization stage only when an unauthenticated request reaches an endpoint that actually requires authentication, is the single place a 401 `ProblemDetail` is ever produced.
+Rationale: A filter that short-circuits on a bad token would incorrectly reject requests to `permitAll` endpoints (login, health, Swagger) just because a stale or garbage token happened to be attached. Delegating the accept/reject decision entirely to the authorization stage keeps exactly one component responsible for turning "unauthenticated" into an HTTP response — the same "one centralized handler" precedent `GlobalExceptionHandler` set for business exceptions (ADR O03).
+
+ADR A05: `tenantId`/`userId` are removed from `CreateConversationRequest`, `SendMessageRequest`, and the `GET .../{id}` `userId` query param — both now come exclusively from the validated JWT
+
+Decision: The three P05.1 request shapes that carried explicit `tenantId`/`userId` fields no longer do. `ConversationController` reads both from the `JwtAuthenticationToken` Spring Security populates from the incoming Bearer token.
+Rationale: This is exactly what ADR O05 committed to: "P05.2 replaces both with values extracted from the validated JWT." Leaving the fields in place after real authentication exists would let any caller impersonate any tenant or user simply by editing the request body — the opposite of what an authentication milestone exists to prevent.
+
+ADR A06: `AuthenticateUserUseCase` always invokes `PasswordEncoder.matches()`, even for an unknown email, against a fixed dummy hash
+
+Decision: When no user is found for the given email/tenant, `AuthenticateUserUseCase` still calls `passwordEncoder.matches(rawPassword, DUMMY_PASSWORD_HASH)` before throwing `InvalidCredentialsException` — it never short-circuits straight to the exception.
+Rationale: Found during this milestone's own mandatory self-review (CLAUDE.md's "Security concerns" review criterion). Without this, an unknown-email request would skip BCrypt's deliberately expensive hash comparison entirely, while a known-email/wrong-password request would still pay that cost — a measurable timing difference that lets an attacker enumerate valid emails/tenants even though both paths throw the byte-for-byte identical exception (`InvalidCredentialsException`'s whole stated purpose, per its own Javadoc). Comparing against a fixed, meaningless-but-valid BCrypt hash equalizes the cost across every failure path with no behavioral change to the success path.

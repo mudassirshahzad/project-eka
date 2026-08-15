@@ -32,9 +32,9 @@ Completed
 
 ✅ P05.1 End-to-End RAG Orchestration & REST Exposure
 
-Upcoming
+✅ P05.2 Authentication Foundation
 
-P05.2 Authentication Foundation
+Upcoming
 
 P05.3 Tenant & Role Authorization Boundary
 

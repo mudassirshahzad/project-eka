@@ -1,6 +1,10 @@
 package com.mudassirshahzad.eka.api.controller;
 
 import com.mudassirshahzad.eka.api.config.SecurityConfig;
+import com.mudassirshahzad.eka.api.security.JwtAuthenticationFilter;
+import com.mudassirshahzad.eka.api.security.JwtAuthenticationToken;
+import com.mudassirshahzad.eka.api.security.JwtTokenProvider;
+import com.mudassirshahzad.eka.api.security.RestAuthenticationEntryPoint;
 import com.mudassirshahzad.eka.application.conversation.ConversationApplicationService;
 import com.mudassirshahzad.eka.application.generation.GenerationException;
 import com.mudassirshahzad.eka.application.orchestration.RagOrchestrationService;
@@ -20,8 +24,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +35,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -37,22 +44,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * {@code @WebMvcTest} slice covering the controller, its DTO (de)serialization, and its
- * integration with {@link GlobalExceptionHandler} (ADR O03) and {@link SecurityConfig}
- * (ADR O05) — {@code @Import(SecurityConfig.class)} exercises the real, temporary permissive
- * filter chain rather than assuming it works, since without it Spring Security's slice-default
- * behavior would reject every request with 401.
+ * integration with {@link GlobalExceptionHandler} (ADR O03) and the real, JWT-based
+ * {@link SecurityConfig} (P05.2). {@code tenantId}/{@code userId} now come from the authenticated
+ * {@link JwtAuthenticationToken} (ADR A05) — attached per-request via
+ * {@code SecurityMockMvcRequestPostProcessors.authentication(...)} rather than request-body
+ * fields, since those fields no longer exist on the DTOs.
  */
 @WebMvcTest(ConversationController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RestAuthenticationEntryPoint.class})
 class ConversationControllerTest {
 
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private ConversationApplicationService conversationApplicationService;
     @MockitoBean private RagOrchestrationService         ragOrchestrationService;
+    @MockitoBean private JwtTokenProvider jwtTokenProvider;
 
     private final UUID userId   = UUID.randomUUID();
     private final UUID tenantId = UUID.randomUUID();
+
+    private RequestPostProcessor authenticated() {
+        return authentication(new JwtAuthenticationToken(
+                UserId.of(userId), TenantId.of(tenantId), List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+    }
 
     // ── POST /conversations ───────────────────────────────────────────────────
 
@@ -62,10 +76,11 @@ class ConversationControllerTest {
         when(conversationApplicationService.createConversation(any())).thenReturn(conversation);
 
         mockMvc.perform(post("/api/v1/conversations")
+                        .with(authenticated())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"tenantId":"%s","userId":"%s","title":"My chat"}
-                                """.formatted(tenantId, userId)))
+                                {"title":"My chat"}
+                                """))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/v1/conversations/" + conversation.getId().value()))
                 .andExpect(jsonPath("$.id").value(conversation.getId().value().toString()))
@@ -75,21 +90,22 @@ class ConversationControllerTest {
     @Test
     void createConversation_blankTitle_returnsBadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/conversations")
+                        .with(authenticated())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"tenantId":"%s","userId":"%s","title":""}
-                                """.formatted(tenantId, userId)))
+                                {"title":""}
+                                """))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void createConversation_missingTenantId_returnsBadRequest() throws Exception {
+    void createConversation_unauthenticated_returnsUnauthorized() throws Exception {
         mockMvc.perform(post("/api/v1/conversations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"userId":"%s","title":"chat"}
-                                """.formatted(userId)))
-                .andExpect(status().isBadRequest());
+                                {"title":"My chat"}
+                                """))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -98,10 +114,11 @@ class ConversationControllerTest {
                 .thenThrow(new DuplicateResourceException("Conversation already exists"));
 
         mockMvc.perform(post("/api/v1/conversations")
+                        .with(authenticated())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"tenantId":"%s","userId":"%s","title":"chat"}
-                                """.formatted(tenantId, userId)))
+                                {"title":"chat"}
+                                """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409));
     }
@@ -115,7 +132,7 @@ class ConversationControllerTest {
         when(conversationApplicationService.getConversation(any(), any())).thenReturn(conversation);
 
         mockMvc.perform(get("/api/v1/conversations/{id}", conversation.getId().value())
-                        .param("userId", userId.toString()))
+                        .with(authenticated()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.messages[0].content").value("hi"));
     }
@@ -127,10 +144,16 @@ class ConversationControllerTest {
                 .thenThrow(new ResourceNotFoundException("Conversation", missingId.toString()));
 
         mockMvc.perform(get("/api/v1/conversations/{id}", missingId)
-                        .param("userId", userId.toString()))
+                        .with(authenticated()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.detail").value(containsString("Conversation")));
+    }
+
+    @Test
+    void getConversation_unauthenticated_returnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/v1/conversations/{id}", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
     }
 
     // ── POST /conversations/{id}/messages ─────────────────────────────────────
@@ -145,10 +168,11 @@ class ConversationControllerTest {
                 .thenReturn(new RagTurnResult(assistantMessage, generated));
 
         mockMvc.perform(post("/api/v1/conversations/{id}/messages", conversationId.value())
+                        .with(authenticated())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"tenantId":"%s","userId":"%s","content":"What is RAG?"}
-                                """.formatted(tenantId, userId)))
+                                {"content":"What is RAG?"}
+                                """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").value("the answer"))
                 .andExpect(jsonPath("$.citations[0].chunkId").value(citation.chunkId().value().toString()))
@@ -159,11 +183,22 @@ class ConversationControllerTest {
     @Test
     void sendMessage_blankContent_returnsBadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/conversations/{id}/messages", UUID.randomUUID())
+                        .with(authenticated())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"tenantId":"%s","userId":"%s","content":""}
-                                """.formatted(tenantId, userId)))
+                                {"content":""}
+                                """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void sendMessage_unauthenticated_returnsUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/v1/conversations/{id}/messages", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"content":"question"}
+                                """))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -172,10 +207,11 @@ class ConversationControllerTest {
                 .thenThrow(new GenerationException("LLM unavailable"));
 
         mockMvc.perform(post("/api/v1/conversations/{id}/messages", UUID.randomUUID())
+                        .with(authenticated())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"tenantId":"%s","userId":"%s","content":"question"}
-                                """.formatted(tenantId, userId)))
+                                {"content":"question"}
+                                """))
                 .andExpect(status().isBadGateway());
     }
 
@@ -185,10 +221,11 @@ class ConversationControllerTest {
                 .thenThrow(new RuntimeException("sensitive internal detail"));
 
         mockMvc.perform(post("/api/v1/conversations/{id}/messages", UUID.randomUUID())
+                        .with(authenticated())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"tenantId":"%s","userId":"%s","content":"question"}
-                                """.formatted(tenantId, userId)))
+                                {"content":"question"}
+                                """))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred."));
     }

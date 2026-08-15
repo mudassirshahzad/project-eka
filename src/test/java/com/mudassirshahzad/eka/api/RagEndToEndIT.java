@@ -1,11 +1,15 @@
 package com.mudassirshahzad.eka.api;
 
+import com.mudassirshahzad.eka.api.security.JwtTokenProvider;
 import com.mudassirshahzad.eka.application.generation.GenerationService;
 import com.mudassirshahzad.eka.application.retrieval.RetrievalService;
 import com.mudassirshahzad.eka.domain.chunk.ChunkId;
 import com.mudassirshahzad.eka.domain.conversation.Citation;
 import com.mudassirshahzad.eka.domain.generation.model.GeneratedResponse;
 import com.mudassirshahzad.eka.domain.retrieval.model.RetrievalResult;
+import com.mudassirshahzad.eka.domain.shared.TenantId;
+import com.mudassirshahzad.eka.domain.user.UserId;
+import com.mudassirshahzad.eka.domain.user.UserRole;
 import com.mudassirshahzad.eka.infrastructure.persistence.postgres.entity.ChunkEntity;
 import com.mudassirshahzad.eka.infrastructure.persistence.postgres.entity.DocumentEntity;
 import com.mudassirshahzad.eka.infrastructure.persistence.postgres.entity.TenantEntity;
@@ -27,6 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,11 +43,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * P05.1's full end-to-end proof — the project's first {@code @SpringBootTest} that boots the
- * complete application context (every controller, service, and adapter wired exactly as in
- * production) and drives a real HTTP request through the real dispatcher servlet, the real
- * {@link com.mudassirshahzad.eka.api.config.SecurityConfig} filter chain, the real
- * {@code RagOrchestrationService}, and real Postgres persistence (Testcontainers).
+ * The project's first {@code @SpringBootTest} (P05.1) that boots the complete application
+ * context (every controller, service, and adapter wired exactly as in production) and drives a
+ * real HTTP request through the real dispatcher servlet, the real
+ * {@link com.mudassirshahzad.eka.api.config.SecurityConfig} filter chain — real JWT issuance and
+ * validation as of P05.2, not the earlier permissive seam — the real {@code RagOrchestrationService},
+ * and real Postgres persistence (Testcontainers).
  *
  * <p>{@link RetrievalService} and {@link GenerationService} are mocked — not because their
  * internals are untested (they have their own dedicated unit test suites), but because
@@ -58,6 +64,7 @@ class RagEndToEndIT {
 
     @Autowired private MockMvc          mockMvc;
     @Autowired private ObjectMapper     objectMapper;
+    @Autowired private JwtTokenProvider jwtTokenProvider;
     @Autowired private TenantJpaRepository   tenantJpaRepository;
     @Autowired private UserJpaRepository     userJpaRepository;
     @Autowired private DocumentJpaRepository documentJpaRepository;
@@ -71,6 +78,8 @@ class RagEndToEndIT {
         TenantEntity tenant = persistTenant();
         UserEntity   user   = persistUser(tenant);
         ChunkEntity  chunk  = persistChunk(tenant, user);
+        String       bearerToken = jwtTokenProvider.generateAccessToken(
+                UserId.of(user.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
 
         Citation citation = Citation.of(ChunkId.of(chunk.getId()), 0.88);
         when(retrievalService.retrieve(any())).thenReturn(
@@ -80,10 +89,11 @@ class RagEndToEndIT {
 
         // 1. Create a conversation.
         MvcResult createResult = mockMvc.perform(post("/api/v1/conversations")
+                        .header("Authorization", "Bearer " + bearerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"tenantId":"%s","userId":"%s","title":"E2E test chat"}
-                                """.formatted(tenant.getId(), user.getId())))
+                                {"title":"E2E test chat"}
+                                """))
                 .andExpect(status().isCreated())
                 .andReturn();
         JsonNode created = objectMapper.readTree(createResult.getResponse().getContentAsString());
@@ -91,10 +101,11 @@ class RagEndToEndIT {
 
         // 2. Send a message — drives the full RAG orchestration path.
         MvcResult messageResult = mockMvc.perform(post("/api/v1/conversations/{id}/messages", conversationId)
+                        .header("Authorization", "Bearer " + bearerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"tenantId":"%s","userId":"%s","content":"What is retrieval augmented generation?"}
-                                """.formatted(tenant.getId(), user.getId())))
+                                {"content":"What is retrieval augmented generation?"}
+                                """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").value("RAG combines retrieval with generation."))
                 .andExpect(jsonPath("$.citations[0].chunkId").value(citation.chunkId().value().toString()))
@@ -106,7 +117,7 @@ class RagEndToEndIT {
         // 3. Fetch the conversation — proves BOTH sides of the turn were actually persisted,
         //    not just returned in the response.
         mockMvc.perform(get("/api/v1/conversations/{id}", conversationId)
-                        .param("userId", user.getId().toString()))
+                        .header("Authorization", "Bearer " + bearerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.messages", org.hamcrest.Matchers.hasSize(2)))
                 .andExpect(jsonPath("$.messages[0].role").value("USER"))
@@ -118,12 +129,12 @@ class RagEndToEndIT {
     }
 
     @Test
-    void unauthenticatedRequest_isPermitted_temporarySecurityConfig() throws Exception {
-        // No auth header at all — proves ADR O05's temporary permissive filter chain is
-        // actually active end-to-end, not just unit-tested against the filter chain in isolation.
-        mockMvc.perform(get("/api/v1/conversations/{id}", UUID.randomUUID())
-                        .param("userId", UUID.randomUUID().toString()))
-                .andExpect(status().isNotFound()); // reaches the controller/service, not a 401/403
+    void unauthenticatedRequest_isRejected_realSecurityConfig() throws Exception {
+        // No Authorization header at all — proves P05.2's real JWT-based filter chain is actually
+        // active end-to-end (not just unit-tested against the filter chain in isolation), and that
+        // ADR O05's temporary permissive seam is genuinely gone, not merely superseded on paper.
+        mockMvc.perform(get("/api/v1/conversations/{id}", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
     }
 
     private TenantEntity persistTenant() {

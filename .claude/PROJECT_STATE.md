@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.5.1 (In Progress) — Phase 5: Application Platform
+v0.5.2 (In Progress) — Phase 5: Application Platform
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -36,14 +36,15 @@ v0.5.1 (In Progress) — Phase 5: Application Platform
 | Milestone | Description                                     | New Tests | Status     |
 |-----------|--------------------------------------------------|-----------|------------|
 | P05.1     | End-to-End RAG Orchestration & REST Exposure     | +41       | ✅ Complete |
+| P05.2     | Authentication Foundation                       | +21       | ✅ Complete |
 
-**Grand total tests: 530 — 0 failures**
+**Grand total tests: 551 — 0 failures**
 
 ---
 
 ## Current Milestone
 
-**P05.2 — Authentication Foundation** ← next to implement
+**P05.3 — Tenant & Role Authorization Boundary** ← next to implement
 
 ---
 
@@ -97,6 +98,12 @@ Security layer (Authorization Filter) is planned but not implemented.
 | O03  | REST API versioned by `/api/v1` path prefix; errors are RFC 7807 `ProblemDetail` via one handler  |
 | O04  | `RetrievalResult` carries `effectiveQueryText`; `RetrievalPort` interface itself unchanged         |
 | O05  | Temporary permissive `SecurityFilterChain` (ADR-approved) — replaced outright in P05.2, not layered |
+| A01  | JWT access tokens are signed/verified with HS256 (symmetric key); RS256 deferred                  |
+| A02  | Login issues an access token only; no refresh/logout endpoint yet                                 |
+| A03  | `AuthenticateUserUseCase` (application) verifies identity; only `JwtTokenProvider` (api) mints a JWT |
+| A04  | `JwtAuthenticationFilter` never rejects a request; only `RestAuthenticationEntryPoint` returns 401 |
+| A05  | `tenantId`/`userId` removed from request DTOs; both now come from the validated JWT               |
+| A06  | `AuthenticateUserUseCase` always hashes-and-compares (dummy hash for unknown users) to avoid a login timing side channel |
 
 ---
 
@@ -121,7 +128,42 @@ RagOrchestrationService.handleUserMessage()  ← application.orchestration (P05.
 GeneratedAnswerResponse (DTO — never a domain model, ADR O03)
 ```
 
-Errors from any step surface as an RFC 7807 `ProblemDetail` via `api.exception.GlobalExceptionHandler` (ADR O03). Every request currently reaches the controller unauthenticated — `api.config.SecurityConfig` is a deliberate, temporary, ADR-approved seam (ADR O05) replaced outright in P05.2.
+Errors from any step surface as an RFC 7807 `ProblemDetail` via `api.exception.GlobalExceptionHandler` (ADR O03). As of P05.2, every request to this endpoint requires a valid JWT — `api.config.SecurityConfig`'s temporary permissive seam (ADR O05) has been replaced outright, not layered on top of.
+
+---
+
+## Authentication Pipeline (P05.2 — new)
+
+```
+HTTP POST /api/v1/auth/login {tenantId, email, password}
+       │
+       ▼
+AuthController.login()                        ← api.controller
+       │
+       ├─▶ AuthenticateUserUseCase.execute()   ← application.user — verifies email/password/tenantId/active
+       │       (throws InvalidCredentialsException on any failure — same exception for every cause)
+       │
+       └─▶ JwtTokenProvider.generateAccessToken()  ← api.security — mints an HS256 access token (ADR A01)
+       │
+       ▼
+LoginResponse {accessToken, tokenType: "Bearer", expiresInMs}
+
+
+HTTP <any other request>  Authorization: Bearer <token>
+       │
+       ▼
+JwtAuthenticationFilter                        ← api.security (ADR A04: never rejects, only populates)
+       │ valid token → SecurityContext gets a JwtAuthenticationToken(userId, tenantId, authorities)
+       │ missing/invalid token → SecurityContext stays empty, request continues
+       ▼
+Spring Security AuthorizationFilter             ← permitAll for login/health/docs, authenticated() otherwise
+       │ unauthenticated + protected endpoint → RestAuthenticationEntryPoint → 401 ProblemDetail
+       ▼
+ConversationController                          ← reads tenantId/userId from JwtAuthenticationToken (ADR A05),
+                                                    never from the request body
+```
+
+Authorization (role/tenant-scoped access rules beyond "is this token valid") is explicitly out of scope — every authenticated request is currently permitted the same as every other. That is P05.3's job.
 
 ---
 
@@ -186,8 +228,10 @@ GeneratedResponse
 - `PolicyBasedOutputGuardrailsAdapter` implements `OutputGuardrailsPort` (blocks null/blank output, strips control characters, truncates to `app.guardrails.max-response-length` — P04.12)
 - `PositionalCitationAdapter` implements `CitationPort` (parses `[SOURCE:N]` markers, resolves against `AssembledContext` by `AssembledChunk.position()` — P04.11)
 - `RagOrchestrationService` is the sole caller wiring `ConversationApplicationService` + `RetrievalService` + `ContextAssemblyPort` + `GenerationService` together (P05.1, ADR O01)
-- `ConversationController` is the sole REST entry point (`/api/v1/conversations`); `GlobalExceptionHandler` is the sole `@RestControllerAdvice` (P05.1, ADR O03)
-- `SecurityConfig` permits every request — temporary, ADR-approved, replaced outright in P05.2 (ADR O05)
+- `ConversationController` is the sole REST entry point for conversations (`/api/v1/conversations`); `AuthController` is the sole token-issuing entry point (`/api/v1/auth/login`, P05.2); `GlobalExceptionHandler` is the sole `@RestControllerAdvice` (P05.1, ADR O03)
+- `SecurityConfig` requires a valid JWT on every endpoint except `/api/v1/auth/login`, `/actuator/health`, and the Swagger/OpenAPI paths — real HS256 validation as of P05.2 (ADR A01), replacing the P05.1 permissive seam outright (ADR O05)
+- `JwtTokenProvider` (`api.security`) is the sole component that signs or verifies tokens; `JwtAuthenticationFilter` is the sole component that populates the `SecurityContext`; `RestAuthenticationEntryPoint` is the sole source of a 401 response (ADR A04)
+- `AuthenticateUserUseCase` (`application.user`) is the sole verifier of login credentials, via the existing `UserRepository` port and a `BCryptPasswordEncoder` (`infrastructure.config.PasswordEncoderConfig`) — always throws the same `InvalidCredentialsException` regardless of failure cause (ADR A03)
 - `springdoc-openapi-starter-webmvc-ui` auto-exposes `/v3/api-docs` and `/swagger-ui.html` from the same controller/DTO annotations — no separate spec to keep in sync (P05.1)
 
 ---
@@ -214,8 +258,10 @@ com.mudassirshahzad.eka
 ├── application
 │   ├── generation                   — GenerationRequest, GenerationException, GenerationService
 │   ├── orchestration                — SendMessageCommand, RagTurnResult, RagOrchestrationService (P05.1)
-│   └── retrieval                    — RetrievalRequest, RetrievalException,
-│                                      InvalidRetrievalRequestException, RetrievalService
+│   ├── retrieval                    — RetrievalRequest, RetrievalException,
+│   │                                  InvalidRetrievalRequestException, RetrievalService
+│   └── user                         — RegisterUserUseCase, GetUserUseCase, DeactivateUserUseCase,
+│                                      AuthenticateUserUseCase (P05.2, ADR A03), UserApplicationService
 ├── infrastructure
 │   ├── citation                     — PositionalCitationAdapter
 │   ├── context                      — DefaultContextAssemblyAdapter
@@ -235,11 +281,14 @@ com.mudassirshahzad.eka
 │       │                              Bm25ScoreNormalizer
 │       └── weaviate                 — WeaviateRetrievalAdapter, WeaviateVectorStoreAdapter
 └── api                              — first REST surface (P05.1)
-    ├── config                       — SecurityConfig (temporary, ADR O05), OpenApiConfig
-    ├── controller                   — ConversationController
-    ├── dto                          — CreateConversationRequest, SendMessageRequest,
-    │                                  ConversationResponse, ConversationDetailResponse,
-    │                                  MessageResponse, CitationResponse, GeneratedAnswerResponse
+    ├── config                       — SecurityConfig (real JWT validation, P05.2 — ADR A01/O05), OpenApiConfig
+    ├── controller                   — ConversationController, AuthController (P05.2)
+    ├── dto                          — CreateConversationRequest, SendMessageRequest (both now
+    │                                  identity-free — ADR A05), ConversationResponse,
+    │                                  ConversationDetailResponse, MessageResponse, CitationResponse,
+    │                                  GeneratedAnswerResponse, LoginRequest, LoginResponse (P05.2)
+    ├── security                     — JwtProperties, JwtTokenProvider, JwtAuthenticationToken,
+    │                                  JwtAuthenticationFilter, RestAuthenticationEntryPoint (P05.2)
     └── exception                    — GlobalExceptionHandler (ADR O03)
 ```
 
@@ -255,13 +304,16 @@ This file's Milestone/ADR tracking above covers the **retrieval/generation pipel
 | `domain.user`, `domain.query` | `User`, `KnowledgeQuery` aggregates | Foundation-only |
 | `application.document` | `ChunkingService`, `EmbeddingService`, `DocumentIndexingService`, ingestion use cases | Foundation-only, self-contained ingestion pipeline |
 | `application.conversation` | `ConversationApplicationService` + CRUD use cases | Write side of P04.13's `ConversationHistoryPort` fix (ADR R01); **now also reachable via REST** — `ConversationController` calls `createConversation`/`getConversation` directly and indirectly via `RagOrchestrationService` (P05.1) |
-| `application.chat`, `application.query`, `application.user` | Chat session, knowledge-query, and user-management use cases | Foundation-only, not yet wired to `application.generation`/`application.retrieval` (see P04.13.8) |
+| `application.chat`, `application.query` | Chat session and knowledge-query use cases | Foundation-only, not yet wired to `application.generation`/`application.retrieval` (see P04.13.8) |
+| `application.user` | User registration/lookup/role/password use cases, plus `AuthenticateUserUseCase` (P05.2) | **Partially reachable via REST as of P05.2** — `AuthController` calls `AuthenticateUserUseCase` for login; `RegisterUserUseCase`, role management, and password change remain unreached (no admin/registration endpoint yet) |
 | `application.event` + `infrastructure.event` | 17 domain event records + `SpringDomainEventPublisher` | Built, unused — no `@EventListener` anywhere (see P04.13.8) |
 | `infrastructure.parsing`, `.embedding`, `.storage`, `.vectorstore` | Tika parsing, Ollama embedding, local file storage, Weaviate vector store (ingestion side) | Foundation-only ingestion adapters |
 | `infrastructure.persistence.postgres` | 8 repository adapters, 12 entities, 7 mappers, 11 JPA repositories | Foundation-only; now has baseline tests (P04.13.4) |
-| `infrastructure.config` | `DatabaseConfig`, `AsyncConfig`, `AppProperties` | Spring wiring for the foundation layer |
+| `infrastructure.config` | `DatabaseConfig`, `AsyncConfig`, `AppProperties`, `PasswordEncoderConfig` (P05.2) | Spring wiring for the foundation layer |
 
-**Update (P05.1):** `com.mudassirshahzad.eka.api.controller.ConversationController` is now the first REST entry point (`/api/v1/conversations`), reaching `application.conversation` and `application.orchestration` directly. `application.chat`, `application.query`, `application.document`, `application.user`, and `application.event` remain unreached — no endpoint calls them yet, consistent with the P04.13.8 classification below (chat/query integration is P05-future, not this milestone).
+**Update (P05.1):** `com.mudassirshahzad.eka.api.controller.ConversationController` is now the first REST entry point (`/api/v1/conversations`), reaching `application.conversation` and `application.orchestration` directly. `application.chat`, `application.query`, and `application.document` remain unreached — no endpoint calls them yet, consistent with the P04.13.8 classification below (chat/query integration is P05-future, not this milestone).
+
+**Update (P05.2):** `com.mudassirshahzad.eka.api.controller.AuthController` (`/api/v1/auth/login`) is a second REST entry point, reaching `application.user` for the first time — but only its new `AuthenticateUserUseCase`. There is still no registration/admin endpoint, so users must be seeded directly (e.g. via a migration or a one-off script) until a future milestone adds one; that gap is a known, accepted limitation of "Authentication Foundation," not an oversight.
 
 ### Deferred Items (P04.13.8)
 
