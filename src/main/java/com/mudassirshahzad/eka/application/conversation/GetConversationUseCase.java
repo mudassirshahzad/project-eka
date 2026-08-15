@@ -2,6 +2,7 @@ package com.mudassirshahzad.eka.application.conversation;
 
 import com.mudassirshahzad.eka.domain.conversation.Conversation;
 import com.mudassirshahzad.eka.domain.conversation.ConversationId;
+import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,9 +17,10 @@ public class GetConversationUseCase {
 
     private final ConversationApplicationService conversationService;
 
-    public Conversation execute(ConversationId id, UserId userId) {
+    public Conversation execute(ConversationId id, UserId userId, TenantId tenantId) {
         Objects.requireNonNull(id, "conversationId must not be null");
         Objects.requireNonNull(userId, "userId must not be null");
-        return conversationService.getConversation(id, userId);
+        Objects.requireNonNull(tenantId, "tenantId must not be null");
+        return conversationService.getConversation(id, userId, tenantId);
     }
 }

@@ -39,9 +39,10 @@ public class ConversationApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public Conversation getConversation(ConversationId id, UserId userId) {
-        return conversationRepository.findByIdAndUserId(id, userId)
+    public Conversation getConversation(ConversationId id, UserId userId, TenantId tenantId) {
+        Conversation conversation = conversationRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation", id.value().toString()));
+        return requireTenantMatch(conversation, tenantId);
     }
 
     @Transactional(readOnly = true)
@@ -55,6 +56,7 @@ public class ConversationApplicationService {
                         cmd.conversationId(), cmd.userId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Conversation", cmd.conversationId().value().toString()));
+        requireTenantMatch(conversation, cmd.tenantId());
         Message message = Message.userMessage(cmd.content());
         conversation.addMessage(message);
         Conversation saved = conversationRepository.save(conversation);
@@ -66,20 +68,35 @@ public class ConversationApplicationService {
     /**
      * Persists a generated assistant reply. Deliberately symmetrical with
      * {@link #addUserMessage(AddUserMessageCommand)} — same ownership check via
-     * {@code findByIdAndUserId}, same aggregate mutation, same {@link MessageAddedEvent}
-     * publication, differing only in {@link MessageRole} and citation payload (ADR O02).
+     * {@code findByIdAndUserId}, same tenant check, same aggregate mutation, same
+     * {@link MessageAddedEvent} publication, differing only in {@link MessageRole} and citation
+     * payload (ADR O02).
      */
     public Conversation addAssistantMessage(AddAssistantMessageCommand cmd) {
         Conversation conversation = conversationRepository.findByIdAndUserId(
                         cmd.conversationId(), cmd.userId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Conversation", cmd.conversationId().value().toString()));
+        requireTenantMatch(conversation, cmd.tenantId());
         Message message = Message.assistantMessage(cmd.content(), cmd.citations(), null);
         conversation.addMessage(message);
         Conversation saved = conversationRepository.save(conversation);
         eventPublisher.publish(new MessageAddedEvent(
                 saved.getId(), message.id(), cmd.userId(), MessageRole.ASSISTANT));
         return saved;
+    }
+
+    /**
+     * Defensive, explicit tenant check applied after every ownership-scoped fetch (ADR TN01) —
+     * mirrors the precedent {@code PersistentConversationHistoryAdapter} set in P04.13 (ADR R01):
+     * a mismatch is treated identically to "not found," never as a distinct "forbidden" outcome,
+     * so a caller can never learn that a conversation exists in another tenant.
+     */
+    private Conversation requireTenantMatch(Conversation conversation, TenantId tenantId) {
+        if (!conversation.getTenantId().equals(tenantId)) {
+            throw new ResourceNotFoundException("Conversation", conversation.getId().value().toString());
+        }
+        return conversation;
     }
 
     public Conversation renameConversation(RenameConversationCommand cmd) {

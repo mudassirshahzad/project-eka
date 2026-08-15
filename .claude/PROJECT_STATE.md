@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.5.2 (In Progress) — Phase 5: Application Platform
+v0.5.3 (In Progress) — Phase 5: Application Platform
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -37,14 +37,15 @@ v0.5.2 (In Progress) — Phase 5: Application Platform
 |-----------|--------------------------------------------------|-----------|------------|
 | P05.1     | End-to-End RAG Orchestration & REST Exposure     | +41       | ✅ Complete |
 | P05.2     | Authentication Foundation                       | +21       | ✅ Complete |
+| P05.3     | Tenant & Role Authorization Boundary            | +22       | ✅ Complete |
 
-**Grand total tests: 551 — 0 failures**
+**Grand total tests: 573 — 0 failures**
 
 ---
 
 ## Current Milestone
 
-**P05.3 — Tenant & Role Authorization Boundary** ← next to implement
+**P05.4 — Observability Foundation** ← next to implement
 
 ---
 
@@ -104,6 +105,11 @@ Security layer (Authorization Filter) is planned but not implemented.
 | A04  | `JwtAuthenticationFilter` never rejects a request; only `RestAuthenticationEntryPoint` returns 401 |
 | A05  | `tenantId`/`userId` removed from request DTOs; both now come from the validated JWT               |
 | A06  | `AuthenticateUserUseCase` always hashes-and-compares (dummy hash for unknown users) to avoid a login timing side channel |
+| AZ01 | `AuthorizationInterceptor` (`HandlerInterceptor`) is the sole role-decision point; never re-validates ownership |
+| AZ02 | Role policy: `VIEWER`/`AUDITOR` read-only; `USER`/`ADMIN` may create conversations and send messages |
+| AZ03 | `AccessDeniedException` → 403 handled by `GlobalExceptionHandler`, not a security-layer `AccessDeniedHandler`; `ADMIN` does not bypass ownership |
+| TN01 | Tenant isolation is a defensive post-fetch check in `ConversationApplicationService` (extends ADR R01's pattern) |
+| OW01 | Resource ownership stays at `findByIdAndUserId` (pre-existing); mismatch resolves to 404, never 403 |
 
 ---
 
@@ -114,21 +120,22 @@ HTTP POST /api/v1/conversations/{id}/messages
        │
        ▼
 ConversationController.sendMessage()         ← api.controller (thin: validate, convert, invoke, convert)
+       │ @RequireRole({USER, ADMIN}) enforced by AuthorizationInterceptor before this method runs (P05.3, ADR AZ01/AZ02)
        │ SendMessageCommand
        ▼
 RagOrchestrationService.handleUserMessage()  ← application.orchestration (P05.1, ADR O01)
        │
-       ├─▶ ConversationApplicationService.addUserMessage()        — persist user turn
+       ├─▶ ConversationApplicationService.addUserMessage()        — ownership + tenant check, persist user turn (ADR TN01/OW01)
        ├─▶ RetrievalService.retrieve()                             — ranked chunks + effectiveQueryText (ADR O04)
        ├─▶ ContextAssemblyPort.assemble()                          — AssembledContext
        ├─▶ GenerationService.generate()                            — see "Generation Pipeline" below
-       └─▶ ConversationApplicationService.addAssistantMessage()   — persist assistant turn (ADR O02)
+       └─▶ ConversationApplicationService.addAssistantMessage()   — ownership + tenant check, persist assistant turn (ADR O02/TN01)
        │
        ▼
 GeneratedAnswerResponse (DTO — never a domain model, ADR O03)
 ```
 
-Errors from any step surface as an RFC 7807 `ProblemDetail` via `api.exception.GlobalExceptionHandler` (ADR O03). As of P05.2, every request to this endpoint requires a valid JWT — `api.config.SecurityConfig`'s temporary permissive seam (ADR O05) has been replaced outright, not layered on top of.
+Errors from any step surface as an RFC 7807 `ProblemDetail` via `api.exception.GlobalExceptionHandler` (ADR O03). As of P05.2, every request to this endpoint requires a valid JWT — `api.config.SecurityConfig`'s temporary permissive seam (ADR O05) has been replaced outright, not layered on top of. As of P05.3, a valid JWT is not sufficient by itself — see "Authorization Pipeline" below.
 
 ---
 
@@ -163,7 +170,30 @@ ConversationController                          ← reads tenantId/userId from J
                                                     never from the request body
 ```
 
-Authorization (role/tenant-scoped access rules beyond "is this token valid") is explicitly out of scope — every authenticated request is currently permitted the same as every other. That is P05.3's job.
+---
+
+## Authorization Pipeline (P05.3 — new)
+
+```
+HTTP <any /api/v1/** request except /api/v1/auth/**>
+       │  SecurityContext already holds a JwtAuthenticationToken (Authentication Pipeline above)
+       ▼
+AuthorizationInterceptor.preHandle()      ← api.security, registered by api.config.WebMvcConfig (ADR AZ01)
+       │  no @RequireRole on the target method → permitted, unconditionally
+       │  @RequireRole present → principal's authorities must intersect the required roles
+       │  role insufficient → AccessDeniedException
+       ▼
+ConversationController.<method>()          ← invoked only if the interceptor returned true
+       │
+       ▼
+ConversationApplicationService.<method>()  ← findByIdAndUserId (ownership, pre-existing) +
+                                              requireTenantMatch (tenant, new — ADR TN01)
+       │  not found OR wrong tenant OR wrong owner → ResourceNotFoundException (404, never 403 — ADR OW01)
+       ▼
+<normal response>
+```
+
+`AccessDeniedException` (from the interceptor) and `ResourceNotFoundException` (from the ownership/tenant check) both surface via the existing `api.exception.GlobalExceptionHandler` (ADR O03/AZ03) — 403 and 404 respectively. No role, including `ADMIN`, bypasses the ownership/tenant check (ADR AZ03). Fine-grained, metadata-based content filtering integrated into the retrieval pipeline itself (`ROADMAP.md`'s "Full Authorization Filter") remains unbuilt — this pipeline is the REST-boundary half only.
 
 ---
 
@@ -233,6 +263,9 @@ GeneratedResponse
 - `JwtTokenProvider` (`api.security`) is the sole component that signs or verifies tokens; `JwtAuthenticationFilter` is the sole component that populates the `SecurityContext`; `RestAuthenticationEntryPoint` is the sole source of a 401 response (ADR A04)
 - `AuthenticateUserUseCase` (`application.user`) is the sole verifier of login credentials, via the existing `UserRepository` port and a `BCryptPasswordEncoder` (`infrastructure.config.PasswordEncoderConfig`) — always throws the same `InvalidCredentialsException` regardless of failure cause (ADR A03)
 - `springdoc-openapi-starter-webmvc-ui` auto-exposes `/v3/api-docs` and `/swagger-ui.html` from the same controller/DTO annotations — no separate spec to keep in sync (P05.1)
+- `AuthorizationInterceptor` (`api.security`), registered by `WebMvcConfig` (`api.config`) against every `/api/v1/**` route, is the sole role-authorization decision point — reads `@RequireRole` off the target controller method (P05.3, ADR AZ01)
+- `ConversationApplicationService.getConversation`/`.addUserMessage`/`.addAssistantMessage` are the sole tenant/ownership decision points for conversations — a private `requireTenantMatch` helper, extending the ADR R01 pattern, runs after every ownership-scoped fetch (P05.3, ADR TN01/OW01)
+- `GlobalExceptionHandler` gained `AccessDeniedException` → 403 (P05.3, ADR AZ03) alongside its existing mappings
 
 ---
 
@@ -281,15 +314,18 @@ com.mudassirshahzad.eka
 │       │                              Bm25ScoreNormalizer
 │       └── weaviate                 — WeaviateRetrievalAdapter, WeaviateVectorStoreAdapter
 └── api                              — first REST surface (P05.1)
-    ├── config                       — SecurityConfig (real JWT validation, P05.2 — ADR A01/O05), OpenApiConfig
-    ├── controller                   — ConversationController, AuthController (P05.2)
-    ├── dto                          — CreateConversationRequest, SendMessageRequest (both now
+    ├── config                       — SecurityConfig (real JWT validation, P05.2 — ADR A01/O05),
+    │                                  OpenApiConfig, WebMvcConfig (P05.3 — registers AuthorizationInterceptor)
+    ├── controller                   — ConversationController (createConversation/sendMessage now
+    │                                  @RequireRole-annotated — P05.3, ADR AZ02), AuthController (P05.2)
+    ├── dto                          — CreateConversationRequest, SendMessageRequest (both
     │                                  identity-free — ADR A05), ConversationResponse,
     │                                  ConversationDetailResponse, MessageResponse, CitationResponse,
     │                                  GeneratedAnswerResponse, LoginRequest, LoginResponse (P05.2)
     ├── security                     — JwtProperties, JwtTokenProvider, JwtAuthenticationToken,
-    │                                  JwtAuthenticationFilter, RestAuthenticationEntryPoint (P05.2)
-    └── exception                    — GlobalExceptionHandler (ADR O03)
+    │                                  JwtAuthenticationFilter, RestAuthenticationEntryPoint (P05.2),
+    │                                  RequireRole, AuthorizationInterceptor (P05.3, ADR AZ01)
+    └── exception                    — GlobalExceptionHandler (ADR O03; AccessDeniedException → 403, ADR AZ03)
 ```
 
 *(P04.13 correction: `ranking` and `context` were shown incorrectly/missing above — they are top-level `infrastructure` packages, not nested under `infrastructure.retrieval`.)*
@@ -315,6 +351,8 @@ This file's Milestone/ADR tracking above covers the **retrieval/generation pipel
 
 **Update (P05.2):** `com.mudassirshahzad.eka.api.controller.AuthController` (`/api/v1/auth/login`) is a second REST entry point, reaching `application.user` for the first time — but only its new `AuthenticateUserUseCase`. There is still no registration/admin endpoint, so users must be seeded directly (e.g. via a migration or a one-off script) until a future milestone adds one; that gap is a known, accepted limitation of "Authentication Foundation," not an oversight.
 
+**Update (P05.3):** `ConversationApplicationService.getConversation`/`.addUserMessage`/`.addAssistantMessage` (the three REST-reachable methods) now take and verify `TenantId` (ADR TN01). `.renameConversation` and `.deleteConversation` — still unreached by any endpoint (no rename/delete route exists) — were deliberately **not** given the same check; see Deferred Items below.
+
 ### Deferred Items (P04.13.8)
 
 Reviewed without implementing — each classified so none of these become a future undocumented surprise:
@@ -326,6 +364,8 @@ Reviewed without implementing — each classified so none of these become a futu
 | `application.query` (KnowledgeQuery) not wired to `application.retrieval` | Future roadmap (P04.14 — End-to-End RAG) | Same reasoning — audit/tracking layer built ahead of the entry point that would call it. |
 | `UploadDocumentUseCase`'s `@Transactional` spanning Tika/Ollama/Weaviate calls | Genuine technical debt | Real connection-pool-exhaustion and dual-write risk; not urgent (ingestion has no external caller yet) but should be fixed before ingestion is load-bearing. |
 | `AppProperties` (`@ConfigurationProperties`) vs. scattered `@Value` config binding | No action required | Both patterns are valid Spring idioms already in active use; forcing one convention across every adapter is cosmetic churn without measurable long-term value (rejected per review philosophy). |
+| `ConversationApplicationService.renameConversation`/`.deleteConversation` lack the P05.3 tenant check (ADR TN01) | Genuine technical debt (P05.3) | Unreached by any REST endpoint today, so no live exposure — but the same implicit-tenant-invariant gap ADR TN01 fixed elsewhere in this class still exists here. Close this the moment either method gets a route. |
+| No registration/admin endpoint for `application.user` | Known limitation (P05.2, still true) | Users must be seeded directly; `RegisterUserUseCase` remains unwired to REST. |
 
 ---
 

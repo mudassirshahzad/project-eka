@@ -9,6 +9,7 @@ import com.mudassirshahzad.eka.domain.generation.exception.LlmException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -38,6 +39,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException.class)
     public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    /**
+     * Catches denials from both {@code AuthorizationInterceptor} (role checks) and any future
+     * {@code hasRole(...)}-style Spring Security expression — the message is deliberately generic
+     * (never "wrong role" vs. "not your resource") so a caller cannot distinguish the two (ADR AZ03).
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN,
+                "You do not have permission to perform this action.");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

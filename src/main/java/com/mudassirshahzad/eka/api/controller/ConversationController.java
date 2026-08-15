@@ -6,6 +6,7 @@ import com.mudassirshahzad.eka.api.dto.CreateConversationRequest;
 import com.mudassirshahzad.eka.api.dto.GeneratedAnswerResponse;
 import com.mudassirshahzad.eka.api.dto.SendMessageRequest;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationToken;
+import com.mudassirshahzad.eka.api.security.RequireRole;
 import com.mudassirshahzad.eka.application.conversation.ConversationApplicationService;
 import com.mudassirshahzad.eka.application.conversation.CreateConversationCommand;
 import com.mudassirshahzad.eka.application.orchestration.RagOrchestrationService;
@@ -13,6 +14,7 @@ import com.mudassirshahzad.eka.application.orchestration.RagTurnResult;
 import com.mudassirshahzad.eka.application.orchestration.SendMessageCommand;
 import com.mudassirshahzad.eka.domain.conversation.Conversation;
 import com.mudassirshahzad.eka.domain.conversation.ConversationId;
+import com.mudassirshahzad.eka.domain.user.UserRole;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,11 @@ import java.util.UUID;
  * is reachable only when {@code SecurityConfig} has already required authentication, so the cast
  * from {@link Authentication} is safe: {@code JwtAuthenticationFilter} is the only component that
  * ever places an {@code Authentication} in the security context.
+ *
+ * <p>{@link RequireRole} declares which roles may call the two mutating endpoints (ADR AZ02) —
+ * {@code getConversation} carries none, since read access is open to every authenticated role and
+ * is instead gated by ownership, enforced inside {@code ConversationApplicationService} (ADR TN01),
+ * never here.
  */
 @Slf4j
 @RestController
@@ -49,6 +56,7 @@ public class ConversationController {
     private final RagOrchestrationService         ragOrchestrationService;
 
     @PostMapping
+    @RequireRole({UserRole.USER, UserRole.ADMIN})
     public ResponseEntity<ConversationResponse> createConversation(
             Authentication authentication,
             @Valid @RequestBody CreateConversationRequest request) {
@@ -68,12 +76,13 @@ public class ConversationController {
 
         JwtAuthenticationToken principal = (JwtAuthenticationToken) authentication;
         Conversation conversation = conversationApplicationService.getConversation(
-                ConversationId.of(conversationId), principal.userId());
+                ConversationId.of(conversationId), principal.userId(), principal.tenantId());
 
         return ConversationDetailResponse.from(conversation);
     }
 
     @PostMapping("/{conversationId}/messages")
+    @RequireRole({UserRole.USER, UserRole.ADMIN})
     public GeneratedAnswerResponse sendMessage(
             Authentication authentication,
             @PathVariable UUID conversationId,

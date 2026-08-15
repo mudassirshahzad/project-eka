@@ -34,15 +34,15 @@ Completed
 
 ✅ P05.2 Authentication Foundation
 
+✅ P05.3 Tenant & Role Authorization Boundary
+
 Upcoming
 
-P05.3 Tenant & Role Authorization Boundary
+P05.4 Observability Foundation
 
 Future
 
 Full Authorization Filter (fine-grained, metadata-based content filtering)
-
-Observability Foundation
 
 Resilience & Operational Hardening
 

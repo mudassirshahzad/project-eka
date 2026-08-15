@@ -56,6 +56,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * make this test slow, flaky, and environment-dependent for no additional coverage: what this
  * test needs to prove is that P05.1's new wiring (orchestrator, REST layer, persistence) is
  * correct, with the already-proven lower pipeline standing in as a trusted collaborator.
+ *
+ * <p>As of P05.3, this is also the only place the full chain — JWT → authentication →
+ * role authorization ({@code AuthorizationInterceptor}) → application (tenant/ownership check,
+ * ADR TN01) → real Postgres persistence → response — is exercised together against a real
+ * database, rather than against mocked collaborators.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -135,6 +140,82 @@ class RagEndToEndIT {
         // ADR O05's temporary permissive seam is genuinely gone, not merely superseded on paper.
         mockMvc.perform(get("/api/v1/conversations/{id}", UUID.randomUUID()))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void crossTenantAccess_returnsNotFound_realDatabaseProof() throws Exception {
+        // Tenant A creates a conversation; Tenant B (a completely different, real, persisted
+        // tenant/user pair) holds a validly-signed token and tries to read it. Proves ADR TN01's
+        // tenant check against a real ConversationRepository/Postgres round trip, not a mock.
+        TenantEntity tenantA = persistTenant();
+        UserEntity   userA   = persistUser(tenantA);
+        String       tokenA  = jwtTokenProvider.generateAccessToken(
+                UserId.of(userA.getId()), TenantId.of(tenantA.getId()), Set.of(UserRole.USER));
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/conversations")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Tenant A's private chat"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        UUID conversationId = UUID.fromString(
+                objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText());
+
+        TenantEntity tenantB = persistTenant();
+        UserEntity   userB   = persistUser(tenantB);
+        String       tokenB  = jwtTokenProvider.generateAccessToken(
+                UserId.of(userB.getId()), TenantId.of(tenantB.getId()), Set.of(UserRole.USER));
+
+        mockMvc.perform(get("/api/v1/conversations/{id}", conversationId)
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void anotherUserInSameTenant_cannotReadConversation_realDatabaseProof() throws Exception {
+        // Distinct from the cross-tenant case above: same tenant, different owning user — proves
+        // ownership scoping (findByIdAndUserId), not the tenant check, is what's rejecting this.
+        TenantEntity tenant = persistTenant();
+        UserEntity   owner  = persistUser(tenant);
+        UserEntity   other  = persistUser(tenant);
+        String       ownerToken = jwtTokenProvider.generateAccessToken(
+                UserId.of(owner.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
+        String       otherToken = jwtTokenProvider.generateAccessToken(
+                UserId.of(other.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/conversations")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"owner's chat"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        UUID conversationId = UUID.fromString(
+                objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText());
+
+        mockMvc.perform(get("/api/v1/conversations/{id}", conversationId)
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void viewerRole_cannotCreateConversation_realFilterChain() throws Exception {
+        // The role check happens purely off the token's embedded claims (ADR AZ02) — no
+        // persisted user is needed to prove AuthorizationInterceptor rejects this before the
+        // controller (and therefore the database) is ever reached.
+        String viewerToken = jwtTokenProvider.generateAccessToken(
+                UserId.generate(), TenantId.generate(), Set.of(UserRole.VIEWER));
+
+        mockMvc.perform(post("/api/v1/conversations")
+                        .header("Authorization", "Bearer " + viewerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"should be rejected"}
+                                """))
+                .andExpect(status().isForbidden());
     }
 
     private TenantEntity persistTenant() {

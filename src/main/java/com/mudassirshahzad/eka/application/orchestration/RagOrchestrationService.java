@@ -79,7 +79,7 @@ public class RagOrchestrationService {
         log.debug("RAG turn started: tenant={} conversation={}", cmd.tenantId(), cmd.conversationId());
 
         conversationApplicationService.addUserMessage(
-                new AddUserMessageCommand(cmd.conversationId(), cmd.userId(), cmd.content()));
+                new AddUserMessageCommand(cmd.conversationId(), cmd.userId(), cmd.tenantId(), cmd.content()));
 
         RetrievalResult retrievalResult = retrievalService.retrieve(new RetrievalRequest(
                 cmd.content(), cmd.tenantId(), cmd.userId(), MetadataFilter.NONE, RetrievalOptions.DEFAULT));
@@ -91,7 +91,7 @@ public class RagOrchestrationService {
                 assembledContext, cmd.content(), cmd.tenantId(), GenerationOptions.DEFAULT, cmd.conversationId()));
 
         Conversation updated = conversationApplicationService.addAssistantMessage(new AddAssistantMessageCommand(
-                cmd.conversationId(), cmd.userId(),
+                cmd.conversationId(), cmd.userId(), cmd.tenantId(),
                 generatedResponse.generatedText(), generatedResponse.citations()));
 
         Message assistantMessage = updated.getMessages().getLast();

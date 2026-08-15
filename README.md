@@ -62,13 +62,13 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.5.2 — Application Platform (Phase 5, in progress) |
+| **Current Release** | v0.5.3 — Application Platform (Phase 5, in progress) |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 551 passing, 0 failures · 53 test classes |
+| **Automated Tests** | 573 passing, 0 failures · 54 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
 | **Schema Migrations** | Flyway V001–V017 (17 migrations) |
-| **Current Focus** | P05.2 — Authentication Foundation (complete) |
-| **Next Milestone** | P05.3 — Tenant & Role Authorization Boundary |
+| **Current Focus** | P05.3 — Tenant & Role Authorization Boundary (complete) |
+| **Next Milestone** | P05.4 — Observability Foundation |
 
 ---
 
@@ -93,15 +93,16 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Context assembly with token-budget guard
 - ✅ Chat generation with output guardrails, citation engine, and persisted conversational memory
 
-**Implemented — v0.5.1–v0.5.2 (application platform)**
+**Implemented — v0.5.1–v0.5.3 (application platform)**
 
 - ✅ REST API with OpenAPI/Swagger specification (`/api/v1/conversations`)
 - ✅ End-to-end RAG orchestration — one HTTP request drives retrieval → context assembly → generation → citation → persistence
 - ✅ JWT authentication (HS256) — `POST /api/v1/auth/login` issues an access token; every other endpoint requires one
+- ✅ Role authorization — creating a conversation or sending a message requires `USER` or `ADMIN`; `VIEWER`/`AUDITOR` are read-only
+- ✅ Tenant isolation and resource ownership — a conversation is reachable only by the user who created it, within its own tenant; every other case (including a different user in the *same* tenant) returns `404`, not `403`
 
-**Planned — v0.5.3 and beyond**
+**Planned — v0.5.4 and beyond**
 
-- ⏳ Tenant & role authorization (P05.3)
 - ⏳ Observability — metrics, structured logging, correlation IDs (P05.4)
 - ⏳ Operational hardening — upload transaction improvements, retry/timeout refinement (P05.5)
 - ⏳ Server-Sent Events streaming responses with source citations
@@ -122,7 +123,7 @@ api/          →  application/  →  domain/  ←  infrastructure/
 - **Domain** — pure Java aggregates, value objects, and port interfaces; zero framework dependencies
 - **Application** — use cases, commands, domain events; no infrastructure imports
 - **Infrastructure** — JPA adapters, Weaviate adapter, Ollama adapter, Tika adapter, file storage
-- **API** — REST controllers, JWT authentication (`v0.5.1`–`v0.5.2`)
+- **API** — REST controllers, JWT authentication, tenant/role authorization (`v0.5.1`–`v0.5.3`)
 - **ArchUnit** — 8 layering rules enforced at build time; violations fail the build
 
 ### High-Level Architecture
@@ -161,7 +162,7 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 | Migrations | Flyway | 10+ | Versioned schema migrations (V001–V017) |
 | Document Parsing | Apache Tika | 2.9.2 | Multi-format extraction, magic-byte detection |
 | Generation | Qwen3 via Ollama | Latest | Local LLM for query rewriting and chat generation |
-| Security | Spring Security + JJWT 0.12+ | — | JWT (HS256) authentication (v0.5.2); RBAC not yet enforced |
+| Security | Spring Security + JJWT 0.12+ | — | JWT (HS256) authentication (v0.5.2); role + tenant/ownership authorization (v0.5.3) |
 | Architecture Testing | ArchUnit | 1.3.0 | Hexagonal layering enforcement |
 | Build | Gradle | 8.12 | |
 
@@ -214,7 +215,8 @@ GET http://localhost:8080/actuator/health
 
 Every endpoint under `/api/v1/conversations` now requires a JWT (v0.5.2). There is no
 self-service registration endpoint yet — seed at least one user directly (e.g. via a migration
-or a one-off script, with a BCrypt-hashed password) before logging in:
+or a one-off script, with a BCrypt-hashed password and at least one of the four `UserRole`
+values) before logging in:
 
 ```
 POST /api/v1/auth/login
@@ -224,6 +226,9 @@ POST /api/v1/auth/login
 ```
 
 Send the returned token as `Authorization: Bearer <accessToken>` on every subsequent request.
+As of v0.5.3, the seeded user's role also matters: creating a conversation or sending a message
+requires `USER` or `ADMIN` — a `VIEWER`/`AUDITOR` token gets `403` on those two endpoints (reading
+a conversation is open to all four roles, subject to ownership).
 
 ### Configuration
 
@@ -278,7 +283,7 @@ for the authoritative, currently-maintained status of everything from v0.5.1 onw
 | v0.5.0 | Retrieval & RAG — hybrid search, query rewriting, context assembly, chat generation | ✅ Complete |
 | v0.5.1 | REST API — end-to-end RAG orchestration, OpenAPI (P05.1) | ✅ Complete |
 | v0.5.2 | JWT Authentication Foundation (P05.2) | ✅ Complete |
-| v0.5.3 | Tenant & Role Authorization Boundary (P05.3) | ⏳ Planned |
+| v0.5.3 | Tenant & Role Authorization Boundary (P05.3) | ✅ Complete |
 | v0.5.4 | Observability Foundation (P05.4) | ⏳ Planned |
 | v0.6.0 | Operational Hardening (P05.5) | ⏳ Planned |
 | v0.7.0 | Conversational AI streaming responses | ⏳ Planned |

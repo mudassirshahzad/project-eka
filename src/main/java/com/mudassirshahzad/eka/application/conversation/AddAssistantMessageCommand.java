@@ -2,6 +2,7 @@ package com.mudassirshahzad.eka.application.conversation;
 
 import com.mudassirshahzad.eka.domain.conversation.Citation;
 import com.mudassirshahzad.eka.domain.conversation.ConversationId;
+import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
 
 import java.util.List;
@@ -13,12 +14,14 @@ import java.util.List;
  * @param conversationId the conversation this reply belongs to
  * @param userId         the owning user, used the same way {@link AddUserMessageCommand}
  *                        uses it — to verify conversation ownership before mutation
+ * @param tenantId       used only to verify tenant match after fetch (ADR TN01)
  * @param content        the guardrail-checked generated text
  * @param citations      citations resolved for this reply; may be empty, never null
  */
 public record AddAssistantMessageCommand(
         ConversationId conversationId,
         UserId         userId,
+        TenantId       tenantId,
         String         content,
         List<Citation> citations
 ) {}

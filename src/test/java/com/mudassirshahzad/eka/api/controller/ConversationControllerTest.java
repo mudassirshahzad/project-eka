@@ -1,6 +1,8 @@
 package com.mudassirshahzad.eka.api.controller;
 
 import com.mudassirshahzad.eka.api.config.SecurityConfig;
+import com.mudassirshahzad.eka.api.config.WebMvcConfig;
+import com.mudassirshahzad.eka.api.security.AuthorizationInterceptor;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationFilter;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationToken;
 import com.mudassirshahzad.eka.api.security.JwtTokenProvider;
@@ -29,6 +31,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,14 +47,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * {@code @WebMvcTest} slice covering the controller, its DTO (de)serialization, and its
- * integration with {@link GlobalExceptionHandler} (ADR O03) and the real, JWT-based
- * {@link SecurityConfig} (P05.2). {@code tenantId}/{@code userId} now come from the authenticated
- * {@link JwtAuthenticationToken} (ADR A05) — attached per-request via
+ * integration with {@link GlobalExceptionHandler} (ADR O03), the real JWT-based
+ * {@link SecurityConfig} (P05.2), and the real role-authorization boundary — {@link WebMvcConfig}
+ * plus {@link AuthorizationInterceptor} (P05.3, ADR AZ01/AZ02). {@code tenantId}/{@code userId}
+ * come from the authenticated {@link JwtAuthenticationToken} (ADR A05) — attached per-request via
  * {@code SecurityMockMvcRequestPostProcessors.authentication(...)} rather than request-body
  * fields, since those fields no longer exist on the DTOs.
  */
 @WebMvcTest(ConversationController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RestAuthenticationEntryPoint.class})
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RestAuthenticationEntryPoint.class,
+        WebMvcConfig.class, AuthorizationInterceptor.class})
 class ConversationControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -64,8 +69,13 @@ class ConversationControllerTest {
     private final UUID tenantId = UUID.randomUUID();
 
     private RequestPostProcessor authenticated() {
-        return authentication(new JwtAuthenticationToken(
-                UserId.of(userId), TenantId.of(tenantId), List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+        return authenticatedAs("ROLE_USER");
+    }
+
+    private RequestPostProcessor authenticatedAs(String... authorities) {
+        List<SimpleGrantedAuthority> granted = Arrays.stream(authorities)
+                .map(SimpleGrantedAuthority::new).toList();
+        return authentication(new JwtAuthenticationToken(UserId.of(userId), TenantId.of(tenantId), granted));
     }
 
     // ── POST /conversations ───────────────────────────────────────────────────
@@ -109,6 +119,32 @@ class ConversationControllerTest {
     }
 
     @Test
+    void createConversation_viewerRole_returnsForbidden() throws Exception {
+        mockMvc.perform(post("/api/v1/conversations")
+                        .with(authenticatedAs("ROLE_VIEWER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"My chat"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    void createConversation_adminRole_isPermitted() throws Exception {
+        Conversation conversation = Conversation.create(UserId.of(userId), TenantId.of(tenantId), "My chat");
+        when(conversationApplicationService.createConversation(any())).thenReturn(conversation);
+
+        mockMvc.perform(post("/api/v1/conversations")
+                        .with(authenticatedAs("ROLE_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"My chat"}
+                                """))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void createConversation_duplicateResource_returnsConflict() throws Exception {
         when(conversationApplicationService.createConversation(any()))
                 .thenThrow(new DuplicateResourceException("Conversation already exists"));
@@ -129,7 +165,7 @@ class ConversationControllerTest {
     void getConversation_returnsConversationDetail() throws Exception {
         Conversation conversation = Conversation.create(UserId.of(userId), TenantId.of(tenantId), "chat");
         conversation.addMessage(Message.userMessage("hi"));
-        when(conversationApplicationService.getConversation(any(), any())).thenReturn(conversation);
+        when(conversationApplicationService.getConversation(any(), any(), any())).thenReturn(conversation);
 
         mockMvc.perform(get("/api/v1/conversations/{id}", conversation.getId().value())
                         .with(authenticated()))
@@ -140,7 +176,7 @@ class ConversationControllerTest {
     @Test
     void getConversation_notFound_returnsProblemDetail() throws Exception {
         UUID missingId = UUID.randomUUID();
-        when(conversationApplicationService.getConversation(any(), any()))
+        when(conversationApplicationService.getConversation(any(), any(), any()))
                 .thenThrow(new ResourceNotFoundException("Conversation", missingId.toString()));
 
         mockMvc.perform(get("/api/v1/conversations/{id}", missingId)
@@ -154,6 +190,29 @@ class ConversationControllerTest {
     void getConversation_unauthenticated_returnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/conversations/{id}", UUID.randomUUID()))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getConversation_viewerRole_isPermitted() throws Exception {
+        Conversation conversation = Conversation.create(UserId.of(userId), TenantId.of(tenantId), "chat");
+        when(conversationApplicationService.getConversation(any(), any(), any())).thenReturn(conversation);
+
+        mockMvc.perform(get("/api/v1/conversations/{id}", conversation.getId().value())
+                        .with(authenticatedAs("ROLE_VIEWER")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getConversation_belongsToAnotherTenant_returnsNotFoundNotForbidden() throws Exception {
+        // Ownership/tenant mismatch is enforced by ConversationApplicationService (ADR TN01) as a
+        // 404, not a 403 — this proves the controller doesn't re-decide or mask that outcome.
+        UUID otherTenantsConversationId = UUID.randomUUID();
+        when(conversationApplicationService.getConversation(any(), any(), any()))
+                .thenThrow(new ResourceNotFoundException("Conversation", otherTenantsConversationId.toString()));
+
+        mockMvc.perform(get("/api/v1/conversations/{id}", otherTenantsConversationId)
+                        .with(authenticated()))
+                .andExpect(status().isNotFound());
     }
 
     // ── POST /conversations/{id}/messages ─────────────────────────────────────
@@ -189,6 +248,18 @@ class ConversationControllerTest {
                                 {"content":""}
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void sendMessage_auditorRole_returnsForbidden() throws Exception {
+        mockMvc.perform(post("/api/v1/conversations/{id}/messages", UUID.randomUUID())
+                        .with(authenticatedAs("ROLE_AUDITOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"content":"question"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
     }
 
     @Test
