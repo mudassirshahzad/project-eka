@@ -165,9 +165,14 @@ class RagEndToEndIT {
 
     @Test
     void actuatorInfo_isPubliclyReachable() throws Exception {
+        // build.version comes from build-info.properties (springBoot { buildInfo() },
+        // v0.6.1 ADR EX03) — generated from build.gradle's `version` at build time, so this
+        // assertion also proves the single-source-of-truth wiring actually works, not just that
+        // the endpoint is reachable.
         mockMvc.perform(get("/actuator/info"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.app.name").value("Project EKA"));
+                .andExpect(jsonPath("$.app.name").value("Project EKA"))
+                .andExpect(jsonPath("$.build.version").exists());
     }
 
     @Test

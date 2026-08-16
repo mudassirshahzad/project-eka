@@ -5,7 +5,10 @@ import com.mudassirshahzad.eka.api.observability.CorrelationIdFilter;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationFilter;
 import com.mudassirshahzad.eka.api.security.JwtProperties;
 import com.mudassirshahzad.eka.api.security.JwtTokenProvider;
+import com.mudassirshahzad.eka.api.security.LoginRateLimiter;
+import com.mudassirshahzad.eka.api.security.RequestSizeLimitFilter;
 import com.mudassirshahzad.eka.api.security.RestAuthenticationEntryPoint;
+import com.mudassirshahzad.eka.api.security.TooManyLoginAttemptsException;
 import com.mudassirshahzad.eka.application.shared.InvalidCredentialsException;
 import com.mudassirshahzad.eka.application.user.AuthenticateUserUseCase;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
@@ -26,6 +29,7 @@ import java.util.EnumSet;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -41,7 +45,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(AuthController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class, RestAuthenticationEntryPoint.class,
-        CorrelationIdFilter.class, AuthControllerTest.MeterRegistryTestConfig.class})
+        CorrelationIdFilter.class, RequestSizeLimitFilter.class,
+        AuthControllerTest.MeterRegistryTestConfig.class})
 class AuthControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -49,6 +54,7 @@ class AuthControllerTest {
     @MockitoBean private AuthenticateUserUseCase authenticateUserUseCase;
     @MockitoBean private JwtTokenProvider         jwtTokenProvider;
     @MockitoBean private JwtProperties            jwtProperties;
+    @MockitoBean private LoginRateLimiter         loginRateLimiter;
 
     @TestConfiguration
     static class MeterRegistryTestConfig {
@@ -109,5 +115,21 @@ class AuthControllerTest {
                                 {"email":"user@example.com","password":"secret"}
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    /** v0.6.1, ADR EX05: rate limiting runs before credential checks — a limited caller never
+     *  reaches {@link AuthenticateUserUseCase}. */
+    @Test
+    void login_rateLimitExceeded_returnsTooManyRequests() throws Exception {
+        doThrow(new TooManyLoginAttemptsException("Too many login attempts. Try again later."))
+                .when(loginRateLimiter).checkAllowed(any());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenantId":"%s","email":"user@example.com","password":"secret"}
+                                """.formatted(tenantId)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.status").value(429));
     }
 }

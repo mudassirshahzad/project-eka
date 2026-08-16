@@ -93,6 +93,10 @@ security:
     refresh-token-expiry-ms: ${JWT_REFRESH_EXPIRY_MS:604800000}
 
 app:
+  login-rate-limit:
+    max-attempts-per-minute: ${LOGIN_RATE_LIMIT_PER_MINUTE:10}
+  request:
+    max-body-bytes: ${MAX_REQUEST_BODY_BYTES:1048576}
   ollama:
     connect-timeout-ms: 5000
     read-timeout-ms: 60000
@@ -144,7 +148,9 @@ info:
   app:
     name: Project EKA
     description: Enterprise Knowledge Assistant — retrieval-augmented generation platform
-    version: ${app-version:0.6.0}
+    # version is deliberately absent here (v0.6.1, ADR EX03) — /actuator/info now surfaces
+    # info.build.version instead, generated from build.gradle's `version` at build time via
+    # springBoot { buildInfo() }, so there is exactly one place a release number is typed.
 
 logging:
   structured:

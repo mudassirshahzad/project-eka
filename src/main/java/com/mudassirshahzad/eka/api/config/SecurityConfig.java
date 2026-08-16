@@ -2,6 +2,7 @@ package com.mudassirshahzad.eka.api.config;
 
 import com.mudassirshahzad.eka.api.observability.CorrelationIdFilter;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationFilter;
+import com.mudassirshahzad.eka.api.security.RequestSizeLimitFilter;
 import com.mudassirshahzad.eka.api.security.RestAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -22,13 +23,21 @@ import org.springframework.security.web.session.DisableEncodeUrlFilter;
  * for authentication, so CSRF protection (which exists to protect cookie-authenticated browser
  * requests) has nothing to protect here.
  *
- * <p><b>Authorization is explicitly out of scope.</b> Every authenticated request is currently
- * permitted the same as every other, regardless of role or tenant — that is P05.3's job. This
- * class answers only "who is making this request," never "are they allowed to."
+ * <p>This class answers only "who is making this request" (authentication). Role and
+ * tenant/ownership <em>authorization</em> — "are they allowed to" — is handled elsewhere:
+ * {@link com.mudassirshahzad.eka.api.security.AuthorizationInterceptor}, a separate
+ * {@code HandlerInterceptor} registered by {@code WebMvcConfig} (P05.3, ADR AZ01), not part of
+ * this {@code SecurityFilterChain}. (v0.6.1, ADR EX07: this note previously said authorization was
+ * "explicitly out of scope" project-wide and was never updated when P05.3 shipped it — corrected
+ * here since a reader of this class alone would otherwise be told something false about the
+ * running system.)
  *
  * <p>{@link CorrelationIdFilter} runs before every other filter in this chain, including
  * {@link DisableEncodeUrlFilter} (Spring Security's own first filter) — P05.4, ADR OB03 — so that
  * even a request Spring Security itself rejects still logs and responds with a correlation ID.
+ * {@link RequestSizeLimitFilter} runs immediately after it (v0.6.1, ADR EX06) — early enough to
+ * reject an oversized body before JWT parsing or Spring MVC ever see it, late enough that the
+ * rejection response still carries a correlation ID.
  */
 @Configuration
 @EnableWebSecurity
@@ -46,6 +55,7 @@ public class SecurityConfig {
     };
 
     private final CorrelationIdFilter          correlationIdFilter;
+    private final RequestSizeLimitFilter       requestSizeLimitFilter;
     private final JwtAuthenticationFilter      jwtAuthenticationFilter;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 
@@ -59,6 +69,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(restAuthenticationEntryPoint))
                 .addFilterBefore(correlationIdFilter, DisableEncodeUrlFilter.class)
+                .addFilterAfter(requestSizeLimitFilter, CorrelationIdFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

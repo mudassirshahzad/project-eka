@@ -11,6 +11,14 @@ import java.util.Objects;
 
 public class Conversation {
 
+    /**
+     * v0.6.1, ADR EX08: previously enforced only in a REST DTO ({@code @Size}) and, separately
+     * and disconnectedly, in {@code CreateConversationUseCase} — a class the controller never
+     * actually called. Moved here so the invariant is enforced regardless of caller, the DDD
+     * "always-valid aggregate" way, with exactly one authoritative copy of the number.
+     */
+    public static final int MAX_TITLE_LENGTH = 500;
+
     private final ConversationId  id;
     private final UserId          userId;
     private final TenantId        tenantId;
@@ -21,6 +29,7 @@ public class Conversation {
     private Instant               deletedAt;
 
     public static Conversation create(UserId userId, TenantId tenantId, String title) {
+        validateTitle(title);
         Conversation c = new Conversation(ConversationId.generate(), userId, tenantId, Instant.now());
         c.title     = title;
         c.updatedAt = c.createdAt;
@@ -54,8 +63,25 @@ public class Conversation {
     }
 
     public void rename(String newTitle) {
+        validateTitle(newTitle);
         this.title     = newTitle;
         this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Deliberately not applied inside {@link #reconstitute}: reconstitution rebuilds an aggregate
+     * from data the persistence layer already accepted as valid at write time, and re-validating
+     * it against today's rule would break loading legitimately-persisted rows the moment this rule
+     * is ever tightened. Only operations that establish new business state validate.
+     */
+    private static void validateTitle(String title) {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("title must not be blank");
+        }
+        if (title.length() > MAX_TITLE_LENGTH) {
+            throw new IllegalArgumentException(
+                    "title exceeds maximum length of " + MAX_TITLE_LENGTH + " characters");
+        }
     }
 
     public void softDelete() {

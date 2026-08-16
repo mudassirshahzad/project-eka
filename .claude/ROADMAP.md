@@ -42,6 +42,8 @@ Completed
 
 **Phase 5 (Application Platform) is complete.**
 
+✅ v0.6.1 Engineering Excellence & Repository Governance (post-Phase-5, not Phase 6 — closes findings from the independent post-Phase-5 audit: CI/CD, branch protection docs, version alignment, exception handling, JWT startup validation, login rate limiting, request size limits, dead Use Case layer resolution, document-ingestion-endpoint deferral decision, application Dockerfile)
+
 Upcoming
 
 Phase 6 — not yet scoped. Awaiting explicit direction before any Phase 6 work begins.

@@ -12,7 +12,7 @@
 [![Weaviate](https://img.shields.io/badge/Weaviate-1.25-FF6D00?style=flat-square)](https://weaviate.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Apache Tika](https://img.shields.io/badge/Apache_Tika-2.9.2-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
-[![Tests](https://img.shields.io/badge/tests-606_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
+[![Tests](https://img.shields.io/badge/tests-623_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b?style=flat-square)](LICENSE)
 
 </div>
@@ -31,7 +31,7 @@
 - Hybrid Search *(v0.5.0)*
 - MCP Ready *(v0.8.0)*
 - LangGraph Ready *(v0.9.0)*
-- 606 Automated Tests, 0 failures
+- 623 Automated Tests, 0 failures
 
 ---
 
@@ -62,12 +62,13 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.6.0 — Application Platform (Phase 5, complete) |
+| **Current Release** | v0.6.1 — Engineering Excellence & Repository Governance (post-Phase-5) |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 606 passing, 0 failures · 59 test classes |
+| **Automated Tests** | 623 passing, 0 failures · 63 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
+| **CI** | GitHub Actions — build + full test suite + ArchUnit on every PR and push to `main` |
 | **Schema Migrations** | Flyway V001–V017 (17 migrations) |
-| **Current Focus** | P05.5 — Operational Hardening & Phase 5 Completion (complete) |
+| **Current Focus** | v0.6.1 — Engineering Excellence & Repository Governance (complete) |
 | **Next Milestone** | Phase 6 — not yet scoped |
 
 ---
@@ -76,7 +77,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 **Implemented — v0.4.0 (ingestion foundation)**
 
-- ✅ Multi-format document upload with format-filename consistency validation
+- ✅ Multi-format document upload with format-filename consistency validation — implemented at the application layer (`UploadDocumentUseCase`) and fully tested; **no REST endpoint exposes it yet** (`POST /api/v1/documents` does not exist — intentionally deferred, v0.6.1 ADR EX09, not an oversight). Reachable today via direct Java invocation only.
 - ✅ Apache Tika parsing with magic-byte format detection
 - ✅ Token-aware sliding window chunking with paragraph-boundary snapping
 - ✅ Batch embedding generation via Ollama (`nomic-embed-text`, 768-dim)
@@ -102,6 +103,16 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Tenant isolation and resource ownership — a conversation is reachable only by the user who created it, within its own tenant; every other case (including a different user in the *same* tenant) returns `404`, not `403`; tenant checks now cover every ownership-scoped `ConversationApplicationService` method, including the not-yet-routed `rename`/`delete` (v0.6.0)
 - ✅ Observability — `/actuator/health`+`/actuator/info` (public), `/actuator/metrics`+`/actuator/prometheus` (JWT-gated by default, or isolated onto a separate `MANAGEMENT_PORT` — v0.6.0); custom Ollama/Weaviate health checks; retrieval/generation/orchestration latency via Micrometer `Observation`; auth/authz failure counters; correlation IDs on every request; structured (ECS JSON) console logging
 - ✅ Operational hardening (v0.6.0) — short, per-step transactions through the upload pipeline instead of one long transaction; failed ingestion now marks the document `FAILED` with an error message instead of leaving it stuck mid-pipeline; bounded Ollama HTTP connect/read timeouts; infrastructure failures from retrieval consistently surface as `502`, oversized/blank queries as `400`; no default database password outside `dev`/`test`
+
+**Implemented — v0.6.1 (engineering excellence & repository governance, post-Phase-5)**
+
+- ✅ CI/CD — GitHub Actions builds, tests, and runs ArchUnit on every pull request and push to `main`; branch protection specified in [docs/governance/branch-protection.md](docs/governance/branch-protection.md)
+- ✅ Correct HTTP status codes for client mistakes — malformed JSON, a non-UUID path variable, and similar framework-level errors now return `400`, not a misleading `500`
+- ✅ JWT configuration fails fast at startup — a too-short HS256 secret or non-positive token expiry stops the application at boot, not on the first login request
+- ✅ Login rate limiting — `POST /api/v1/auth/login` is capped per source IP (10 attempts/minute by default)
+- ✅ Request size limits — oversized request bodies are rejected before they reach application code
+- ✅ Application `Dockerfile` (multi-stage, non-root) — closes the gap where only the *dependencies* (Postgres/Weaviate/Ollama) were containerized
+- ✅ Single source of truth for the release version (`build.gradle` → `/actuator/info`'s `build.version`, no more hand-maintained duplicate)
 
 **Planned — Phase 6 and beyond**
 
@@ -208,6 +219,17 @@ docker exec -it ollama ollama pull nomic-embed-text
 
 Flyway migrations run automatically on startup.
 
+**Alternative — Docker (v0.6.1):** build and run the application itself as a container (the
+three infrastructure dependencies above still need to be reachable at the URLs in
+[Configuration](#configuration)):
+
+```bash
+docker build -t project-eka .
+docker run -p 8080:8080 \
+  -e DB_PASSWORD=... -e JWT_SECRET_KEY=... \
+  project-eka
+```
+
 ### 4. Verify
 
 ```
@@ -247,8 +269,10 @@ Override via environment variables or `application.yml`:
 | `DB_URL` | `jdbc:postgresql://localhost:5432/project_eka` |
 | `DB_USERNAME` | `ka_user` |
 | `DB_PASSWORD` | — required |
-| `JWT_SECRET_KEY` | — required (no default outside `dev`/`test` profiles) |
+| `JWT_SECRET_KEY` | — required (no default outside `dev`/`test` profiles); must be ≥32 bytes (HS256) or the application refuses to start (v0.6.1, ADR EX04) |
 | `JWT_ACCESS_EXPIRY_MS` | `900000` (15 min) |
+| `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` — max `POST /api/v1/auth/login` attempts per source IP per minute (v0.6.1, ADR EX05) |
+| `MAX_REQUEST_BODY_BYTES` | `1048576` (1 MiB) — requests with a larger `Content-Length` are rejected with `413` before parsing (v0.6.1, ADR EX06) |
 | `OLLAMA_URL` | `http://localhost:11434` |
 | `OLLAMA_EMBEDDING_MODEL` | `nomic-embed-text` |
 | `OLLAMA_CHAT_MODEL` | `qwen3` |
@@ -310,6 +334,7 @@ for the authoritative, currently-maintained status of everything from v0.5.1 onw
 | v0.5.3 | Tenant & Role Authorization Boundary (P05.3) | ✅ Complete |
 | v0.5.4 | Observability Foundation (P05.4) | ✅ Complete |
 | v0.6.0 | Operational Hardening & Phase 5 Completion (P05.5) | ✅ Complete |
+| v0.6.1 | Engineering Excellence & Repository Governance (post-Phase-5 audit response) | ✅ Complete |
 | v0.7.0 | Conversational AI streaming responses | ⏳ Planned |
 | v0.8.0 | MCP Integration — knowledge base and ingestion exposed as MCP tools | ⏳ Planned |
 | v0.9.0 | LangGraph & Agentic AI — graph orchestration, self-correction, multi-agent | ⏳ Planned |

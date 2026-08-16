@@ -1,0 +1,9 @@
+.git
+.github
+.claude
+build
+docs
+docker-compose.yml
+*.md
+project-structure.txt
+.gradle

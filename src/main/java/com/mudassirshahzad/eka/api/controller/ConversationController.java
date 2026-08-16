@@ -9,6 +9,7 @@ import com.mudassirshahzad.eka.api.security.JwtAuthenticationToken;
 import com.mudassirshahzad.eka.api.security.RequireRole;
 import com.mudassirshahzad.eka.application.conversation.ConversationApplicationService;
 import com.mudassirshahzad.eka.application.conversation.CreateConversationCommand;
+import com.mudassirshahzad.eka.application.conversation.CreateConversationUseCase;
 import com.mudassirshahzad.eka.application.orchestration.RagOrchestrationService;
 import com.mudassirshahzad.eka.application.orchestration.RagTurnResult;
 import com.mudassirshahzad.eka.application.orchestration.SendMessageCommand;
@@ -45,6 +46,12 @@ import java.util.UUID;
  * {@code getConversation} carries none, since read access is open to every authenticated role and
  * is instead gated by ownership, enforced inside {@code ConversationApplicationService} (ADR TN01),
  * never here.
+ *
+ * <p>{@code createConversation} calls {@link CreateConversationUseCase}, not
+ * {@code ConversationApplicationService} directly (v0.6.1, ADR EX08) — the only mutating
+ * conversation operation with a use-case class that adds genuine value beyond its collaborator.
+ * {@code getConversation} still calls {@code ConversationApplicationService} directly: the
+ * equivalent {@code GetConversationUseCase} was removed this same milestone for adding none.
  */
 @Slf4j
 @RestController
@@ -53,6 +60,7 @@ import java.util.UUID;
 public class ConversationController {
 
     private final ConversationApplicationService conversationApplicationService;
+    private final CreateConversationUseCase       createConversationUseCase;
     private final RagOrchestrationService         ragOrchestrationService;
 
     @PostMapping
@@ -62,7 +70,7 @@ public class ConversationController {
             @Valid @RequestBody CreateConversationRequest request) {
 
         JwtAuthenticationToken principal = (JwtAuthenticationToken) authentication;
-        Conversation conversation = conversationApplicationService.createConversation(
+        Conversation conversation = createConversationUseCase.execute(
                 new CreateConversationCommand(principal.userId(), principal.tenantId(), request.title()));
 
         ConversationResponse response = ConversationResponse.from(conversation);

@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.6.0 (Complete) — Phase 5: Application Platform (Complete)
+v0.6.1 (Complete) — Engineering Excellence & Repository Governance (post-Phase-5, not Phase 6)
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -43,7 +43,30 @@ v0.6.0 (Complete) — Phase 5: Application Platform (Complete)
 
 **Grand total tests: 606 — 0 failures**
 
-**Phase 5 is complete.** No milestone is currently in progress. Phase 6 is intentionally unscoped pending explicit direction.
+**Phase 5 is complete.**
+
+---
+
+## v0.6.1 — Engineering Excellence & Repository Governance (post-Phase-5)
+
+Not a Phase 6 milestone — a read-only independent audit (conducted after v0.6.0) produced findings this milestone closes. No new business functionality or platform capability was introduced.
+
+| Item | Description | Status |
+|------|-------------|--------|
+| 1 | CI/CD Foundation (GitHub Actions: build + test + ArchUnit on PR/push) | ✅ Complete |
+| 2 | Repository Protection documentation (branch protection, not applied from code) | ✅ Complete |
+| 3 | Gradle/release/app version alignment (`springBoot { buildInfo() }`) | ✅ Complete |
+| 4 | Exception handling hardening (`GlobalExceptionHandler extends ResponseEntityExceptionHandler`) | ✅ Complete |
+| 5 | JWT startup validation (fail-fast on weak secret / bad expiry) | ✅ Complete |
+| 6 | Login rate limiting (`LoginRateLimiter`, in-memory, simple) | ✅ Complete |
+| 7 | Request size protection (`RequestSizeLimitFilter`) | ✅ Complete |
+| 8 | Dead Use Case layer resolved (Create wired + domain invariant; Get/List removed) | ✅ Complete |
+| 9 | Document ingestion REST endpoint — intentionally deferred (ADR EX09) | ✅ Decided, documented |
+| 10 | Production Dockerfile for the application | ✅ Complete (not empirically `docker build`-verified — no Docker daemon available) |
+
+**Grand total tests: 623 — 0 failures** (net +17: +21 new, −4 removed as obsolete after ADR EX08)
+
+**Phase 6 remains intentionally unscoped, pending explicit direction.**
 
 ---
 
@@ -119,6 +142,16 @@ Security layer (Authorization Filter) is planned but not implemented.
 | HD04 | `RetrievalService` rewraps infrastructure `RuntimeException`s as `RetrievalException`; `InvalidRetrievalRequestException` gets its own 400 handler ahead of the 502 `RetrievalException` handler |
 | HD05 | `DB_PASSWORD` has no base-profile default (mirrors `JWT_SECRET_KEY`, ADR A01-adjacent pattern); dev/test profiles set it explicitly; opt-in `management.server.port` allows isolating actuator endpoints without code changes |
 | HD06 | `spring-boot-starter-aop` and MapStruct dependencies removed after confirming zero usage repo-wide |
+| EX01 | GitHub Actions CI (`gradle clean build` on every PR/push to `main`); branch protection documented, not applied from code |
+| EX02 | `GlobalExceptionHandler extends ResponseEntityExceptionHandler`; framework client errors get correct 4xx, not generic 500 |
+| EX03 | Gradle `version` is the sole source of truth for the release number; `/actuator/info` surfaces `info.build.version` via `buildInfo()`, not a hand-maintained string |
+| EX04 | `JwtProperties` compact constructor validates HS256 key strength + expiry positivity at startup, not on first use |
+| EX05 | `LoginRateLimiter` — in-memory, per-IP, fixed-window (10/min default) counter guarding `/api/v1/auth/login`, checked before credential verification |
+| EX06 | `RequestSizeLimitFilter` rejects oversized request bodies (`Content-Length` check) before Spring MVC/Jackson ever see them |
+| EX07 | `SecurityConfig`'s stale "authorization out of scope" Javadoc corrected — false since P05.3 shipped `AuthorizationInterceptor` |
+| EX08 | `CreateConversationUseCase` wired to the controller + title invariant moved into `Conversation` domain aggregate; `GetConversationUseCase`/`ListConversationsUseCase` deleted (added no value) |
+| EX09 | Document ingestion REST endpoint intentionally deferred — new platform capability, out of this milestone's scope |
+| EX10 | Production `Dockerfile` for the Spring Boot app added; `docker-compose.yml` untouched (no deployment redesign) |
 
 ---
 
@@ -312,6 +345,13 @@ GeneratedResponse
 - `HttpClientTimeoutConfig` (`infrastructure.config`) registers a `RestClientCustomizer` bounding Ollama's connect/read timeouts (`app.ollama.connect-timeout-ms`/`read-timeout-ms`); no equivalent exists for Weaviate — deferred, not a code gap (P05.5, ADR HD03)
 - `RetrievalService.doRetrieve()` rewraps any infrastructure `RuntimeException` (e.g. `HybridRetrievalException`, `QueryRewriteException`, `VectorStoreException`) as `RetrievalException`, so `GlobalExceptionHandler`'s 502 mapping actually reaches them; `GlobalExceptionHandler` gained a more-specific `InvalidRetrievalRequestException` → 400 handler ahead of the 502 handler (P05.5, ADR HD04)
 - `spring.datasource.password` has no base-profile default (mirrors `JWT_SECRET_KEY`); `management.server.port` is an opt-in escape hatch for isolating actuator endpoints in a real deployment (P05.5, ADR HD05)
+- `GlobalExceptionHandler extends ResponseEntityExceptionHandler` — Spring MVC's own framework exceptions (malformed JSON, non-UUID path variables, unsupported methods) now resolve to correct 4xx `ProblemDetail` responses instead of the generic 500 fallback (v0.6.1, ADR EX02)
+- `JwtProperties`'s compact constructor validates HS256 key strength (≥32 bytes) and positive expiry at application-context startup, not on first token signed (v0.6.1, ADR EX04)
+- `LoginRateLimiter` (`api.security`) gates `AuthController.login()` — in-memory, per-IP, fixed-window (10/min default), checked before credential verification; `ProjectEkaApplication` gained `@EnableScheduling` for its periodic cleanup sweep (v0.6.1, ADR EX05)
+- `RequestSizeLimitFilter` (`api.security`), registered in `SecurityConfig` right after `CorrelationIdFilter`, rejects any request whose `Content-Length` exceeds `app.request.max-body-bytes` (default 1 MiB) before Spring MVC/Jackson ever process it (v0.6.1, ADR EX06)
+- `ConversationController.createConversation` now calls `CreateConversationUseCase`, not `ConversationApplicationService` directly; the title invariant it used to duplicate now lives in `Conversation.create`/`.rename` (domain); `GetConversationUseCase`/`ListConversationsUseCase` were deleted (v0.6.1, ADR EX08)
+- `build.gradle`'s `version` (now `0.6.1`, previously a permanent `1.0.0-SNAPSHOT` placeholder) is the sole source of truth for the release number; `springBoot { buildInfo() }` surfaces it at `/actuator/info` as `info.build.version` (v0.6.1, ADR EX03)
+- `.github/workflows/build.yml` runs `gradle clean build` (full test suite + ArchUnit) on every PR and push to `main` — the repository's first CI gate (v0.6.1, ADR EX01)
 
 ---
 
@@ -321,7 +361,9 @@ GeneratedResponse
 com.mudassirshahzad.eka
 ├── domain
 │   ├── chunk                        — ChunkId, Chunk
-│   ├── conversation                 — Message, MessageRole, Citation
+│   ├── conversation                 — Conversation (title invariant enforced in create/rename,
+│   │                                  MAX_TITLE_LENGTH=500 — v0.6.1, ADR EX08), Message, MessageRole,
+│   │                                  Citation
 │   ├── document                     — DocumentId, Document
 │   ├── generation
 │   │   ├── exception                — LlmException
@@ -340,7 +382,10 @@ com.mudassirshahzad.eka
 │   ├── retrieval                    — RetrievalRequest, RetrievalException,
 │   │                                  InvalidRetrievalRequestException, RetrievalService
 │   │                                  (wraps infra exceptions — P05.5, ADR HD04)
-│   ├── conversation                 — RenameConversationCommand now carries TenantId (P05.5, ADR HD02)
+│   ├── conversation                 — RenameConversationCommand now carries TenantId (P05.5, ADR HD02);
+│   │                                  CreateConversationUseCase now the controller's actual entry
+│   │                                  point (v0.6.1, ADR EX08); GetConversationUseCase/
+│   │                                  ListConversationsUseCase removed (added no value, ADR EX08)
 │   └── user                         — RegisterUserUseCase, GetUserUseCase, DeactivateUserUseCase,
 │                                      AuthenticateUserUseCase (P05.2, ADR A03), UserApplicationService
 ├── infrastructure
@@ -370,17 +415,24 @@ com.mudassirshahzad.eka
     │                                  correlation ID filter registration, P05.4 — ADR OB03),
     │                                  OpenApiConfig, WebMvcConfig (P05.3 — registers AuthorizationInterceptor)
     ├── controller                   — ConversationController (createConversation/sendMessage now
-    │                                  @RequireRole-annotated — P05.3, ADR AZ02), AuthController (P05.2)
+    │                                  @RequireRole-annotated — P05.3, ADR AZ02; createConversation
+    │                                  now calls CreateConversationUseCase — v0.6.1, ADR EX08),
+    │                                  AuthController (P05.2; login now rate-limited — v0.6.1, ADR EX05)
     ├── dto                          — CreateConversationRequest, SendMessageRequest (both
     │                                  identity-free — ADR A05), ConversationResponse,
     │                                  ConversationDetailResponse, MessageResponse, CitationResponse,
     │                                  GeneratedAnswerResponse, LoginRequest, LoginResponse (P05.2)
     ├── observability                — CorrelationIdFilter (P05.4, ADR OB03)
-    ├── security                     — JwtProperties, JwtTokenProvider, JwtAuthenticationToken,
+    ├── security                     — JwtProperties (startup-validates key strength/expiry — v0.6.1,
+    │                                  ADR EX04), JwtTokenProvider, JwtAuthenticationToken,
     │                                  JwtAuthenticationFilter, RestAuthenticationEntryPoint (P05.2),
-    │                                  RequireRole, AuthorizationInterceptor (P05.3, ADR AZ01)
+    │                                  RequireRole, AuthorizationInterceptor (P05.3, ADR AZ01),
+    │                                  LoginRateLimiter, TooManyLoginAttemptsException (v0.6.1, ADR EX05),
+    │                                  RequestSizeLimitFilter (v0.6.1, ADR EX06)
     └── exception                    — GlobalExceptionHandler (ADR O03; AccessDeniedException → 403, ADR AZ03;
-                                       InvalidRetrievalRequestException → 400, P05.5 ADR HD04)
+                                       InvalidRetrievalRequestException → 400, P05.5 ADR HD04; extends
+                                       ResponseEntityExceptionHandler — v0.6.1, ADR EX02;
+                                       TooManyLoginAttemptsException → 429, v0.6.1, ADR EX05)
 ```
 
 *(P04.13 correction: `ranking` and `context` were shown incorrectly/missing above — they are top-level `infrastructure` packages, not nested under `infrastructure.retrieval`.)*
@@ -425,6 +477,11 @@ Reviewed without implementing — each classified so none of these become a futu
 | No registration/admin endpoint for `application.user` | Known limitation (P05.2, still true) | Users must be seeded directly; `RegisterUserUseCase` remains unwired to REST. |
 | `/actuator/metrics`/`/actuator/prometheus` require a JWT rather than being scraped anonymously | Partially addressed (P05.5, ADR HD05) | `management.server.port` now exists as an opt-in escape hatch — setting it moves actuator onto a separate embedded connector outside this app's JWT-based `SecurityFilterChain`, the standard production pattern. Not enabled by default (deployment-topology decision, left to the operator); `/actuator/metrics`/`/actuator/prometheus` remain JWT-gated when `MANAGEMENT_PORT` is unset. |
 | Weaviate HTTP client has no configurable connect/read timeout | Deferred technical debt (P05.5, ADR HD03) | Verified via bytecode inspection of `spring-ai-autoconfigure-vector-store-weaviate-1.0.0.jar`: `WeaviateVectorStoreProperties` exposes no timeout property, and the auto-configured `WeaviateClient` bean has no `RestClientCustomizer`-equivalent hook. A fix would require overriding the auto-configured client and hand-constructing `io.weaviate.client.Config` — genuine architectural expansion, out of this milestone's "document, don't expand" scope. Revisit as a Phase 6 candidate. |
+| No REST endpoint for document ingestion (`POST /api/v1/documents` does not exist) | **Deferred, intentionally (v0.6.1, ADR EX09)** | `UploadDocumentUseCase` and the full ingestion pipeline are reachable only via direct Java invocation. Identified by the independent post-Phase-5 audit (finding H2); adding a REST endpoint is new platform capability, explicitly out of scope for an engineering-excellence milestone. Revisit as a Phase 6 candidate. `README.md` corrected in the meantime to not claim unqualified "✅ Implemented" without this caveat. |
+| `DeleteConversationUseCase` has no REST route | Known limitation, reconfirmed (v0.6.1, ADR EX08) | Correctly designed (its active-chat-session guard is genuine business logic), still unreached — adding a `DELETE` route is new capability, out of this milestone's scope for the same reason as the item above. |
+| Docker image (new `Dockerfile`, v0.6.1 ADR EX10) not empirically build-verified | Known gap, disclosed | No Docker daemon was available in the implementing environment; the Dockerfile was verified by careful reading against known-correct multi-stage Spring Boot patterns, not by an actual `docker build`. Whoever next has Docker available should confirm it builds and starts before relying on it in a real deployment. |
+| No dependency vulnerability scanning (SCA) in CI | Not addressed this milestone | `.github/workflows/build.yml` (v0.6.1, ADR EX01) runs build/test/ArchUnit only; adding Dependabot/OWASP Dependency-Check was not in this milestone's numbered scope. Reasonable next CI addition. |
+| No rate limiting beyond login; no distributed rate-limit store | Accepted limitation (v0.6.1, ADR EX05) | `LoginRateLimiter` is deliberately per-instance/in-memory — correct for the current single-instance deployment (`docker-compose.yml` defines no load balancer or replica count). Revisit with a shared store only if a multi-instance deployment shape is actually adopted. |
 
 ---
 
@@ -435,6 +492,8 @@ Gradle 8.12 — no `gradlew` wrapper present.
 Binary: `~/.gradle/wrapper/dists/gradle-8.12-bin/cetblhg4pflnnks72fxwobvgv/gradle-8.12/bin/gradle`
 
 Java 21. `--enable-preview` removed in P04.13 (ADR R05) — no preview language feature was ever used.
+
+CI (`.github/workflows/build.yml`, v0.6.1 ADR EX01) provisions the same Gradle 8.12 via `gradle/actions/setup-gradle` rather than a committed wrapper, matching this local-dev convention rather than diverging from it.
 
 ---
 

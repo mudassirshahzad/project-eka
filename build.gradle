@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.mudassirshahzad'
-version = '1.0.0-SNAPSHOT'
+version = '0.6.1'
 
 java {
     toolchain {
@@ -81,4 +81,14 @@ dependencies {
 // ── Tests ──────────────────────────────────────────────────────────────────
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+}
+
+// ── Build info (v0.6.1, ADR EX03) ───────────────────────────────────────────
+// Generates META-INF/build-info.properties from `version` above; Spring Boot's
+// actuator auto-exposes it as `info.build.version` on /actuator/info with zero
+// manual sync. `project.version` is the single source of truth going forward —
+// see docs/governance and .claude/DECISIONS.md ADR EX03 for the release/tag
+// alignment this is expected to keep in step with.
+springBoot {
+    buildInfo()
 }

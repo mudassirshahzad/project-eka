@@ -7,8 +7,10 @@ import com.mudassirshahzad.eka.api.security.AuthorizationInterceptor;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationFilter;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationToken;
 import com.mudassirshahzad.eka.api.security.JwtTokenProvider;
+import com.mudassirshahzad.eka.api.security.RequestSizeLimitFilter;
 import com.mudassirshahzad.eka.api.security.RestAuthenticationEntryPoint;
 import com.mudassirshahzad.eka.application.conversation.ConversationApplicationService;
+import com.mudassirshahzad.eka.application.conversation.CreateConversationUseCase;
 import com.mudassirshahzad.eka.application.generation.GenerationException;
 import com.mudassirshahzad.eka.application.orchestration.RagOrchestrationService;
 import com.mudassirshahzad.eka.application.orchestration.RagTurnResult;
@@ -64,12 +66,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(ConversationController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class, RestAuthenticationEntryPoint.class,
         WebMvcConfig.class, AuthorizationInterceptor.class, CorrelationIdFilter.class,
-        ConversationControllerTest.MeterRegistryTestConfig.class})
+        RequestSizeLimitFilter.class, ConversationControllerTest.MeterRegistryTestConfig.class})
 class ConversationControllerTest {
 
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private ConversationApplicationService conversationApplicationService;
+    @MockitoBean private CreateConversationUseCase       createConversationUseCase;
     @MockitoBean private RagOrchestrationService         ragOrchestrationService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
 
@@ -99,7 +102,7 @@ class ConversationControllerTest {
     @Test
     void createConversation_returnsCreatedWithLocationAndBody() throws Exception {
         Conversation conversation = Conversation.create(UserId.of(userId), TenantId.of(tenantId), "My chat");
-        when(conversationApplicationService.createConversation(any())).thenReturn(conversation);
+        when(createConversationUseCase.execute(any())).thenReturn(conversation);
 
         mockMvc.perform(post("/api/v1/conversations")
                         .with(authenticated())
@@ -149,7 +152,7 @@ class ConversationControllerTest {
     @Test
     void createConversation_adminRole_isPermitted() throws Exception {
         Conversation conversation = Conversation.create(UserId.of(userId), TenantId.of(tenantId), "My chat");
-        when(conversationApplicationService.createConversation(any())).thenReturn(conversation);
+        when(createConversationUseCase.execute(any())).thenReturn(conversation);
 
         mockMvc.perform(post("/api/v1/conversations")
                         .with(authenticatedAs("ROLE_ADMIN"))
@@ -162,7 +165,7 @@ class ConversationControllerTest {
 
     @Test
     void createConversation_duplicateResource_returnsConflict() throws Exception {
-        when(conversationApplicationService.createConversation(any()))
+        when(createConversationUseCase.execute(any()))
                 .thenThrow(new DuplicateResourceException("Conversation already exists"));
 
         mockMvc.perform(post("/api/v1/conversations")
@@ -231,6 +234,22 @@ class ConversationControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * v0.6.1, ADR EX02: before {@code GlobalExceptionHandler} extended
+     * {@code ResponseEntityExceptionHandler}, a non-UUID path segment threw
+     * {@code MethodArgumentTypeMismatchException}, which fell through to the generic
+     * {@code Exception.class} handler and returned 500 — a client mistake misreported as a server
+     * failure. This proves it now resolves to 400 with a {@code ProblemDetail} body, never
+     * reaching the application layer at all.
+     */
+    @Test
+    void getConversation_nonUuidPathVariable_returnsBadRequestNotServerError() throws Exception {
+        mockMvc.perform(get("/api/v1/conversations/{id}", "not-a-uuid")
+                        .with(authenticated()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
     // ── POST /conversations/{id}/messages ─────────────────────────────────────
 
     @Test
@@ -264,6 +283,20 @@ class ConversationControllerTest {
                                 {"content":""}
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * v0.6.1, ADR EX02: malformed JSON threw {@code HttpMessageNotReadableException}, previously
+     * misreported as 500 by the generic {@code Exception.class} handler.
+     */
+    @Test
+    void sendMessage_malformedJsonBody_returnsBadRequestNotServerError() throws Exception {
+        mockMvc.perform(post("/api/v1/conversations/{id}/messages", UUID.randomUUID())
+                        .with(authenticated())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\": not valid json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test
