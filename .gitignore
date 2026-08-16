@@ -68,10 +68,13 @@ docker-compose.local.yml
 .docker/
 
 # ── Local Uploads & Document Storage ─────────────────────────────────────────
-uploads/
-documents/
-data/
-storage/
+# Anchored to repo root (leading /) — the unanchored `storage/` previously also matched
+# src/main/java/.../infrastructure/storage/, silently excluding LocalFileStorageAdapter.java
+# and FileStorageException.java from git entirely (never committed, in any prior release).
+/uploads/
+/documents/
+/data/
+/storage/
 /tmp/
 
 # ── IntelliJ IDEA ────────────────────────────────────────────────────────────
