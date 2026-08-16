@@ -70,6 +70,81 @@ Not a Phase 6 milestone — a read-only independent audit (conducted after v0.6.
 
 ---
 
+## Milestone Governance (GitHub)
+
+GitHub Milestones were formally introduced as a repository governance mechanism after v0.6.1 (ADR GOV01). This section is the authoritative record of the milestone model — keep it in sync whenever a milestone opens, closes, or work moves between milestones.
+
+### Model
+
+- **GitHub Releases** remain the historical record of shipped work — one release per tag, matching `CHANGELOG.md`. Releases are never retroactively edited.
+- **GitHub Milestones** represent active or major delivery goals, not a parallel history — they track what's still ahead (with one intentional exception below), not a re-statement of what Releases already record.
+- **Phase milestones** (e.g. `Phase 6`) represent implementation milestones — a body of engineering work, scoped the way the P0x.y milestones above already are.
+- **Version milestones** (e.g. `Version 1.0.0`) represent product-release milestones — everything required before a specific version number can ship, which may span more than one phase milestone.
+
+### Current milestone state
+
+| Milestone | State | Scope |
+|---|---|---|
+| Enterprise Foundation Complete | Closed | Everything through v0.6.1 (Foundation → Phase 5 → Engineering Excellence & Repository Governance). The one intentionally-preserved retrospective milestone — see below. |
+| Phase 6 | Open | Tracks all Phase 6 implementation work. Scope not yet defined. |
+| Version 1.0.0 | Open | Tracks every remaining deliverable required before Project EKA is declared stable/production-ready. |
+
+### Retrospective milestones — one exception, not a pattern
+
+`Enterprise Foundation Complete` is deliberately the **only** retrospective milestone this repository will ever create. Historical phases (P04.x, P05.x) are represented by Git tags and GitHub Releases, not by creating a milestone for each one after the fact — Releases already are the historical record (see Model above); a per-phase milestone would just be a second copy of that same history. Do not create a "Phase 4 Complete" or "Phase 5 Complete" milestone retroactively — that history lives in `CHANGELOG.md` and the corresponding GitHub Releases.
+
+### Release Workflow (canonical, ADR GOV02)
+
+This is the standard sequence for every future milestone/release — the actual engineering process this repository follows, not an aspirational one:
+
+1. Code complete
+2. Self review
+3. Architecture review (when applicable)
+4. Documentation synchronization
+5. Version alignment
+6. Commit
+7. Push
+8. CI passing (mandatory)
+9. Git tag creation
+10. GitHub Release publication
+11. GitHub Milestone review — close completed milestones, move unfinished work if necessary
+12. Repository state verification
+
+Steps run in this order because each depends on the one before it: there is no point tagging (9) before CI is green (8), no point creating a release (10) from an untagged commit, and no point reviewing milestones (11) before the release that closes them actually exists. "Repository state verification" (12) is the final step, not a formality — confirm the working tree is clean and everything pushed matches everything tagged/released before calling the milestone done.
+
+### Repository Completion Checklist (permanent)
+
+Every future milestone's completion must satisfy all of the following before it's considered done:
+
+- ☐ Working tree clean
+- ☐ Self review complete
+- ☐ Architecture review complete (when applicable)
+- ☐ Documentation synchronized
+- ☐ ADRs updated (if required)
+- ☐ `CHANGELOG.md` updated
+- ☐ `PROJECT_STATE.md` updated
+- ☐ `ROADMAP.md` updated
+- ☐ Version numbers synchronized (`build.gradle`, tag, release, `CHANGELOG.md` all agree)
+- ☐ Commit created
+- ☐ Push successful
+- ☐ CI passing
+- ☐ Git tag created
+- ☐ GitHub Release published
+- ☐ GitHub Milestone reviewed
+- ☐ Repository state verified
+
+If a milestone is complete: close it. If work doesn't land in time: move the remaining scope to the next open milestone explicitly — don't leave a milestone open indefinitely with stale, half-finished scope.
+
+### Lightweight milestone rules
+
+- One milestone per major implementation phase.
+- One milestone per major product version, when a version genuinely spans more than one phase.
+- No retrospective milestones beyond the one exception above.
+- Once this repository begins using GitHub Issues, Issues become the primary objects attached to milestones — until then, milestones function as governance and release checkpoints rather than issue containers (today: 0 issues attached to any milestone, by design, not oversight).
+- Keep this proportional: no GitHub Projects board, no Issue Templates, no custom Labels until Issues actually become the primary work-tracking mechanism — introducing them earlier would be bureaucracy without anything real to track.
+
+---
+
 ## Architecture Notes
 
 Architecture is frozen.

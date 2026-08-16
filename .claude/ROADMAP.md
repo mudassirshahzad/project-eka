@@ -46,7 +46,7 @@ Completed
 
 Upcoming
 
-Phase 6 — not yet scoped. Awaiting explicit direction before any Phase 6 work begins.
+Phase 6 — not yet scoped. Awaiting explicit direction before any Phase 6 work begins. Tracked at the repository-governance level by the open GitHub Milestone "Phase 6"; see `.claude/PROJECT_STATE.md`'s "Milestone Governance" section for the full model (GitHub Milestones "Phase 6" and "Version 1.0.0" are open; "Enterprise Foundation Complete" is closed and covers everything above through v0.6.1).
 
 Future
 

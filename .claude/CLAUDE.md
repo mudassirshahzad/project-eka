@@ -97,6 +97,16 @@ Every milestone must update:
 
 ---
 
+## Release & Milestone Governance
+
+Every milestone/release follows the canonical Release Workflow (ADR GOV02, full detail in `.claude/PROJECT_STATE.md`'s "Milestone Governance" section):
+
+1. Code complete → 2. Self review → 3. Architecture review (when applicable) → 4. Documentation synchronization → 5. Version alignment → 6. Commit → 7. Push → 8. CI passing (mandatory) → 9. Git tag creation → 10. GitHub Release publication → 11. GitHub Milestone review (close completed milestones; move unfinished work if necessary) → 12. Repository state verification
+
+Never skip ahead (no tagging before CI is green, no release before a tag exists, no milestone review before the release that closes it exists). Never leave a completed milestone open, and never leave the repository state unverified at the end. Use `.claude/PROJECT_STATE.md`'s Repository Completion Checklist as the concrete, per-item gate before calling any milestone done.
+
+---
+
 ## Prompt Style
 
 Whenever implementing a milestone, always provide:
