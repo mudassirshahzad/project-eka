@@ -1,6 +1,7 @@
 package com.mudassirshahzad.eka.api.exception;
 
 import com.mudassirshahzad.eka.application.generation.GenerationException;
+import com.mudassirshahzad.eka.application.retrieval.InvalidRetrievalRequestException;
 import com.mudassirshahzad.eka.application.retrieval.RetrievalException;
 import com.mudassirshahzad.eka.application.shared.DuplicateResourceException;
 import com.mudassirshahzad.eka.application.shared.InvalidCredentialsException;
@@ -63,6 +64,17 @@ public class GlobalExceptionHandler {
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+    }
+
+    /**
+     * More specific than — and therefore dispatched ahead of — {@link #handleUpstreamFailure}
+     * below, even though {@link InvalidRetrievalRequestException} extends {@link RetrievalException}
+     * (P05.5, ADR HD04). A too-long or blank query is the caller's mistake, not an upstream
+     * failure; before this handler existed it was misreported as a 502.
+     */
+    @ExceptionHandler(InvalidRetrievalRequestException.class)
+    public ProblemDetail handleInvalidRetrievalRequest(InvalidRetrievalRequestException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler({GenerationException.class, RetrievalException.class, LlmException.class})

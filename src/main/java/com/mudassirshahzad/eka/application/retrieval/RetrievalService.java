@@ -17,6 +17,15 @@ import java.util.Objects;
  * {@code retrieve()} runs inside an {@code eka.retrieval} {@link Observation} (P05.4, ADR OB02) —
  * a Micrometer timer today, and trace-ready with zero code changes the moment distributed tracing
  * (out of this milestone's scope) is added.
+ *
+ * <p>Failures from {@link QueryRewritePort} and {@link RetrievalPort} — e.g. Weaviate/Postgres
+ * being unreachable — are caught and rewrapped as {@link RetrievalException} (P05.5, ADR HD04),
+ * so {@code GlobalExceptionHandler}'s existing 502 mapping actually applies to them. Without this,
+ * an infrastructure-level exception type (e.g. {@code HybridRetrievalException}, which extends
+ * plain {@code RuntimeException}, not {@code RetrievalException}) would fall through to the
+ * generic 500 handler instead — a genuine upstream failure misreported as an unexplained server
+ * error. {@link InvalidRetrievalRequestException} (already a {@code RetrievalException}) is
+ * rethrown unchanged — it is a 400-shaped client error, not an upstream failure.
  */
 @Slf4j
 @Service
@@ -52,22 +61,28 @@ public class RetrievalService {
         RetrievalOptions options       = request.options() != null ? request.options() : RetrievalOptions.DEFAULT;
         MetadataFilter   filter        = request.filter()  != null ? request.filter()  : MetadataFilter.NONE;
 
-        String effectiveQuery = queryRewritePort.rewrite(originalQuery, request.tenantId());
+        try {
+            String effectiveQuery = queryRewritePort.rewrite(originalQuery, request.tenantId());
 
-        log.debug("Retrieving: tenant={} topK={} queryLength={} rewritten={}",
-                request.tenantId(), options.topK(), originalQuery.length(),
-                !effectiveQuery.equals(originalQuery));
+            log.debug("Retrieving: tenant={} topK={} queryLength={} rewritten={}",
+                    request.tenantId(), options.topK(), originalQuery.length(),
+                    !effectiveQuery.equals(originalQuery));
 
-        RetrievalResult raw = retrievalPort.retrieve(effectiveQuery, request.tenantId(), filter, options);
+            RetrievalResult raw = retrievalPort.retrieve(effectiveQuery, request.tenantId(), filter, options);
 
-        RetrievalResult result = raw.hasResults()
-                ? new RetrievalResult(rankingPort.rank(raw.items(), effectiveQuery), raw.metadata(), effectiveQuery)
-                : raw;
+            RetrievalResult result = raw.hasResults()
+                    ? new RetrievalResult(rankingPort.rank(raw.items(), effectiveQuery), raw.metadata(), effectiveQuery)
+                    : raw;
 
-        log.debug("Retrieval complete: tenant={} hits={} latencyMs={}",
-                request.tenantId(), result.metadata().totalHits(), result.metadata().latencyMs());
+            log.debug("Retrieval complete: tenant={} hits={} latencyMs={}",
+                    request.tenantId(), result.metadata().totalHits(), result.metadata().latencyMs());
 
-        return result;
+            return result;
+        } catch (RetrievalException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            throw new RetrievalException("Retrieval failed: " + ex.getMessage(), ex);
+        }
     }
 
     private void validate(RetrievalRequest request) {

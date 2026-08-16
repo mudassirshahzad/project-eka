@@ -1,3 +1,6 @@
+server:
+  port: ${SERVER_PORT:8080}
+
 spring:
   application:
     name: project-eka
@@ -5,7 +8,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/project_eka}
     username: ${DB_USERNAME:ka_user}
-    password: ${DB_PASSWORD:ka_pass}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: KaHikariPool
@@ -90,6 +93,9 @@ security:
     refresh-token-expiry-ms: ${JWT_REFRESH_EXPIRY_MS:604800000}
 
 app:
+  ollama:
+    connect-timeout-ms: 5000
+    read-timeout-ms: 60000
   ingestion:
     chunk-size: 512
     chunk-overlap: 64
@@ -112,6 +118,8 @@ app:
     document-root: ${DOCUMENT_STORAGE_ROOT:/data/documents}
 
 management:
+  server:
+    port: ${MANAGEMENT_PORT:${server.port}}
   endpoints:
     web:
       exposure:
@@ -136,7 +144,7 @@ info:
   app:
     name: Project EKA
     description: Enterprise Knowledge Assistant — retrieval-augmented generation platform
-    version: ${app-version:0.5.4}
+    version: ${app-version:0.6.0}
 
 logging:
   structured:
@@ -152,6 +160,8 @@ spring:
   config:
     activate:
       on-profile: dev
+  datasource:
+    password: ka_pass
   jpa:
     show-sql: true
   ai:
@@ -174,6 +184,7 @@ spring:
       on-profile: test
   datasource:
     url: jdbc:tc:postgresql:16:///project_eka_test
+    password: test
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
 
 security:

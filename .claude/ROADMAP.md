@@ -38,9 +38,13 @@ Completed
 
 ✅ P05.4 Observability Foundation
 
+✅ P05.5 Operational Hardening & Phase 5 Completion
+
+**Phase 5 (Application Platform) is complete.**
+
 Upcoming
 
-P05.5 Operational Hardening & Phase 5 Completion
+Phase 6 — not yet scoped. Awaiting explicit direction before any Phase 6 work begins.
 
 Future
 

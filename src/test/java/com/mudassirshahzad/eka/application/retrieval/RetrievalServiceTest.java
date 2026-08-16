@@ -279,6 +279,29 @@ class RetrievalServiceTest {
         verify(queryRewritePort).rewrite(anyString(), eq(tenantId));
     }
 
+    // ── Exception consistency (P05.5, ADR HD04) ─────────────────────────────────
+
+    @Test
+    void retrieve_infrastructureExceptionFromRetrievalPort_isWrappedAsRetrievalException() {
+        var request = new RetrievalRequest("query", tenantId, userId, MetadataFilter.NONE, RetrievalOptions.DEFAULT);
+        lenient().when(queryRewritePort.rewrite(anyString(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(retrievalPort.retrieve(any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Weaviate connection refused"));
+
+        assertThatExceptionOfType(RetrievalException.class)
+                .isThrownBy(() -> service.retrieve(request))
+                .withCauseInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void retrieve_infrastructureExceptionFromQueryRewritePort_isWrappedAsRetrievalException() {
+        var request = new RetrievalRequest("query", tenantId, userId, MetadataFilter.NONE, RetrievalOptions.DEFAULT);
+        when(queryRewritePort.rewrite(anyString(), any())).thenThrow(new RuntimeException("Ollama unreachable"));
+
+        assertThatExceptionOfType(RetrievalException.class)
+                .isThrownBy(() -> service.retrieve(request));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private RetrievedChunk sampleChunk(int rank) {

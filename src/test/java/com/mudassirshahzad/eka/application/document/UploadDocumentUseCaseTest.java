@@ -10,6 +10,7 @@ import com.mudassirshahzad.eka.domain.document.Document;
 import com.mudassirshahzad.eka.domain.document.DocumentId;
 import com.mudassirshahzad.eka.domain.document.DocumentMetadata;
 import com.mudassirshahzad.eka.domain.document.DocumentParser;
+import com.mudassirshahzad.eka.domain.document.DocumentStatus;
 import com.mudassirshahzad.eka.domain.document.FileStorage;
 import com.mudassirshahzad.eka.domain.document.ParsedDocument;
 import com.mudassirshahzad.eka.domain.document.ParsedMetadata;
@@ -217,5 +218,68 @@ class UploadDocumentUseCaseTest {
         verify(chunkingService, never()).chunk(any(), any(), any());
         verify(embeddingService, never()).embed(anyList());
         verify(documentIndexingService, never()).index(anyList());
+    }
+
+    /**
+     * P05.5 (ADR HD01): a mid-pipeline failure must leave the document visibly {@code FAILED} in
+     * the database, not silently stuck in whatever PENDING/PARSING/CHUNKING/EMBEDDING status it
+     * last reached — the previous behavior, before {@code Document.markFailed} was ever called.
+     */
+    @Test
+    void execute_onFailure_marksDocumentFailedWithErrorMessage_andStillRethrows() {
+        var cmd = new UploadDocumentCommand(
+                tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata, content);
+        Document registered = Document.create(tenantId, ownerId, "file.pdf", SupportedFormat.PDF, metadata);
+
+        when(documentService.registerDocument(any())).thenReturn(registered);
+        when(documentParser.parse(any(), any())).thenThrow(new RuntimeException("parse error"));
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> useCase.execute(cmd))
+                .withMessage("parse error");
+
+        ArgumentCaptor<Document> savedCaptor = ArgumentCaptor.forClass(Document.class);
+        verify(documentService).updateDocument(savedCaptor.capture());
+        Document saved = savedCaptor.getValue();
+        assertThat(saved.getStatus()).isEqualTo(DocumentStatus.FAILED);
+        assertThat(saved.getIngestionError()).isEqualTo("parse error");
+    }
+
+    @Test
+    void execute_successfulPipeline_neverMarksDocumentFailed() {
+        var cmd = new UploadDocumentCommand(
+                tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata, content);
+
+        Document registered = Document.create(tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata);
+        Document updated    = Document.create(tenantId, ownerId, "report.pdf", SupportedFormat.PDF, metadata);
+        ParsedDocument parsed = new ParsedDocument(
+                "extracted text",
+                new ParsedMetadata("Doc Title", null, null, 1, 13),
+                SupportedFormat.PDF, ParsingStatus.SUCCESS, Instant.now());
+
+        Chunk chunk = Chunk.create(
+                registered.getId(), tenantId, 0, "extracted text", ChunkMetadata.of("sliding-window"));
+        chunk.assignEmbeddingProvenance("nomic-embed-text", 768, Instant.now());
+        EmbeddedChunk embeddedChunk = new EmbeddedChunk(chunk, new float[768]);
+
+        when(documentService.registerDocument(any(RegisterDocumentCommand.class))).thenReturn(registered);
+        when(documentParser.parse(content, SupportedFormat.PDF)).thenReturn(parsed);
+        when(fileStorage.store(anyString(), any(byte[].class))).thenAnswer(inv -> inv.getArgument(0));
+        when(chunkingService.chunk(any(), any(DocumentId.class), any(TenantId.class)))
+                .thenReturn(List.of(chunk));
+        when(embeddingService.embed(anyList())).thenReturn(List.of(embeddedChunk));
+        when(chunkApplicationService.saveAll(anyList())).thenReturn(List.of(embeddedChunk));
+        doAnswer(inv -> {
+            List<EmbeddedChunk> embedded = inv.getArgument(0);
+            embedded.forEach(ec -> ec.chunk().assignVectorId(UUID.randomUUID().toString()));
+            return embedded.stream().map(EmbeddedChunk::chunk).toList();
+        }).when(documentIndexingService).index(anyList());
+        when(documentService.updateDocument(any(Document.class))).thenReturn(updated);
+
+        useCase.execute(cmd);
+
+        ArgumentCaptor<Document> savedCaptor = ArgumentCaptor.forClass(Document.class);
+        verify(documentService, times(1)).updateDocument(savedCaptor.capture());
+        assertThat(savedCaptor.getValue().getStatus()).isEqualTo(DocumentStatus.INDEXED);
     }
 }

@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.5.4 (In Progress) — Phase 5: Application Platform
+v0.6.0 (Complete) — Phase 5: Application Platform (Complete)
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -39,14 +39,11 @@ v0.5.4 (In Progress) — Phase 5: Application Platform
 | P05.2     | Authentication Foundation                       | +21       | ✅ Complete |
 | P05.3     | Tenant & Role Authorization Boundary            | +22       | ✅ Complete |
 | P05.4     | Observability Foundation                        | +20       | ✅ Complete |
+| P05.5     | Operational Hardening & Phase 5 Completion       | +13       | ✅ Complete |
 
-**Grand total tests: 593 — 0 failures**
+**Grand total tests: 606 — 0 failures**
 
----
-
-## Current Milestone
-
-**P05.5 — Operational Hardening & Phase 5 Completion** ← next to implement
+**Phase 5 is complete.** No milestone is currently in progress. Phase 6 is intentionally unscoped pending explicit direction.
 
 ---
 
@@ -116,6 +113,12 @@ Security layer (Authorization Filter) is planned but not implemented.
 | OB03 | `CorrelationIdFilter` registered before Spring Security's own first filter; MDC-propagated; echoed via response header only |
 | OB04 | Structured logging via Spring Boot native `logging.structured.format.console: ecs`; no new logging library |
 | OB05 | `OllamaHealthIndicator`/`WeaviateHealthIndicator` excluded from `test` profile via `@Profile("!test")`, not an enabled-toggle; in the `readiness` group, not `liveness` |
+| HD01 | `UploadDocumentUseCase` is no longer class-level `@Transactional`; each collaborator service keeps its own short transaction; failures call the pre-existing `Document.markFailed(String)` |
+| HD02 | `renameConversation`/`deleteConversation` extended with the ADR TN01 tenant check, closing the gap ADR TN01/OW01 explicitly deferred |
+| HD03 | Ollama HTTP calls get a `RestClientCustomizer`-based connect/read timeout; Weaviate client timeouts have no configuration surface in Spring AI 1.0.0 and are documented as deferred, not implemented |
+| HD04 | `RetrievalService` rewraps infrastructure `RuntimeException`s as `RetrievalException`; `InvalidRetrievalRequestException` gets its own 400 handler ahead of the 502 `RetrievalException` handler |
+| HD05 | `DB_PASSWORD` has no base-profile default (mirrors `JWT_SECRET_KEY`, ADR A01-adjacent pattern); dev/test profiles set it explicitly; opt-in `management.server.port` allows isolating actuator endpoints without code changes |
+| HD06 | `spring-boot-starter-aop` and MapStruct dependencies removed after confirming zero usage repo-wide |
 
 ---
 
@@ -304,6 +307,11 @@ GeneratedResponse
 - `OllamaHealthIndicator`/`WeaviateHealthIndicator` (`infrastructure.observability`) are the sole custom `/actuator/health` contributors beyond Spring Boot's default DB indicator; both `@Profile("!test")`, both in the `readiness` health group (P05.4, ADR OB05)
 - `RetrievalService`/`GenerationService`/`RagOrchestrationService` each wrap their existing body in a Micrometer `Observation` (`eka.retrieval`/`eka.generation`/`eka.orchestration`) — a timer today, trace-ready with no further changes (P05.4, ADR OB02)
 - `JwtAuthenticationFilter`/`AuthenticateUserUseCase` increment `eka.auth.failures`; `AuthorizationInterceptor`/`ConversationApplicationService` increment `eka.authz.failures` — both `MeterRegistry`-based, no metric ever tagged by a raw tenant/user/conversation ID (P05.4, ADR OB02)
+- `UploadDocumentUseCase` no longer carries a class-level `@Transactional`; `DocumentApplicationService`/`ChunkApplicationService` each keep their own, giving the pipeline short per-step transactions instead of one long one spanning Tika/Ollama/Weaviate calls; pipeline failures now call `Document.markFailed(...)` (P05.5, ADR HD01)
+- `ConversationApplicationService.renameConversation`/`.deleteConversation` now call `requireTenantMatch` identically to the three previously-checked methods — every ownership-scoped method in this service is now tenant-checked (P05.5, ADR HD02)
+- `HttpClientTimeoutConfig` (`infrastructure.config`) registers a `RestClientCustomizer` bounding Ollama's connect/read timeouts (`app.ollama.connect-timeout-ms`/`read-timeout-ms`); no equivalent exists for Weaviate — deferred, not a code gap (P05.5, ADR HD03)
+- `RetrievalService.doRetrieve()` rewraps any infrastructure `RuntimeException` (e.g. `HybridRetrievalException`, `QueryRewriteException`, `VectorStoreException`) as `RetrievalException`, so `GlobalExceptionHandler`'s 502 mapping actually reaches them; `GlobalExceptionHandler` gained a more-specific `InvalidRetrievalRequestException` → 400 handler ahead of the 502 handler (P05.5, ADR HD04)
+- `spring.datasource.password` has no base-profile default (mirrors `JWT_SECRET_KEY`); `management.server.port` is an opt-in escape hatch for isolating actuator endpoints in a real deployment (P05.5, ADR HD05)
 
 ---
 
@@ -331,11 +339,16 @@ com.mudassirshahzad.eka
 │   ├── orchestration                — SendMessageCommand, RagTurnResult, RagOrchestrationService (P05.1)
 │   ├── retrieval                    — RetrievalRequest, RetrievalException,
 │   │                                  InvalidRetrievalRequestException, RetrievalService
+│   │                                  (wraps infra exceptions — P05.5, ADR HD04)
+│   ├── conversation                 — RenameConversationCommand now carries TenantId (P05.5, ADR HD02)
 │   └── user                         — RegisterUserUseCase, GetUserUseCase, DeactivateUserUseCase,
 │                                      AuthenticateUserUseCase (P05.2, ADR A03), UserApplicationService
 ├── infrastructure
 │   ├── citation                     — PositionalCitationAdapter
 │   ├── context                      — DefaultContextAssemblyAdapter
+│   ├── config                       — DatabaseConfig, AsyncConfig, AppProperties,
+│   │                                  PasswordEncoderConfig (P05.2),
+│   │                                  HttpClientTimeoutConfig (P05.5, ADR HD03)
 │   ├── conversation                 — PersistentConversationHistoryAdapter
 │   ├── guardrails                   — PolicyBasedOutputGuardrailsAdapter
 │   ├── llm
@@ -366,7 +379,8 @@ com.mudassirshahzad.eka
     ├── security                     — JwtProperties, JwtTokenProvider, JwtAuthenticationToken,
     │                                  JwtAuthenticationFilter, RestAuthenticationEntryPoint (P05.2),
     │                                  RequireRole, AuthorizationInterceptor (P05.3, ADR AZ01)
-    └── exception                    — GlobalExceptionHandler (ADR O03; AccessDeniedException → 403, ADR AZ03)
+    └── exception                    — GlobalExceptionHandler (ADR O03; AccessDeniedException → 403, ADR AZ03;
+                                       InvalidRetrievalRequestException → 400, P05.5 ADR HD04)
 ```
 
 *(P04.13 correction: `ranking` and `context` were shown incorrectly/missing above — they are top-level `infrastructure` packages, not nested under `infrastructure.retrieval`.)*
@@ -394,6 +408,8 @@ This file's Milestone/ADR tracking above covers the **retrieval/generation pipel
 
 **Update (P05.3):** `ConversationApplicationService.getConversation`/`.addUserMessage`/`.addAssistantMessage` (the three REST-reachable methods) now take and verify `TenantId` (ADR TN01). `.renameConversation` and `.deleteConversation` — still unreached by any endpoint (no rename/delete route exists) — were deliberately **not** given the same check; see Deferred Items below.
 
+**Update (P05.5):** `.renameConversation` and `.deleteConversation` now take and verify `TenantId` as well (ADR HD02) — every ownership-scoped method on `ConversationApplicationService` is tenant-checked, closing the P05.3 gap noted above. Both remain unreached by any REST endpoint; the fix was made ahead of a route existing, not in response to one.
+
 ### Deferred Items (P04.13.8)
 
 Reviewed without implementing — each classified so none of these become a future undocumented surprise:
@@ -403,11 +419,12 @@ Reviewed without implementing — each classified so none of these become a futu
 | Domain event system (17 events, zero `@EventListener` consumers) | Future roadmap | Not broken — built ahead of its consumers. Revisit when an analytics/audit/notification feature needs it. |
 | `application.chat` (ChatSession) not wired to `application.generation` | Future roadmap (P04.14 — End-to-End RAG) | `RecordTurnCommand` is designed to receive exactly what `LlmResponse` already produces; natural fit for the next milestone, not this one. |
 | `application.query` (KnowledgeQuery) not wired to `application.retrieval` | Future roadmap (P04.14 — End-to-End RAG) | Same reasoning — audit/tracking layer built ahead of the entry point that would call it. |
-| `UploadDocumentUseCase`'s `@Transactional` spanning Tika/Ollama/Weaviate calls | Genuine technical debt | Real connection-pool-exhaustion and dual-write risk; not urgent (ingestion has no external caller yet) but should be fixed before ingestion is load-bearing. |
+| `UploadDocumentUseCase`'s `@Transactional` spanning Tika/Ollama/Weaviate calls | **CLOSED (P05.5, ADR HD01)** | Class-level `@Transactional` removed; each collaborator service keeps its own short transaction. Failures now call `Document.markFailed(...)`, previously unused. |
 | `AppProperties` (`@ConfigurationProperties`) vs. scattered `@Value` config binding | No action required | Both patterns are valid Spring idioms already in active use; forcing one convention across every adapter is cosmetic churn without measurable long-term value (rejected per review philosophy). |
-| `ConversationApplicationService.renameConversation`/`.deleteConversation` lack the P05.3 tenant check (ADR TN01) | Genuine technical debt (P05.3) | Unreached by any REST endpoint today, so no live exposure — but the same implicit-tenant-invariant gap ADR TN01 fixed elsewhere in this class still exists here. Close this the moment either method gets a route. |
+| `ConversationApplicationService.renameConversation`/`.deleteConversation` lack the P05.3 tenant check (ADR TN01) | **CLOSED (P05.5, ADR HD02)** | Both methods now call `requireTenantMatch`, identically to the three previously-checked methods. Still unreached by any REST endpoint — closed ahead of exposure, not in response to it. |
 | No registration/admin endpoint for `application.user` | Known limitation (P05.2, still true) | Users must be seeded directly; `RegisterUserUseCase` remains unwired to REST. |
-| `/actuator/metrics`/`/actuator/prometheus` require a JWT rather than being scraped anonymously | Deferred to operational hardening (P05.4, ADR OB01) | A real Prometheus deployment typically scrapes without a token, relying on network isolation instead — a separate management port (`management.server.port`) is the standard fix but changes deployment topology, explicitly out of this milestone's scope. |
+| `/actuator/metrics`/`/actuator/prometheus` require a JWT rather than being scraped anonymously | Partially addressed (P05.5, ADR HD05) | `management.server.port` now exists as an opt-in escape hatch — setting it moves actuator onto a separate embedded connector outside this app's JWT-based `SecurityFilterChain`, the standard production pattern. Not enabled by default (deployment-topology decision, left to the operator); `/actuator/metrics`/`/actuator/prometheus` remain JWT-gated when `MANAGEMENT_PORT` is unset. |
+| Weaviate HTTP client has no configurable connect/read timeout | Deferred technical debt (P05.5, ADR HD03) | Verified via bytecode inspection of `spring-ai-autoconfigure-vector-store-weaviate-1.0.0.jar`: `WeaviateVectorStoreProperties` exposes no timeout property, and the auto-configured `WeaviateClient` bean has no `RestClientCustomizer`-equivalent hook. A fix would require overriding the auto-configured client and hand-constructing `io.weaviate.client.Config` — genuine architectural expansion, out of this milestone's "document, don't expand" scope. Revisit as a Phase 6 candidate. |
 
 ---
 

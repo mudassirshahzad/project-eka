@@ -115,13 +115,15 @@ public class ConversationApplicationService {
                         cmd.conversationId(), cmd.userId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Conversation", cmd.conversationId().value().toString()));
+        requireTenantMatch(conversation, cmd.tenantId());
         conversation.rename(cmd.newTitle());
         return conversationRepository.save(conversation);
     }
 
-    public void deleteConversation(ConversationId id, UserId userId) {
-        conversationRepository.findByIdAndUserId(id, userId)
+    public void deleteConversation(ConversationId id, UserId userId, TenantId tenantId) {
+        Conversation conversation = conversationRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation", id.value().toString()));
+        requireTenantMatch(conversation, tenantId);
         conversationRepository.softDelete(id);
         log.info("Conversation deleted: id={} user={}", id, userId);
         eventPublisher.publish(new ConversationDeletedEvent(id, userId));

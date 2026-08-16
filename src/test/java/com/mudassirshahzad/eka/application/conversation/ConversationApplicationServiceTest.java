@@ -30,11 +30,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Focused on {@link ConversationApplicationService#addAssistantMessage} (P05.1, ADR O02) and, as
- * of P05.3, the defensive tenant check (ADR TN01) shared by {@code getConversation},
- * {@code addUserMessage}, and {@code addAssistantMessage}. {@code createConversation},
- * {@code listConversations}, {@code renameConversation}, {@code deleteConversation} remain
- * unchanged and out of this file's test scope.
+ * Focused on {@link ConversationApplicationService#addAssistantMessage} (P05.1, ADR O02) and the
+ * defensive tenant check (ADR TN01, extended to every ownership-scoped method in P05.5 — ADR
+ * HD02) shared by {@code getConversation}, {@code addUserMessage}, {@code addAssistantMessage},
+ * {@code renameConversation}, and {@code deleteConversation}. {@code createConversation} and
+ * {@code listConversations} need no such check (the former creates a new resource under the
+ * caller's own identity; the latter is already tenant-scoped at the query level) and remain out
+ * of this file's test scope.
  */
 @ExtendWith(MockitoExtension.class)
 class ConversationApplicationServiceTest {
@@ -228,5 +230,56 @@ class ConversationApplicationServiceTest {
 
         assertThatExceptionOfType(ResourceNotFoundException.class)
                 .isThrownBy(() -> service.getConversation(id, otherUser, tenantId));
+    }
+
+    // ── renameConversation / deleteConversation tenant check (P05.5, ADR HD02) ──
+
+    @Test
+    void renameConversation_wrongTenant_throwsResourceNotFoundException() {
+        Conversation conversation = Conversation.create(userId, tenantId, "chat");
+        ConversationId id = conversation.getId();
+        when(conversationRepository.findByIdAndUserId(id, userId)).thenReturn(Optional.of(conversation));
+
+        TenantId otherTenant = TenantId.generate();
+        RenameConversationCommand cmd = new RenameConversationCommand(id, userId, otherTenant, "new title");
+
+        assertThatExceptionOfType(ResourceNotFoundException.class)
+                .isThrownBy(() -> service.renameConversation(cmd));
+    }
+
+    @Test
+    void renameConversation_correctTenant_renames() {
+        Conversation conversation = Conversation.create(userId, tenantId, "chat");
+        ConversationId id = conversation.getId();
+        when(conversationRepository.findByIdAndUserId(id, userId)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Conversation result = service.renameConversation(
+                new RenameConversationCommand(id, userId, tenantId, "new title"));
+
+        assertThat(result.getTitle()).isEqualTo("new title");
+    }
+
+    @Test
+    void deleteConversation_wrongTenant_throwsResourceNotFoundException() {
+        Conversation conversation = Conversation.create(userId, tenantId, "chat");
+        ConversationId id = conversation.getId();
+        when(conversationRepository.findByIdAndUserId(id, userId)).thenReturn(Optional.of(conversation));
+
+        TenantId otherTenant = TenantId.generate();
+
+        assertThatExceptionOfType(ResourceNotFoundException.class)
+                .isThrownBy(() -> service.deleteConversation(id, userId, otherTenant));
+    }
+
+    @Test
+    void deleteConversation_correctTenant_softDeletes() {
+        Conversation conversation = Conversation.create(userId, tenantId, "chat");
+        ConversationId id = conversation.getId();
+        when(conversationRepository.findByIdAndUserId(id, userId)).thenReturn(Optional.of(conversation));
+
+        service.deleteConversation(id, userId, tenantId);
+
+        verify(conversationRepository).softDelete(id);
     }
 }

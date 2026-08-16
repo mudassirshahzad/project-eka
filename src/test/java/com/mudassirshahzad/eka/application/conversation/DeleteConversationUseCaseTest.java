@@ -4,6 +4,7 @@ import com.mudassirshahzad.eka.application.chat.ChatSessionApplicationService;
 import com.mudassirshahzad.eka.application.shared.ApplicationException;
 import com.mudassirshahzad.eka.domain.conversation.ChatSession;
 import com.mudassirshahzad.eka.domain.conversation.ConversationId;
+import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,15 +30,21 @@ class DeleteConversationUseCaseTest {
 
     private final ConversationId conversationId = ConversationId.generate();
     private final UserId         userId         = UserId.generate();
+    private final TenantId       tenantId       = TenantId.generate();
 
     @Test
     void execute_rejectsNullConversationId() {
-        assertThatNullPointerException().isThrownBy(() -> useCase.execute(null, userId));
+        assertThatNullPointerException().isThrownBy(() -> useCase.execute(null, userId, tenantId));
     }
 
     @Test
     void execute_rejectsNullUserId() {
-        assertThatNullPointerException().isThrownBy(() -> useCase.execute(conversationId, null));
+        assertThatNullPointerException().isThrownBy(() -> useCase.execute(conversationId, null, tenantId));
+    }
+
+    @Test
+    void execute_rejectsNullTenantId() {
+        assertThatNullPointerException().isThrownBy(() -> useCase.execute(conversationId, userId, null));
     }
 
     @Test
@@ -46,18 +53,18 @@ class DeleteConversationUseCaseTest {
         when(chatSessionService.findActiveSession(conversationId)).thenReturn(Optional.of(activeSession));
 
         assertThatExceptionOfType(ApplicationException.class)
-                .isThrownBy(() -> useCase.execute(conversationId, userId))
+                .isThrownBy(() -> useCase.execute(conversationId, userId, tenantId))
                 .withMessageContaining("active session");
 
-        verify(conversationService, never()).deleteConversation(conversationId, userId);
+        verify(conversationService, never()).deleteConversation(conversationId, userId, tenantId);
     }
 
     @Test
     void execute_delegatesWhenNoActiveSession() {
         when(chatSessionService.findActiveSession(conversationId)).thenReturn(Optional.empty());
 
-        useCase.execute(conversationId, userId);
+        useCase.execute(conversationId, userId, tenantId);
 
-        verify(conversationService).deleteConversation(conversationId, userId);
+        verify(conversationService).deleteConversation(conversationId, userId, tenantId);
     }
 }

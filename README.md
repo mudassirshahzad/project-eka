@@ -12,7 +12,7 @@
 [![Weaviate](https://img.shields.io/badge/Weaviate-1.25-FF6D00?style=flat-square)](https://weaviate.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Apache Tika](https://img.shields.io/badge/Apache_Tika-2.9.2-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
-[![Tests](https://img.shields.io/badge/tests-104_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
+[![Tests](https://img.shields.io/badge/tests-606_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b?style=flat-square)](LICENSE)
 
 </div>
@@ -31,7 +31,7 @@
 - Hybrid Search *(v0.5.0)*
 - MCP Ready *(v0.8.0)*
 - LangGraph Ready *(v0.9.0)*
-- 489 Automated Tests, 0 failures
+- 606 Automated Tests, 0 failures
 
 ---
 
@@ -62,13 +62,13 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.5.4 — Application Platform (Phase 5, in progress) |
+| **Current Release** | v0.6.0 — Application Platform (Phase 5, complete) |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 593 passing, 0 failures · 57 test classes |
+| **Automated Tests** | 606 passing, 0 failures · 59 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
 | **Schema Migrations** | Flyway V001–V017 (17 migrations) |
-| **Current Focus** | P05.4 — Observability Foundation (complete) |
-| **Next Milestone** | P05.5 — Operational Hardening & Phase 5 Completion |
+| **Current Focus** | P05.5 — Operational Hardening & Phase 5 Completion (complete) |
+| **Next Milestone** | Phase 6 — not yet scoped |
 
 ---
 
@@ -93,21 +93,22 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Context assembly with token-budget guard
 - ✅ Chat generation with output guardrails, citation engine, and persisted conversational memory
 
-**Implemented — v0.5.1–v0.5.4 (application platform)**
+**Implemented — v0.5.1–v0.6.0 (application platform, Phase 5 complete)**
 
 - ✅ REST API with OpenAPI/Swagger specification (`/api/v1/conversations`)
 - ✅ End-to-end RAG orchestration — one HTTP request drives retrieval → context assembly → generation → citation → persistence
 - ✅ JWT authentication (HS256) — `POST /api/v1/auth/login` issues an access token; every other endpoint requires one
 - ✅ Role authorization — creating a conversation or sending a message requires `USER` or `ADMIN`; `VIEWER`/`AUDITOR` are read-only
-- ✅ Tenant isolation and resource ownership — a conversation is reachable only by the user who created it, within its own tenant; every other case (including a different user in the *same* tenant) returns `404`, not `403`
-- ✅ Observability — `/actuator/health`+`/actuator/info` (public), `/actuator/metrics`+`/actuator/prometheus` (JWT-gated); custom Ollama/Weaviate health checks; retrieval/generation/orchestration latency via Micrometer `Observation`; auth/authz failure counters; correlation IDs on every request; structured (ECS JSON) console logging
+- ✅ Tenant isolation and resource ownership — a conversation is reachable only by the user who created it, within its own tenant; every other case (including a different user in the *same* tenant) returns `404`, not `403`; tenant checks now cover every ownership-scoped `ConversationApplicationService` method, including the not-yet-routed `rename`/`delete` (v0.6.0)
+- ✅ Observability — `/actuator/health`+`/actuator/info` (public), `/actuator/metrics`+`/actuator/prometheus` (JWT-gated by default, or isolated onto a separate `MANAGEMENT_PORT` — v0.6.0); custom Ollama/Weaviate health checks; retrieval/generation/orchestration latency via Micrometer `Observation`; auth/authz failure counters; correlation IDs on every request; structured (ECS JSON) console logging
+- ✅ Operational hardening (v0.6.0) — short, per-step transactions through the upload pipeline instead of one long transaction; failed ingestion now marks the document `FAILED` with an error message instead of leaving it stuck mid-pipeline; bounded Ollama HTTP connect/read timeouts; infrastructure failures from retrieval consistently surface as `502`, oversized/blank queries as `400`; no default database password outside `dev`/`test`
 
-**Planned — v0.5.5 and beyond**
+**Planned — Phase 6 and beyond**
 
-- ⏳ Operational hardening — upload transaction improvements, retry/timeout refinement (P05.5)
 - ⏳ Server-Sent Events streaming responses with source citations
 - ⏳ MCP server — knowledge base and ingestion exposed as MCP tools
 - ⏳ LangGraph agentic pipeline with self-correction loop
+- ⏳ Configurable Weaviate client timeout — no configuration surface exists in Spring AI 1.0.0 today (see `.claude/DECISIONS.md`, ADR HD03)
 
 ---
 
@@ -162,8 +163,8 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 | Migrations | Flyway | 10+ | Versioned schema migrations (V001–V017) |
 | Document Parsing | Apache Tika | 2.9.2 | Multi-format extraction, magic-byte detection |
 | Generation | Qwen3 via Ollama | Latest | Local LLM for query rewriting and chat generation |
-| Security | Spring Security + JJWT 0.12+ | — | JWT (HS256) authentication (v0.5.2); role + tenant/ownership authorization (v0.5.3) |
-| Observability | Spring Boot Actuator + Micrometer + Micrometer Observation | — | Health, metrics, request/latency instrumentation, correlation IDs, structured logging (v0.5.4); no Prometheus/Grafana deployment yet — see Planned |
+| Security | Spring Security + JJWT 0.12+ | — | JWT (HS256) authentication (v0.5.2); role + tenant/ownership authorization (v0.5.3, extended to every ownership-scoped method in v0.6.0) |
+| Observability | Spring Boot Actuator + Micrometer + Micrometer Observation | — | Health, metrics, request/latency instrumentation, correlation IDs, structured logging (v0.5.4); optional separate management port (v0.6.0); no Prometheus/Grafana deployment yet — see Planned |
 | Architecture Testing | ArchUnit | 1.3.0 | Hexagonal layering enforcement |
 | Build | Gradle | 8.12 | |
 
@@ -171,7 +172,8 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 
 | Category | Technology | Phase | Role |
 |---|---|---|---|
-| Observability Deployment | Prometheus + Grafana | Future | Scrape `/actuator/prometheus`, dashboards (metrics themselves already exist as of v0.5.4) |
+| Observability Deployment | Prometheus + Grafana | Future | Scrape `/actuator/prometheus`, dashboards (metrics themselves already exist as of v0.5.4; separate management port available as of v0.6.0) |
+| Weaviate client timeout | Custom `WeaviateClient` bean override | Future | No configuration surface exists in Spring AI 1.0.0 today — deferred, see `.claude/DECISIONS.md` ADR HD03 |
 | AI Protocol | Spring MCP Server | v0.8.0 | Expose knowledge base as MCP tools |
 | Graph Orchestration | LangGraph4j | v0.9.0 | Agentic retrieval with self-correction |
 
@@ -254,6 +256,9 @@ Override via environment variables or `application.yml`:
 | `WEAVIATE_HOST` | `localhost:8080` |
 | `WEAVIATE_API_KEY` | — optional |
 | `DOCUMENT_STORAGE_ROOT` | `/data/documents` |
+| `SERVER_PORT` | `8080` |
+| `MANAGEMENT_PORT` | same as `SERVER_PORT` — set to a different value to isolate actuator endpoints onto a separate port, outside the JWT-based `SecurityFilterChain` (v0.6.0) |
+| `app.ollama.connect-timeout-ms` / `app.ollama.read-timeout-ms` | `5000` / `60000` — Ollama HTTP connect/read timeouts (v0.6.0; standard Spring relaxed binding, e.g. `APP_OLLAMA_CONNECT_TIMEOUT_MS`) |
 
 ### Observability
 
@@ -261,7 +266,8 @@ Override via environment variables or `application.yml`:
   checks; `/actuator/health/liveness` and `/actuator/health/readiness` are also available
 - `GET /actuator/info` (public) — static app name/version
 - `GET /actuator/metrics`, `GET /actuator/prometheus` (require a JWT, like every other non-public
-  endpoint) — retrieval/generation/orchestration latency, `http.server.requests`, and
+  endpoint, unless `MANAGEMENT_PORT` is set to isolate actuator onto its own port — v0.6.0) —
+  retrieval/generation/orchestration latency, `http.server.requests`, and
   `eka.auth.failures` / `eka.authz.failures` counters
 - Every response carries an `X-Correlation-Id` header (generated, or echoed back if you send one)
 - Console logs are structured JSON (Elastic Common Schema) in every profile, with the correlation
@@ -303,7 +309,7 @@ for the authoritative, currently-maintained status of everything from v0.5.1 onw
 | v0.5.2 | JWT Authentication Foundation (P05.2) | ✅ Complete |
 | v0.5.3 | Tenant & Role Authorization Boundary (P05.3) | ✅ Complete |
 | v0.5.4 | Observability Foundation (P05.4) | ✅ Complete |
-| v0.6.0 | Operational Hardening (P05.5) | ⏳ Planned |
+| v0.6.0 | Operational Hardening & Phase 5 Completion (P05.5) | ✅ Complete |
 | v0.7.0 | Conversational AI streaming responses | ⏳ Planned |
 | v0.8.0 | MCP Integration — knowledge base and ingestion exposed as MCP tools | ⏳ Planned |
 | v0.9.0 | LangGraph & Agentic AI — graph orchestration, self-correction, multi-agent | ⏳ Planned |
