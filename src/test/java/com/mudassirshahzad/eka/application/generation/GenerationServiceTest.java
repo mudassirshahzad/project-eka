@@ -22,6 +22,7 @@ import com.mudassirshahzad.eka.domain.generation.port.PromptBuilderPort;
 import com.mudassirshahzad.eka.domain.retrieval.model.AssembledChunk;
 import com.mudassirshahzad.eka.domain.retrieval.model.AssembledContext;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
+import io.micrometer.observation.ObservationRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -65,7 +66,7 @@ class GenerationServiceTest {
     void setUp() {
         service = new GenerationService(
                 promptBuilderPort, llmPort, guardrailsPort,
-                citationPort, conversationHistoryPort, 10);
+                citationPort, conversationHistoryPort, ObservationRegistry.NOOP, 10);
     }
 
     // ── Constructor ───────────────────────────────────────────────────────────
@@ -74,7 +75,7 @@ class GenerationServiceTest {
     void constructor_rejectsNullPromptBuilderPort() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new GenerationService(
-                        null, llmPort, guardrailsPort, citationPort, conversationHistoryPort, 10))
+                        null, llmPort, guardrailsPort, citationPort, conversationHistoryPort, ObservationRegistry.NOOP, 10))
                 .withMessageContaining("promptBuilderPort");
     }
 
@@ -82,7 +83,7 @@ class GenerationServiceTest {
     void constructor_rejectsNullLlmPort() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new GenerationService(
-                        promptBuilderPort, null, guardrailsPort, citationPort, conversationHistoryPort, 10))
+                        promptBuilderPort, null, guardrailsPort, citationPort, conversationHistoryPort, ObservationRegistry.NOOP, 10))
                 .withMessageContaining("llmPort");
     }
 
@@ -90,7 +91,7 @@ class GenerationServiceTest {
     void constructor_rejectsNullGuardrailsPort() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new GenerationService(
-                        promptBuilderPort, llmPort, null, citationPort, conversationHistoryPort, 10))
+                        promptBuilderPort, llmPort, null, citationPort, conversationHistoryPort, ObservationRegistry.NOOP, 10))
                 .withMessageContaining("guardrailsPort");
     }
 
@@ -98,7 +99,7 @@ class GenerationServiceTest {
     void constructor_rejectsNullCitationPort() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new GenerationService(
-                        promptBuilderPort, llmPort, guardrailsPort, null, conversationHistoryPort, 10))
+                        promptBuilderPort, llmPort, guardrailsPort, null, conversationHistoryPort, ObservationRegistry.NOOP, 10))
                 .withMessageContaining("citationPort");
     }
 
@@ -106,22 +107,30 @@ class GenerationServiceTest {
     void constructor_rejectsNullConversationHistoryPort() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new GenerationService(
-                        promptBuilderPort, llmPort, guardrailsPort, citationPort, null, 10))
+                        promptBuilderPort, llmPort, guardrailsPort, citationPort, null, ObservationRegistry.NOOP, 10))
                 .withMessageContaining("conversationHistoryPort");
+    }
+
+    @Test
+    void constructor_rejectsNullObservationRegistry() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new GenerationService(
+                        promptBuilderPort, llmPort, guardrailsPort, citationPort, conversationHistoryPort, null, 10))
+                .withMessageContaining("observationRegistry");
     }
 
     @Test
     void constructor_rejectsNegativeMemoryWindowSize() {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> new GenerationService(
-                        promptBuilderPort, llmPort, guardrailsPort, citationPort, conversationHistoryPort, -1))
+                        promptBuilderPort, llmPort, guardrailsPort, citationPort, conversationHistoryPort, ObservationRegistry.NOOP, -1))
                 .withMessageContaining("memoryWindowSize must be >= 0");
     }
 
     @Test
     void constructor_acceptsZeroMemoryWindowSize() {
         GenerationService svc = new GenerationService(
-                promptBuilderPort, llmPort, guardrailsPort, citationPort, conversationHistoryPort, 0);
+                promptBuilderPort, llmPort, guardrailsPort, citationPort, conversationHistoryPort, ObservationRegistry.NOOP, 0);
         assertThat(svc).isNotNull();
     }
 
@@ -359,7 +368,7 @@ class GenerationServiceTest {
     @Test
     void generate_passesMemoryWindowSizeToHistoryPort() {
         GenerationService smallWindowService = new GenerationService(
-                promptBuilderPort, llmPort, guardrailsPort, citationPort, conversationHistoryPort, 3);
+                promptBuilderPort, llmPort, guardrailsPort, citationPort, conversationHistoryPort, ObservationRegistry.NOOP, 3);
 
         when(conversationHistoryPort.getRecentMessages(eq(conversationId), eq(tenantId), eq(3)))
                 .thenReturn(List.of());

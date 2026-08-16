@@ -3,6 +3,7 @@ package com.mudassirshahzad.eka.api.security;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
 import io.jsonwebtoken.JwtException;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,11 +29,13 @@ class JwtAuthenticationFilterTest {
     @Mock private JwtTokenProvider jwtTokenProvider;
     @Mock private FilterChain      filterChain;
 
+    private SimpleMeterRegistry     meterRegistry;
     private JwtAuthenticationFilter filter;
 
     @BeforeEach
     void setUp() {
-        filter = new JwtAuthenticationFilter(jwtTokenProvider);
+        meterRegistry = new SimpleMeterRegistry();
+        filter = new JwtAuthenticationFilter(jwtTokenProvider, meterRegistry);
         SecurityContextHolder.clearContext();
     }
 
@@ -92,5 +95,7 @@ class JwtAuthenticationFilterTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         assertThat(response.getStatus()).isEqualTo(200); // filter itself never writes a response (ADR A04)
         verify(filterChain).doFilter(any(), any());
+        assertThat(meterRegistry.get("eka.auth.failures").tag("type", "token").counter().count())
+                .isEqualTo(1.0);
     }
 }

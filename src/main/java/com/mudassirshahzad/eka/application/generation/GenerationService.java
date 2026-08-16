@@ -13,6 +13,8 @@ import com.mudassirshahzad.eka.domain.generation.port.ConversationHistoryPort;
 import com.mudassirshahzad.eka.domain.generation.port.LlmPort;
 import com.mudassirshahzad.eka.domain.generation.port.OutputGuardrailsPort;
 import com.mudassirshahzad.eka.domain.generation.port.PromptBuilderPort;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -48,6 +50,7 @@ public class GenerationService {
     private final OutputGuardrailsPort      guardrailsPort;
     private final CitationPort              citationPort;
     private final ConversationHistoryPort   conversationHistoryPort;
+    private final ObservationRegistry       observationRegistry;
     private final int                       memoryWindowSize;
 
     public GenerationService(
@@ -56,20 +59,30 @@ public class GenerationService {
             OutputGuardrailsPort     guardrailsPort,
             CitationPort             citationPort,
             ConversationHistoryPort  conversationHistoryPort,
+            ObservationRegistry      observationRegistry,
             @Value("${app.conversation.memory-window-size:10}") int memoryWindowSize) {
         this.promptBuilderPort       = Objects.requireNonNull(promptBuilderPort,       "promptBuilderPort must not be null");
         this.llmPort                 = Objects.requireNonNull(llmPort,                 "llmPort must not be null");
         this.guardrailsPort          = Objects.requireNonNull(guardrailsPort,          "guardrailsPort must not be null");
         this.citationPort            = Objects.requireNonNull(citationPort,            "citationPort must not be null");
         this.conversationHistoryPort = Objects.requireNonNull(conversationHistoryPort, "conversationHistoryPort must not be null");
+        this.observationRegistry     = Objects.requireNonNull(observationRegistry,     "observationRegistry must not be null");
         if (memoryWindowSize < 0)
             throw new IllegalArgumentException("memoryWindowSize must be >= 0 but was " + memoryWindowSize);
         this.memoryWindowSize = memoryWindowSize;
     }
 
+    /**
+     * Runs inside an {@code eka.generation} {@link Observation} (P05.4, ADR OB02) — a Micrometer
+     * timer today, trace-ready with zero code changes once distributed tracing is added.
+     */
     public GeneratedResponse generate(GenerationRequest request) {
         Objects.requireNonNull(request, "request must not be null");
+        return Observation.createNotStarted("eka.generation", observationRegistry)
+                .observe(() -> doGenerate(request));
+    }
 
+    private GeneratedResponse doGenerate(GenerationRequest request) {
         long start = System.nanoTime();
 
         // 1. Retrieve conversation history (empty when conversationId is null — ADR M02)

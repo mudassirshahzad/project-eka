@@ -3,6 +3,7 @@ package com.mudassirshahzad.eka.application.user;
 import com.mudassirshahzad.eka.application.shared.InvalidCredentialsException;
 import com.mudassirshahzad.eka.domain.user.User;
 import com.mudassirshahzad.eka.domain.user.UserRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,10 @@ import java.util.Optional;
  * issuance is deliberately not this use case's concern (ADR A03): {@code api.security.JwtTokenProvider}
  * is the only class that turns an identity into a JWT, keeping this application-layer use case
  * technology-agnostic, exactly like every other use case in this codebase.
+ *
+ * <p>Every rejected login increments {@code eka.auth.failures{type=credentials}} (P05.4, ADR OB02)
+ * — the same counter name {@code JwtAuthenticationFilter} uses for bad tokens, differing only by
+ * the {@code type} tag, so operators see one metric for total authentication-failure volume.
  */
 @Service
 @RequiredArgsConstructor
@@ -33,6 +38,7 @@ public class AuthenticateUserUseCase {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MeterRegistry   meterRegistry;
 
     /**
      * @throws InvalidCredentialsException for an unknown email/tenant, an inactive account, or a
@@ -48,6 +54,7 @@ public class AuthenticateUserUseCase {
                 cmd.rawPassword(), found.map(User::getPasswordHash).orElse(DUMMY_PASSWORD_HASH));
 
         if (found.isEmpty() || !found.get().isActive() || !passwordMatches) {
+            meterRegistry.counter("eka.auth.failures", "type", "credentials").increment();
             throw new InvalidCredentialsException();
         }
 

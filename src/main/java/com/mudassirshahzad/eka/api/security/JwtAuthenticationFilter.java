@@ -1,6 +1,7 @@
 package com.mudassirshahzad.eka.api.security;
 
 import io.jsonwebtoken.JwtException;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +25,10 @@ import java.io.IOException;
  * decides whether the target endpoint requires authentication, and {@link RestAuthenticationEntryPoint}
  * is the single place a 401 is ever produced. Short-circuiting here on a bad token would
  * incorrectly reject requests to {@code permitAll} endpoints (login, health, Swagger).
+ *
+ * <p>Every rejected token increments {@code eka.auth.failures{type=token}} (P05.4, ADR OB02) —
+ * the same counter {@code AuthenticateUserUseCase} increments for bad login credentials, so
+ * operators can see total authentication-failure volume from one metric name.
  */
 @Slf4j
 @Component
@@ -34,6 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX         = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final MeterRegistry    meterRegistry;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -47,6 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(jwtTokenProvider.parseToken(token));
             } catch (JwtException | IllegalArgumentException ex) {
                 log.debug("Rejected invalid bearer token: {}", ex.getClass().getSimpleName());
+                meterRegistry.counter("eka.auth.failures", "type", "token").increment();
                 SecurityContextHolder.clearContext();
             }
         }

@@ -1,7 +1,10 @@
 package com.mudassirshahzad.eka.api.security;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -32,9 +35,18 @@ import java.util.stream.Collectors;
  * already populated the {@code SecurityContext} (or Spring Security's own authorization stage has
  * already rejected an unauthenticated request to a protected path with 401) — this class only ever
  * has to decide role sufficiency, never identity.
+ *
+ * <p>Every denial increments {@code eka.authz.failures{reason=role}} (P05.4, ADR OB02) —
+ * {@code ConversationApplicationService} increments the same counter with {@code reason=ownership}
+ * for the tenant/ownership dimension, so operators see total authorization-denial volume from one
+ * metric name, split by which dimension actually rejected the request.
  */
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class AuthorizationInterceptor implements HandlerInterceptor {
+
+    private final MeterRegistry meterRegistry;
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
@@ -50,6 +62,8 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
+            log.debug("Authorization denied: no authenticated principal for a @RequireRole endpoint");
+            meterRegistry.counter("eka.authz.failures", "reason", "role").increment();
             throw new AccessDeniedException("Authentication required");
         }
 
@@ -62,6 +76,9 @@ public class AuthorizationInterceptor implements HandlerInterceptor {
                 .anyMatch(requiredAuthorities::contains);
 
         if (!permitted) {
+            log.debug("Authorization denied: required one of {} but principal had {}",
+                    requiredAuthorities, authentication.getAuthorities());
+            meterRegistry.counter("eka.authz.failures", "reason", "role").increment();
             throw new AccessDeniedException("Role does not permit this operation");
         }
 

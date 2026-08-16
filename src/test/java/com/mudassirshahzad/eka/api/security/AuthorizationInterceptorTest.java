@@ -3,6 +3,7 @@ package com.mudassirshahzad.eka.api.security;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
 import com.mudassirshahzad.eka.domain.user.UserRole;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -27,9 +28,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class AuthorizationInterceptorTest {
 
-    private final AuthorizationInterceptor interceptor = new AuthorizationInterceptor();
-    private final MockHttpServletRequest   request     = new MockHttpServletRequest();
-    private final MockHttpServletResponse  response    = new MockHttpServletResponse();
+    private final SimpleMeterRegistry      meterRegistry = new SimpleMeterRegistry();
+    private final AuthorizationInterceptor interceptor   = new AuthorizationInterceptor(meterRegistry);
+    private final MockHttpServletRequest   request       = new MockHttpServletRequest();
+    private final MockHttpServletResponse  response      = new MockHttpServletResponse();
 
     @AfterEach
     void tearDown() {
@@ -84,6 +86,19 @@ class AuthorizationInterceptorTest {
 
         assertThatThrownBy(() -> interceptor.preHandle(request, response, handlerMethod))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void preHandle_nonMatchingRole_incrementsAuthzFailureCounter() throws Exception {
+        HandlerMethod handlerMethod = handlerMethodFor("adminOnly");
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(
+                UserId.generate(), TenantId.generate(), List.of(new SimpleGrantedAuthority("ROLE_VIEWER"))));
+
+        assertThatThrownBy(() -> interceptor.preHandle(request, response, handlerMethod))
+                .isInstanceOf(AccessDeniedException.class);
+
+        assertThat(meterRegistry.get("eka.authz.failures").tag("reason", "role").counter().count())
+                .isEqualTo(1.0);
     }
 
     @Test

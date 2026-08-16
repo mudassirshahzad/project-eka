@@ -14,6 +14,7 @@ import com.mudassirshahzad.eka.domain.shared.PageRequest;
 import com.mudassirshahzad.eka.domain.shared.PageResult;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class ConversationApplicationService {
 
     private final ConversationRepository conversationRepository;
     private final DomainEventPublisher   eventPublisher;
+    private final MeterRegistry          meterRegistry;
 
     public Conversation createConversation(CreateConversationCommand cmd) {
         Conversation conversation = Conversation.create(cmd.userId(), cmd.tenantId(), cmd.title());
@@ -91,9 +93,18 @@ public class ConversationApplicationService {
      * mirrors the precedent {@code PersistentConversationHistoryAdapter} set in P04.13 (ADR R01):
      * a mismatch is treated identically to "not found," never as a distinct "forbidden" outcome,
      * so a caller can never learn that a conversation exists in another tenant.
+     *
+     * <p>A mismatch increments {@code eka.authz.failures{reason=ownership}} (P05.4, ADR OB02) and
+     * logs at WARN — operator-facing signals only, since the HTTP response stays indistinguishable
+     * from a genuine 404. The plain "no such id/user" case from {@code findByIdAndUserId} itself is
+     * deliberately not instrumented here: telling "doesn't exist" apart from "exists, wrong owner"
+     * would need a second repository query, the exact duplication ADR AZ01 already rejected.
      */
     private Conversation requireTenantMatch(Conversation conversation, TenantId tenantId) {
         if (!conversation.getTenantId().equals(tenantId)) {
+            log.warn("Tenant mismatch on conversation access: conversation={} requestedTenant={} actualTenant={}",
+                    conversation.getId(), tenantId, conversation.getTenantId());
+            meterRegistry.counter("eka.authz.failures", "reason", "ownership").increment();
             throw new ResourceNotFoundException("Conversation", conversation.getId().value().toString());
         }
         return conversation;

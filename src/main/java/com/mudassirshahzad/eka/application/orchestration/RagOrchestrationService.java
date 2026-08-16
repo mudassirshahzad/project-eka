@@ -16,6 +16,8 @@ import com.mudassirshahzad.eka.domain.retrieval.model.AssembledContext;
 import com.mudassirshahzad.eka.domain.retrieval.model.RetrievalOptions;
 import com.mudassirshahzad.eka.domain.retrieval.model.RetrievalResult;
 import com.mudassirshahzad.eka.domain.retrieval.port.ContextAssemblyPort;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -50,6 +52,7 @@ public class RagOrchestrationService {
     private final RetrievalService                retrievalService;
     private final ContextAssemblyPort              contextAssemblyPort;
     private final GenerationService                generationService;
+    private final ObservationRegistry              observationRegistry;
     private final int                              contextTokenBudget;
 
     public RagOrchestrationService(
@@ -57,6 +60,7 @@ public class RagOrchestrationService {
             RetrievalService                retrievalService,
             ContextAssemblyPort             contextAssemblyPort,
             GenerationService                generationService,
+            ObservationRegistry             observationRegistry,
             @Value("${app.context.token-budget:4096}") int contextTokenBudget) {
         this.conversationApplicationService = Objects.requireNonNull(
                 conversationApplicationService, "conversationApplicationService must not be null");
@@ -66,6 +70,8 @@ public class RagOrchestrationService {
                 contextAssemblyPort, "contextAssemblyPort must not be null");
         this.generationService = Objects.requireNonNull(
                 generationService, "generationService must not be null");
+        this.observationRegistry = Objects.requireNonNull(
+                observationRegistry, "observationRegistry must not be null");
         if (contextTokenBudget < 1) {
             throw new IllegalArgumentException(
                     "contextTokenBudget must be >= 1 but was " + contextTokenBudget);
@@ -73,9 +79,18 @@ public class RagOrchestrationService {
         this.contextTokenBudget = contextTokenBudget;
     }
 
+    /**
+     * Runs the whole turn inside an {@code eka.orchestration} {@link Observation} (P05.4, ADR
+     * OB02) — a Micrometer timer spanning persistence + retrieval + generation together, trace-ready
+     * with zero code changes once distributed tracing is added.
+     */
     public RagTurnResult handleUserMessage(SendMessageCommand cmd) {
         Objects.requireNonNull(cmd, "cmd must not be null");
+        return Observation.createNotStarted("eka.orchestration", observationRegistry)
+                .observe(() -> doHandleUserMessage(cmd));
+    }
 
+    private RagTurnResult doHandleUserMessage(SendMessageCommand cmd) {
         log.debug("RAG turn started: tenant={} conversation={}", cmd.tenantId(), cmd.conversationId());
 
         conversationApplicationService.addUserMessage(

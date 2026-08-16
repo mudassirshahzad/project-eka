@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.5.3 (In Progress) — Phase 5: Application Platform
+v0.5.4 (In Progress) — Phase 5: Application Platform
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -38,14 +38,15 @@ v0.5.3 (In Progress) — Phase 5: Application Platform
 | P05.1     | End-to-End RAG Orchestration & REST Exposure     | +41       | ✅ Complete |
 | P05.2     | Authentication Foundation                       | +21       | ✅ Complete |
 | P05.3     | Tenant & Role Authorization Boundary            | +22       | ✅ Complete |
+| P05.4     | Observability Foundation                        | +20       | ✅ Complete |
 
-**Grand total tests: 573 — 0 failures**
+**Grand total tests: 593 — 0 failures**
 
 ---
 
 ## Current Milestone
 
-**P05.4 — Observability Foundation** ← next to implement
+**P05.5 — Operational Hardening & Phase 5 Completion** ← next to implement
 
 ---
 
@@ -110,6 +111,11 @@ Security layer (Authorization Filter) is planned but not implemented.
 | AZ03 | `AccessDeniedException` → 403 handled by `GlobalExceptionHandler`, not a security-layer `AccessDeniedHandler`; `ADMIN` does not bypass ownership |
 | TN01 | Tenant isolation is a defensive post-fetch check in `ConversationApplicationService` (extends ADR R01's pattern) |
 | OW01 | Resource ownership stays at `findByIdAndUserId` (pre-existing); mismatch resolves to 404, never 403 |
+| OB01 | Actuator: `/actuator/health` + `/actuator/info` public; `/actuator/metrics`/`/actuator/prometheus` stay JWT-gated |
+| OB02 | Latency via Micrometer `Observation` (retrieval/generation/orchestration); failure counters only where Boot doesn't already provide the signal; never tag metrics by raw tenant/user/conversation ID |
+| OB03 | `CorrelationIdFilter` registered before Spring Security's own first filter; MDC-propagated; echoed via response header only |
+| OB04 | Structured logging via Spring Boot native `logging.structured.format.console: ecs`; no new logging library |
+| OB05 | `OllamaHealthIndicator`/`WeaviateHealthIndicator` excluded from `test` profile via `@Profile("!test")`, not an enabled-toggle; in the `readiness` group, not `liveness` |
 
 ---
 
@@ -197,6 +203,34 @@ ConversationApplicationService.<method>()  ← findByIdAndUserId (ownership, pre
 
 ---
 
+## Observability (P05.4 — new)
+
+```
+HTTP <any request>
+       │
+       ▼
+CorrelationIdFilter                 ← api.observability — first filter in the whole chain (ADR OB03),
+       │                              ahead of Spring Security itself, not just JwtAuthenticationFilter
+       │  generates or reuses X-Correlation-Id → MDC["correlationId"] for the request's duration,
+       │  echoed on the response header; cleared in `finally` regardless of outcome
+       ▼
+[ normal Authentication → Authorization → Orchestration → Retrieval → Generation → Persistence chain ]
+       │  every log line emitted anywhere in that chain automatically carries the correlation ID
+       │  (Spring Boot's structured ECS console format — ADR OB04 — surfaces MDC natively)
+       ▼
+<response>  (X-Correlation-Id header always present, success or error)
+```
+
+Latency: `RetrievalService.retrieve()` / `GenerationService.generate()` / `RagOrchestrationService.handleUserMessage()` each run inside an `eka.retrieval` / `eka.generation` / `eka.orchestration` Micrometer `Observation` (ADR OB02) — a timer today, trace-ready with no further code changes once distributed tracing (out of scope) is added. Request count/latency/error-rate is Spring Boot's auto-instrumented `http.server.requests` — not duplicated by a custom metric.
+
+Failure counters: `eka.auth.failures{type=token|credentials}` (`JwtAuthenticationFilter`, `AuthenticateUserUseCase`); `eka.authz.failures{reason=role|ownership}` (`AuthorizationInterceptor`, `ConversationApplicationService`). No metric anywhere is tagged by a raw tenant/user/conversation ID (unbounded-cardinality risk — ADR OB02).
+
+Health: `/actuator/health` aggregates the default DB indicator plus new `OllamaHealthIndicator`/`WeaviateHealthIndicator` (`infrastructure.observability`, ADR OB05) — both excluded via `@Profile("!test")` in tests, both in the `readiness` group (not `liveness`). `/actuator/health/liveness` and `/actuator/health/readiness` are enabled via `management.endpoint.health.probes.enabled`.
+
+Actuator exposure: `/actuator/health` and `/actuator/info` are `permitAll` (ADR OB01); `/actuator/metrics` and `/actuator/prometheus` require the same JWT every other protected endpoint does.
+
+---
+
 ## Generation Pipeline (P04.10)
 
 ```
@@ -259,13 +293,17 @@ GeneratedResponse
 - `PositionalCitationAdapter` implements `CitationPort` (parses `[SOURCE:N]` markers, resolves against `AssembledContext` by `AssembledChunk.position()` — P04.11)
 - `RagOrchestrationService` is the sole caller wiring `ConversationApplicationService` + `RetrievalService` + `ContextAssemblyPort` + `GenerationService` together (P05.1, ADR O01)
 - `ConversationController` is the sole REST entry point for conversations (`/api/v1/conversations`); `AuthController` is the sole token-issuing entry point (`/api/v1/auth/login`, P05.2); `GlobalExceptionHandler` is the sole `@RestControllerAdvice` (P05.1, ADR O03)
-- `SecurityConfig` requires a valid JWT on every endpoint except `/api/v1/auth/login`, `/actuator/health`, and the Swagger/OpenAPI paths — real HS256 validation as of P05.2 (ADR A01), replacing the P05.1 permissive seam outright (ADR O05)
+- `SecurityConfig` requires a valid JWT on every endpoint except `/api/v1/auth/login`, `/actuator/health`, `/actuator/info` (P05.4, ADR OB01), and the Swagger/OpenAPI paths — real HS256 validation as of P05.2 (ADR A01), replacing the P05.1 permissive seam outright (ADR O05)
 - `JwtTokenProvider` (`api.security`) is the sole component that signs or verifies tokens; `JwtAuthenticationFilter` is the sole component that populates the `SecurityContext`; `RestAuthenticationEntryPoint` is the sole source of a 401 response (ADR A04)
 - `AuthenticateUserUseCase` (`application.user`) is the sole verifier of login credentials, via the existing `UserRepository` port and a `BCryptPasswordEncoder` (`infrastructure.config.PasswordEncoderConfig`) — always throws the same `InvalidCredentialsException` regardless of failure cause (ADR A03)
 - `springdoc-openapi-starter-webmvc-ui` auto-exposes `/v3/api-docs` and `/swagger-ui.html` from the same controller/DTO annotations — no separate spec to keep in sync (P05.1)
 - `AuthorizationInterceptor` (`api.security`), registered by `WebMvcConfig` (`api.config`) against every `/api/v1/**` route, is the sole role-authorization decision point — reads `@RequireRole` off the target controller method (P05.3, ADR AZ01)
 - `ConversationApplicationService.getConversation`/`.addUserMessage`/`.addAssistantMessage` are the sole tenant/ownership decision points for conversations — a private `requireTenantMatch` helper, extending the ADR R01 pattern, runs after every ownership-scoped fetch (P05.3, ADR TN01/OW01)
 - `GlobalExceptionHandler` gained `AccessDeniedException` → 403 (P05.3, ADR AZ03) alongside its existing mappings
+- `CorrelationIdFilter` (`api.observability`) is the sole component that generates/propagates the correlation ID and populates MDC; registered first in `SecurityConfig`'s filter chain, ahead of Spring Security itself (P05.4, ADR OB03)
+- `OllamaHealthIndicator`/`WeaviateHealthIndicator` (`infrastructure.observability`) are the sole custom `/actuator/health` contributors beyond Spring Boot's default DB indicator; both `@Profile("!test")`, both in the `readiness` health group (P05.4, ADR OB05)
+- `RetrievalService`/`GenerationService`/`RagOrchestrationService` each wrap their existing body in a Micrometer `Observation` (`eka.retrieval`/`eka.generation`/`eka.orchestration`) — a timer today, trace-ready with no further changes (P05.4, ADR OB02)
+- `JwtAuthenticationFilter`/`AuthenticateUserUseCase` increment `eka.auth.failures`; `AuthorizationInterceptor`/`ConversationApplicationService` increment `eka.authz.failures` — both `MeterRegistry`-based, no metric ever tagged by a raw tenant/user/conversation ID (P05.4, ADR OB02)
 
 ---
 
@@ -305,6 +343,7 @@ com.mudassirshahzad.eka
 │   │   │                              LlmProviderUnavailableException, LlmInvalidResponseException,
 │   │   │                              LlmModelNotFoundException
 │   │   └── ollama                   — OllamaLlmAdapter
+│   ├── observability                — OllamaHealthIndicator, WeaviateHealthIndicator (P05.4, ADR OB05)
 │   ├── prompt                       — TemplateBasedPromptBuilderAdapter
 │   ├── query.rewrite                — OllamaQueryRewriteAdapter, QueryRewriteException
 │   ├── ranking                      — RrfRankingAdapter
@@ -314,7 +353,8 @@ com.mudassirshahzad.eka
 │       │                              Bm25ScoreNormalizer
 │       └── weaviate                 — WeaviateRetrievalAdapter, WeaviateVectorStoreAdapter
 └── api                              — first REST surface (P05.1)
-    ├── config                       — SecurityConfig (real JWT validation, P05.2 — ADR A01/O05),
+    ├── config                       — SecurityConfig (real JWT validation, P05.2 — ADR A01/O05;
+    │                                  correlation ID filter registration, P05.4 — ADR OB03),
     │                                  OpenApiConfig, WebMvcConfig (P05.3 — registers AuthorizationInterceptor)
     ├── controller                   — ConversationController (createConversation/sendMessage now
     │                                  @RequireRole-annotated — P05.3, ADR AZ02), AuthController (P05.2)
@@ -322,6 +362,7 @@ com.mudassirshahzad.eka
     │                                  identity-free — ADR A05), ConversationResponse,
     │                                  ConversationDetailResponse, MessageResponse, CitationResponse,
     │                                  GeneratedAnswerResponse, LoginRequest, LoginResponse (P05.2)
+    ├── observability                — CorrelationIdFilter (P05.4, ADR OB03)
     ├── security                     — JwtProperties, JwtTokenProvider, JwtAuthenticationToken,
     │                                  JwtAuthenticationFilter, RestAuthenticationEntryPoint (P05.2),
     │                                  RequireRole, AuthorizationInterceptor (P05.3, ADR AZ01)
@@ -366,6 +407,7 @@ Reviewed without implementing — each classified so none of these become a futu
 | `AppProperties` (`@ConfigurationProperties`) vs. scattered `@Value` config binding | No action required | Both patterns are valid Spring idioms already in active use; forcing one convention across every adapter is cosmetic churn without measurable long-term value (rejected per review philosophy). |
 | `ConversationApplicationService.renameConversation`/`.deleteConversation` lack the P05.3 tenant check (ADR TN01) | Genuine technical debt (P05.3) | Unreached by any REST endpoint today, so no live exposure — but the same implicit-tenant-invariant gap ADR TN01 fixed elsewhere in this class still exists here. Close this the moment either method gets a route. |
 | No registration/admin endpoint for `application.user` | Known limitation (P05.2, still true) | Users must be seeded directly; `RegisterUserUseCase` remains unwired to REST. |
+| `/actuator/metrics`/`/actuator/prometheus` require a JWT rather than being scraped anonymously | Deferred to operational hardening (P05.4, ADR OB01) | A real Prometheus deployment typically scrapes without a token, relying on network isolation instead — a separate management port (`management.server.port`) is the standard fix but changes deployment topology, explicitly out of this milestone's scope. |
 
 ---
 
@@ -395,3 +437,7 @@ Architecture constraint — enforced across all milestones:
 | Chunk content  | NEVER |
 | Generated text | NEVER |
 | Prompt content | NEVER |
+| Correlation ID | Any level (not sensitive — an opaque, per-request identifier) |
+| Password / JWT / secrets / API keys | NEVER (P05.4 explicit requirement; already unwritten in this codebase) |
+
+As of P05.4, console log output is structured JSON (ECS format, ADR OB04) in every profile — this table governs *what* may appear in a field, unchanged by the switch from plain-text to structured output. MDC (including the correlation ID) is surfaced automatically as structured fields; nothing above was loosened or tightened by that change.

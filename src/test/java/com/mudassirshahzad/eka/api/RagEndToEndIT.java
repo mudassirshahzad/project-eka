@@ -20,6 +20,7 @@ import com.mudassirshahzad.eka.infrastructure.persistence.postgres.repository.Te
 import com.mudassirshahzad.eka.infrastructure.persistence.postgres.repository.UserJpaRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -39,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,6 +72,7 @@ class RagEndToEndIT {
     @Autowired private MockMvc          mockMvc;
     @Autowired private ObjectMapper     objectMapper;
     @Autowired private JwtTokenProvider jwtTokenProvider;
+    @Autowired private MeterRegistry    meterRegistry;
     @Autowired private TenantJpaRepository   tenantJpaRepository;
     @Autowired private UserJpaRepository     userJpaRepository;
     @Autowired private DocumentJpaRepository documentJpaRepository;
@@ -131,6 +134,40 @@ class RagEndToEndIT {
                 .andExpect(jsonPath("$.messages[1].content").value("RAG combines retrieval with generation."))
                 .andExpect(jsonPath("$.messages[1].citations[0].chunkId")
                         .value(citation.chunkId().value().toString()));
+
+        // P05.4: proves the Observation-based orchestration timer (ADR OB02) actually recorded
+        // this real request — not just that the code compiles — and that Spring Boot's own
+        // auto-instrumented http.server.requests metric is active, so "request counts/response
+        // times" needs no custom counter of its own.
+        assertThat(meterRegistry.find("eka.orchestration").timer()).isNotNull();
+        assertThat(meterRegistry.find("eka.orchestration").timer().count()).isGreaterThanOrEqualTo(1);
+        assertThat(meterRegistry.find("http.server.requests").timers()).isNotEmpty();
+    }
+
+    @Test
+    void response_carriesCorrelationIdHeader() throws Exception {
+        // P05.4, ADR OB03: every response — including one from a permitAll, unauthenticated
+        // endpoint — carries a correlation ID, proving CorrelationIdFilter runs before Spring
+        // Security's own filters, not just before JwtAuthenticationFilter.
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(header().exists("X-Correlation-Id"));
+    }
+
+    @Test
+    void actuatorHealth_isPubliclyReachable_andReportsUp() throws Exception {
+        // DB is the only health contributor active in the test profile (ollama/weaviate disabled —
+        // see application.yml's test profile block, since no live instances run in tests).
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    void actuatorInfo_isPubliclyReachable() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.app.name").value("Project EKA"));
     }
 
     @Test

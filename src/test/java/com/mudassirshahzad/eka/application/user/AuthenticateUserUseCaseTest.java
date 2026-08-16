@@ -5,6 +5,7 @@ import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.User;
 import com.mudassirshahzad.eka.domain.user.UserRepository;
 import com.mudassirshahzad.eka.domain.user.UserRole;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -27,13 +28,15 @@ class AuthenticateUserUseCaseTest {
     @Mock private UserRepository userRepository;
     @Mock private PasswordEncoder passwordEncoder;
 
+    private SimpleMeterRegistry     meterRegistry;
     private AuthenticateUserUseCase useCase;
 
     private final TenantId tenantId = TenantId.generate();
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        useCase = new AuthenticateUserUseCase(userRepository, passwordEncoder);
+        meterRegistry = new SimpleMeterRegistry();
+        useCase = new AuthenticateUserUseCase(userRepository, passwordEncoder, meterRegistry);
     }
 
     @Test
@@ -63,6 +66,9 @@ class AuthenticateUserUseCaseTest {
 
         assertThatThrownBy(() -> useCase.execute(new AuthenticateUserCommand("user@example.com", "wrong", tenantId)))
                 .isInstanceOf(InvalidCredentialsException.class);
+
+        assertThat(meterRegistry.get("eka.auth.failures").tag("type", "credentials").counter().count())
+                .isEqualTo(1.0);
     }
 
     @Test

@@ -12,6 +12,7 @@ import com.mudassirshahzad.eka.domain.retrieval.port.RankingPort;
 import com.mudassirshahzad.eka.domain.retrieval.port.RetrievalPort;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
+import io.micrometer.observation.ObservationRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +41,7 @@ class RetrievalServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RetrievalService(retrievalPort, rankingPort, queryRewritePort);
+        service = new RetrievalService(retrievalPort, rankingPort, queryRewritePort, ObservationRegistry.NOOP);
         // Pass-through by default; tests that need a different return value override this.
         // Lenient to avoid UnnecessaryStubbingException on validation-failure tests.
         lenient().when(queryRewritePort.rewrite(anyString(), any()))
@@ -52,22 +53,29 @@ class RetrievalServiceTest {
     @Test
     void constructor_rejectsNullRetrievalPort() {
         assertThatNullPointerException()
-                .isThrownBy(() -> new RetrievalService(null, rankingPort, queryRewritePort))
+                .isThrownBy(() -> new RetrievalService(null, rankingPort, queryRewritePort, ObservationRegistry.NOOP))
                 .withMessageContaining("retrievalPort");
     }
 
     @Test
     void constructor_rejectsNullRankingPort() {
         assertThatNullPointerException()
-                .isThrownBy(() -> new RetrievalService(retrievalPort, null, queryRewritePort))
+                .isThrownBy(() -> new RetrievalService(retrievalPort, null, queryRewritePort, ObservationRegistry.NOOP))
                 .withMessageContaining("rankingPort");
     }
 
     @Test
     void constructor_rejectsNullQueryRewritePort() {
         assertThatNullPointerException()
-                .isThrownBy(() -> new RetrievalService(retrievalPort, rankingPort, null))
+                .isThrownBy(() -> new RetrievalService(retrievalPort, rankingPort, null, ObservationRegistry.NOOP))
                 .withMessageContaining("queryRewritePort");
+    }
+
+    @Test
+    void constructor_rejectsNullObservationRegistry() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new RetrievalService(retrievalPort, rankingPort, queryRewritePort, null))
+                .withMessageContaining("observationRegistry");
     }
 
     // ── Null guards on retrieve() ─────────────────────────────────────────────

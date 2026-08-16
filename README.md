@@ -62,13 +62,13 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.5.3 — Application Platform (Phase 5, in progress) |
+| **Current Release** | v0.5.4 — Application Platform (Phase 5, in progress) |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 573 passing, 0 failures · 54 test classes |
+| **Automated Tests** | 593 passing, 0 failures · 57 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
 | **Schema Migrations** | Flyway V001–V017 (17 migrations) |
-| **Current Focus** | P05.3 — Tenant & Role Authorization Boundary (complete) |
-| **Next Milestone** | P05.4 — Observability Foundation |
+| **Current Focus** | P05.4 — Observability Foundation (complete) |
+| **Next Milestone** | P05.5 — Operational Hardening & Phase 5 Completion |
 
 ---
 
@@ -93,17 +93,17 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Context assembly with token-budget guard
 - ✅ Chat generation with output guardrails, citation engine, and persisted conversational memory
 
-**Implemented — v0.5.1–v0.5.3 (application platform)**
+**Implemented — v0.5.1–v0.5.4 (application platform)**
 
 - ✅ REST API with OpenAPI/Swagger specification (`/api/v1/conversations`)
 - ✅ End-to-end RAG orchestration — one HTTP request drives retrieval → context assembly → generation → citation → persistence
 - ✅ JWT authentication (HS256) — `POST /api/v1/auth/login` issues an access token; every other endpoint requires one
 - ✅ Role authorization — creating a conversation or sending a message requires `USER` or `ADMIN`; `VIEWER`/`AUDITOR` are read-only
 - ✅ Tenant isolation and resource ownership — a conversation is reachable only by the user who created it, within its own tenant; every other case (including a different user in the *same* tenant) returns `404`, not `403`
+- ✅ Observability — `/actuator/health`+`/actuator/info` (public), `/actuator/metrics`+`/actuator/prometheus` (JWT-gated); custom Ollama/Weaviate health checks; retrieval/generation/orchestration latency via Micrometer `Observation`; auth/authz failure counters; correlation IDs on every request; structured (ECS JSON) console logging
 
-**Planned — v0.5.4 and beyond**
+**Planned — v0.5.5 and beyond**
 
-- ⏳ Observability — metrics, structured logging, correlation IDs (P05.4)
 - ⏳ Operational hardening — upload transaction improvements, retry/timeout refinement (P05.5)
 - ⏳ Server-Sent Events streaming responses with source citations
 - ⏳ MCP server — knowledge base and ingestion exposed as MCP tools
@@ -123,7 +123,7 @@ api/          →  application/  →  domain/  ←  infrastructure/
 - **Domain** — pure Java aggregates, value objects, and port interfaces; zero framework dependencies
 - **Application** — use cases, commands, domain events; no infrastructure imports
 - **Infrastructure** — JPA adapters, Weaviate adapter, Ollama adapter, Tika adapter, file storage
-- **API** — REST controllers, JWT authentication, tenant/role authorization (`v0.5.1`–`v0.5.3`)
+- **API** — REST controllers, JWT authentication, tenant/role authorization, observability (`v0.5.1`–`v0.5.4`)
 - **ArchUnit** — 8 layering rules enforced at build time; violations fail the build
 
 ### High-Level Architecture
@@ -163,6 +163,7 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 | Document Parsing | Apache Tika | 2.9.2 | Multi-format extraction, magic-byte detection |
 | Generation | Qwen3 via Ollama | Latest | Local LLM for query rewriting and chat generation |
 | Security | Spring Security + JJWT 0.12+ | — | JWT (HS256) authentication (v0.5.2); role + tenant/ownership authorization (v0.5.3) |
+| Observability | Spring Boot Actuator + Micrometer + Micrometer Observation | — | Health, metrics, request/latency instrumentation, correlation IDs, structured logging (v0.5.4); no Prometheus/Grafana deployment yet — see Planned |
 | Architecture Testing | ArchUnit | 1.3.0 | Hexagonal layering enforcement |
 | Build | Gradle | 8.12 | |
 
@@ -170,7 +171,7 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 
 | Category | Technology | Phase | Role |
 |---|---|---|---|
-| Observability | Micrometer + Prometheus + Grafana | v0.5.4 | Metrics, tracing, dashboards |
+| Observability Deployment | Prometheus + Grafana | Future | Scrape `/actuator/prometheus`, dashboards (metrics themselves already exist as of v0.5.4) |
 | AI Protocol | Spring MCP Server | v0.8.0 | Expose knowledge base as MCP tools |
 | Graph Orchestration | LangGraph4j | v0.9.0 | Agentic retrieval with self-correction |
 
@@ -209,7 +210,12 @@ Flyway migrations run automatically on startup.
 
 ```
 GET http://localhost:8080/actuator/health
+GET http://localhost:8080/actuator/info
 ```
+
+Both are public (v0.5.4). `/actuator/metrics` and `/actuator/prometheus` require a JWT like every
+other non-public endpoint — see [Observability](#observability) below. Every response, success or
+error, carries an `X-Correlation-Id` header.
 
 ### 5. Authenticate
 
@@ -249,6 +255,18 @@ Override via environment variables or `application.yml`:
 | `WEAVIATE_API_KEY` | — optional |
 | `DOCUMENT_STORAGE_ROOT` | `/data/documents` |
 
+### Observability
+
+- `GET /actuator/health` (public) — aggregates DB connectivity plus custom `ollama`/`weaviate`
+  checks; `/actuator/health/liveness` and `/actuator/health/readiness` are also available
+- `GET /actuator/info` (public) — static app name/version
+- `GET /actuator/metrics`, `GET /actuator/prometheus` (require a JWT, like every other non-public
+  endpoint) — retrieval/generation/orchestration latency, `http.server.requests`, and
+  `eka.auth.failures` / `eka.authz.failures` counters
+- Every response carries an `X-Correlation-Id` header (generated, or echoed back if you send one)
+- Console logs are structured JSON (Elastic Common Schema) in every profile, with the correlation
+  ID automatically included on every line for a request
+
 ---
 
 ## Documentation
@@ -284,7 +302,7 @@ for the authoritative, currently-maintained status of everything from v0.5.1 onw
 | v0.5.1 | REST API — end-to-end RAG orchestration, OpenAPI (P05.1) | ✅ Complete |
 | v0.5.2 | JWT Authentication Foundation (P05.2) | ✅ Complete |
 | v0.5.3 | Tenant & Role Authorization Boundary (P05.3) | ✅ Complete |
-| v0.5.4 | Observability Foundation (P05.4) | ⏳ Planned |
+| v0.5.4 | Observability Foundation (P05.4) | ✅ Complete |
 | v0.6.0 | Operational Hardening (P05.5) | ⏳ Planned |
 | v0.7.0 | Conversational AI streaming responses | ⏳ Planned |
 | v0.8.0 | MCP Integration — knowledge base and ingestion exposed as MCP tools | ⏳ Planned |

@@ -119,11 +119,29 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    group:
+      readiness:
+        include: readinessState,db,ollama,weaviate
   metrics:
     tags:
       application: ${spring.application.name}
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Project EKA
+    description: Enterprise Knowledge Assistant — retrieval-augmented generation platform
+    version: ${app-version:0.5.4}
 
 logging:
+  structured:
+    format:
+      console: ecs
   level:
     com.mudassirshahzad.eka: INFO
     org.springframework.ai: INFO

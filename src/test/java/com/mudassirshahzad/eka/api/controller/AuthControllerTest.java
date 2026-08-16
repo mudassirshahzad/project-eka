@@ -1,6 +1,7 @@
 package com.mudassirshahzad.eka.api.controller;
 
 import com.mudassirshahzad.eka.api.config.SecurityConfig;
+import com.mudassirshahzad.eka.api.observability.CorrelationIdFilter;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationFilter;
 import com.mudassirshahzad.eka.api.security.JwtProperties;
 import com.mudassirshahzad.eka.api.security.JwtTokenProvider;
@@ -10,9 +11,12 @@ import com.mudassirshahzad.eka.application.user.AuthenticateUserUseCase;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.User;
 import com.mudassirshahzad.eka.domain.user.UserRole;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -32,9 +36,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@link SecurityConfig} filter chain — proves {@code POST /api/v1/auth/login} is genuinely
  * {@code permitAll} (no Authorization header attached to any request here) and that failed
  * login attempts surface as 401 via {@link com.mudassirshahzad.eka.api.exception.GlobalExceptionHandler}.
+ * A real {@link SimpleMeterRegistry} (P05.4) is provided since {@code JwtAuthenticationFilter} now
+ * records a failure counter and a mocked registry would return {@code null} from {@code counter(...)}.
  */
 @WebMvcTest(AuthController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RestAuthenticationEntryPoint.class})
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RestAuthenticationEntryPoint.class,
+        CorrelationIdFilter.class, AuthControllerTest.MeterRegistryTestConfig.class})
 class AuthControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -42,6 +49,14 @@ class AuthControllerTest {
     @MockitoBean private AuthenticateUserUseCase authenticateUserUseCase;
     @MockitoBean private JwtTokenProvider         jwtTokenProvider;
     @MockitoBean private JwtProperties            jwtProperties;
+
+    @TestConfiguration
+    static class MeterRegistryTestConfig {
+        @Bean
+        SimpleMeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
+    }
 
     private final UUID tenantId = UUID.randomUUID();
 

@@ -6,31 +6,46 @@ import com.mudassirshahzad.eka.domain.retrieval.model.RetrievalResult;
 import com.mudassirshahzad.eka.domain.retrieval.port.QueryRewritePort;
 import com.mudassirshahzad.eka.domain.retrieval.port.RankingPort;
 import com.mudassirshahzad.eka.domain.retrieval.port.RetrievalPort;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
 
+/**
+ * {@code retrieve()} runs inside an {@code eka.retrieval} {@link Observation} (P05.4, ADR OB02) —
+ * a Micrometer timer today, and trace-ready with zero code changes the moment distributed tracing
+ * (out of this milestone's scope) is added.
+ */
 @Slf4j
 @Service
 public class RetrievalService {
 
     private static final int MAX_QUERY_LENGTH = 10_000;
 
-    private final RetrievalPort    retrievalPort;
-    private final RankingPort      rankingPort;
-    private final QueryRewritePort queryRewritePort;
+    private final RetrievalPort        retrievalPort;
+    private final RankingPort          rankingPort;
+    private final QueryRewritePort     queryRewritePort;
+    private final ObservationRegistry  observationRegistry;
 
     public RetrievalService(
-            RetrievalPort    retrievalPort,
-            RankingPort      rankingPort,
-            QueryRewritePort queryRewritePort) {
-        this.retrievalPort    = Objects.requireNonNull(retrievalPort,    "retrievalPort must not be null");
-        this.rankingPort      = Objects.requireNonNull(rankingPort,      "rankingPort must not be null");
-        this.queryRewritePort = Objects.requireNonNull(queryRewritePort, "queryRewritePort must not be null");
+            RetrievalPort       retrievalPort,
+            RankingPort         rankingPort,
+            QueryRewritePort    queryRewritePort,
+            ObservationRegistry observationRegistry) {
+        this.retrievalPort       = Objects.requireNonNull(retrievalPort,       "retrievalPort must not be null");
+        this.rankingPort         = Objects.requireNonNull(rankingPort,         "rankingPort must not be null");
+        this.queryRewritePort    = Objects.requireNonNull(queryRewritePort,    "queryRewritePort must not be null");
+        this.observationRegistry = Objects.requireNonNull(observationRegistry, "observationRegistry must not be null");
     }
 
     public RetrievalResult retrieve(RetrievalRequest request) {
+        return Observation.createNotStarted("eka.retrieval", observationRegistry)
+                .observe(() -> doRetrieve(request));
+    }
+
+    private RetrievalResult doRetrieve(RetrievalRequest request) {
         validate(request);
 
         String           originalQuery = request.queryText();

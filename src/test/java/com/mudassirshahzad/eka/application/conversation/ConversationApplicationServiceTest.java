@@ -12,6 +12,7 @@ import com.mudassirshahzad.eka.domain.conversation.MessageRole;
 import com.mudassirshahzad.eka.domain.chunk.ChunkId;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,7 @@ class ConversationApplicationServiceTest {
     @Mock private ConversationRepository conversationRepository;
     @Mock private DomainEventPublisher   eventPublisher;
 
+    private SimpleMeterRegistry            meterRegistry;
     private ConversationApplicationService service;
 
     private final UserId   userId   = UserId.generate();
@@ -48,7 +50,8 @@ class ConversationApplicationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ConversationApplicationService(conversationRepository, eventPublisher);
+        meterRegistry = new SimpleMeterRegistry();
+        service = new ConversationApplicationService(conversationRepository, eventPublisher, meterRegistry);
     }
 
     @Test
@@ -174,6 +177,21 @@ class ConversationApplicationServiceTest {
 
         assertThatExceptionOfType(ResourceNotFoundException.class)
                 .isThrownBy(() -> service.getConversation(id, userId, otherTenant));
+    }
+
+    @Test
+    void getConversation_wrongTenant_incrementsOwnershipFailureCounter() {
+        Conversation conversation = Conversation.create(userId, tenantId, "chat");
+        ConversationId id = conversation.getId();
+        when(conversationRepository.findByIdAndUserId(id, userId)).thenReturn(Optional.of(conversation));
+
+        TenantId otherTenant = TenantId.generate();
+
+        assertThatExceptionOfType(ResourceNotFoundException.class)
+                .isThrownBy(() -> service.getConversation(id, userId, otherTenant));
+
+        assertThat(meterRegistry.get("eka.authz.failures").tag("reason", "ownership").counter().count())
+                .isEqualTo(1.0);
     }
 
     @Test

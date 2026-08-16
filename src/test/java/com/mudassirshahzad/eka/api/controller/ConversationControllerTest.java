@@ -2,6 +2,7 @@ package com.mudassirshahzad.eka.api.controller;
 
 import com.mudassirshahzad.eka.api.config.SecurityConfig;
 import com.mudassirshahzad.eka.api.config.WebMvcConfig;
+import com.mudassirshahzad.eka.api.observability.CorrelationIdFilter;
 import com.mudassirshahzad.eka.api.security.AuthorizationInterceptor;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationFilter;
 import com.mudassirshahzad.eka.api.security.JwtAuthenticationToken;
@@ -21,9 +22,12 @@ import com.mudassirshahzad.eka.domain.conversation.Message;
 import com.mudassirshahzad.eka.domain.generation.model.GeneratedResponse;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -52,11 +56,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * plus {@link AuthorizationInterceptor} (P05.3, ADR AZ01/AZ02). {@code tenantId}/{@code userId}
  * come from the authenticated {@link JwtAuthenticationToken} (ADR A05) — attached per-request via
  * {@code SecurityMockMvcRequestPostProcessors.authentication(...)} rather than request-body
- * fields, since those fields no longer exist on the DTOs.
+ * fields, since those fields no longer exist on the DTOs. A real {@link SimpleMeterRegistry}
+ * (P05.4) is provided via {@link MeterRegistryTestConfig} — {@code JwtAuthenticationFilter} and
+ * {@code AuthorizationInterceptor} both now record failure counters and need a real registry, not
+ * a mock, since a mocked {@code counter(...)} call would return {@code null}.
  */
 @WebMvcTest(ConversationController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class, RestAuthenticationEntryPoint.class,
-        WebMvcConfig.class, AuthorizationInterceptor.class})
+        WebMvcConfig.class, AuthorizationInterceptor.class, CorrelationIdFilter.class,
+        ConversationControllerTest.MeterRegistryTestConfig.class})
 class ConversationControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -64,6 +72,14 @@ class ConversationControllerTest {
     @MockitoBean private ConversationApplicationService conversationApplicationService;
     @MockitoBean private RagOrchestrationService         ragOrchestrationService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
+
+    @TestConfiguration
+    static class MeterRegistryTestConfig {
+        @Bean
+        SimpleMeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
+    }
 
     private final UUID userId   = UUID.randomUUID();
     private final UUID tenantId = UUID.randomUUID();

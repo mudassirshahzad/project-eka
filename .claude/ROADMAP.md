@@ -36,15 +36,15 @@ Completed
 
 ✅ P05.3 Tenant & Role Authorization Boundary
 
+✅ P05.4 Observability Foundation
+
 Upcoming
 
-P05.4 Observability Foundation
+P05.5 Operational Hardening & Phase 5 Completion
 
 Future
 
 Full Authorization Filter (fine-grained, metadata-based content filtering)
-
-Resilience & Operational Hardening
 
 Streaming Responses
 

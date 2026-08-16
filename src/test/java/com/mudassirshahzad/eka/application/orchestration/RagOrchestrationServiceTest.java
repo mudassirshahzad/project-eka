@@ -21,6 +21,7 @@ import com.mudassirshahzad.eka.domain.retrieval.model.SearchMetadata;
 import com.mudassirshahzad.eka.domain.retrieval.port.ContextAssemblyPort;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
+import io.micrometer.observation.ObservationRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,7 +63,7 @@ class RagOrchestrationServiceTest {
     @BeforeEach
     void setUp() {
         orchestrator = new RagOrchestrationService(
-                conversationApplicationService, retrievalService, contextAssemblyPort, generationService, TOKEN_BUDGET);
+                conversationApplicationService, retrievalService, contextAssemblyPort, generationService, ObservationRegistry.NOOP, TOKEN_BUDGET);
     }
 
     // ── Constructor guards ────────────────────────────────────────────────────
@@ -71,7 +72,7 @@ class RagOrchestrationServiceTest {
     void constructor_rejectsNullConversationApplicationService() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new RagOrchestrationService(
-                        null, retrievalService, contextAssemblyPort, generationService, TOKEN_BUDGET))
+                        null, retrievalService, contextAssemblyPort, generationService, ObservationRegistry.NOOP, TOKEN_BUDGET))
                 .withMessageContaining("conversationApplicationService");
     }
 
@@ -79,7 +80,7 @@ class RagOrchestrationServiceTest {
     void constructor_rejectsNullRetrievalService() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new RagOrchestrationService(
-                        conversationApplicationService, null, contextAssemblyPort, generationService, TOKEN_BUDGET))
+                        conversationApplicationService, null, contextAssemblyPort, generationService, ObservationRegistry.NOOP, TOKEN_BUDGET))
                 .withMessageContaining("retrievalService");
     }
 
@@ -87,7 +88,7 @@ class RagOrchestrationServiceTest {
     void constructor_rejectsNullContextAssemblyPort() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new RagOrchestrationService(
-                        conversationApplicationService, retrievalService, null, generationService, TOKEN_BUDGET))
+                        conversationApplicationService, retrievalService, null, generationService, ObservationRegistry.NOOP, TOKEN_BUDGET))
                 .withMessageContaining("contextAssemblyPort");
     }
 
@@ -95,15 +96,24 @@ class RagOrchestrationServiceTest {
     void constructor_rejectsNullGenerationService() {
         assertThatNullPointerException()
                 .isThrownBy(() -> new RagOrchestrationService(
-                        conversationApplicationService, retrievalService, contextAssemblyPort, null, TOKEN_BUDGET))
+                        conversationApplicationService, retrievalService, contextAssemblyPort, null, ObservationRegistry.NOOP, TOKEN_BUDGET))
                 .withMessageContaining("generationService");
+    }
+
+    @Test
+    void constructor_rejectsNullObservationRegistry() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new RagOrchestrationService(
+                        conversationApplicationService, retrievalService, contextAssemblyPort, generationService,
+                        null, TOKEN_BUDGET))
+                .withMessageContaining("observationRegistry");
     }
 
     @Test
     void constructor_rejectsNonPositiveTokenBudget() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new RagOrchestrationService(
-                        conversationApplicationService, retrievalService, contextAssemblyPort, generationService, 0))
+                        conversationApplicationService, retrievalService, contextAssemblyPort, generationService, ObservationRegistry.NOOP, 0))
                 .withMessageContaining("contextTokenBudget");
     }
 
