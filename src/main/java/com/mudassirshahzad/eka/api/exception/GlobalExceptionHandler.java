@@ -4,11 +4,13 @@ import com.mudassirshahzad.eka.api.security.TooManyLoginAttemptsException;
 import com.mudassirshahzad.eka.application.generation.GenerationException;
 import com.mudassirshahzad.eka.application.retrieval.InvalidRetrievalRequestException;
 import com.mudassirshahzad.eka.application.retrieval.RetrievalException;
+import com.mudassirshahzad.eka.application.shared.ApplicationException;
 import com.mudassirshahzad.eka.application.shared.DuplicateResourceException;
 import com.mudassirshahzad.eka.application.shared.InvalidCredentialsException;
 import com.mudassirshahzad.eka.application.shared.ResourceNotFoundException;
 import com.mudassirshahzad.eka.domain.generation.exception.LlmException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -82,6 +84,33 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleBadRequest(IllegalArgumentException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * Catches any {@link ApplicationException} not already mapped by a more specific handler above
+     * (e.g. {@code ResourceNotFoundException}, {@code DuplicateResourceException}) — Spring resolves
+     * by most-specific match, so those subclasses are unaffected by this addition (P06.1, ADR PC04).
+     * Before this handler existed, a bare {@code ApplicationException} — e.g. blank-email validation
+     * in {@code RegisterUserUseCase}, or {@code DeleteConversationUseCase}'s active-session guard —
+     * fell through to {@link #handleUnexpected} and was misreported as a 500.
+     */
+    @ExceptionHandler(ApplicationException.class)
+    public ProblemDetail handleApplicationException(ApplicationException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * A referenced entity that doesn't exist (e.g. a bootstrap request naming a tenant no ops
+     * process has created yet) surfaces as a database FK-constraint violation, not a domain
+     * exception — there is no {@code TenantRepository} port to check existence in the application
+     * layer without expanding the architecture (P06.1, ADR PC03 explicitly defers that). Mapped
+     * to 400 with a generic message — never the raw constraint name — rather than the default 500.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "The request could not be completed — check that referenced resources exist.");
     }
 
     /**

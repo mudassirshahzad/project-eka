@@ -186,3 +186,5 @@ Always respect DECISIONS.md.
 Always respect ROADMAP.md.
 
 Never implement milestones out of order unless explicitly instructed.
+
+The roadmap from v0.6.1 to v1.0.0 is frozen (ADR GOV03) — Phase 6 → Phase 7 → Phase 8 → Version 1.0.0, defined in full in `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section. Treat that sequence as fixed; never propose reordering it, skipping a phase, or pulling forward post-v1.0 scope (MCP, LangGraph, agents) without an explicit new planning session. `docs/roadmap.md` is historical only — it predates this model, its own Phase 6–9 numbering does not apply, and it must never be read as current scope.

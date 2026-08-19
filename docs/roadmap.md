@@ -1,6 +1,9 @@
-# Roadmap
+# Roadmap (Historical — Original Delivery Plan)
 
 > Delivery phases, architectural evolution, and the integration path toward MCP, LangGraph, and production-grade Agentic AI for Project EKA (Enterprise Knowledge Assistant).
+
+> **⚠ Superseded for numbering and status, retained for content (v1.0 Roadmap Freeze, ADR GOV03).**
+> This document was written before the P04.x/P05.x milestone-tracking discipline and the GitHub Milestone model (`.claude/ROADMAP.md`, ADR GOV01–GOV03) existed. Its Phase 1–5 status markers below predate actual delivery and are corrected inline. Its Phase 6–9 numbering collides with the current, authoritative "Phase 6 / Phase 7 / Phase 8" milestone sequence defined in `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section — that section, not this one, is the official roadmap. The renamed sections below (Advanced Retrieval / MCP Integration / LangGraph Integration / Agentic AI Platform) are kept as **content only**: well-reasoned technical scope that the frozen roadmap draws on directly, not a competing plan. Do not treat any phase number in this file as current.
 
 ---
 
@@ -12,10 +15,10 @@
 - [Phase 3 — Retrieval and Generation](#phase-3--retrieval-and-generation)
 - [Phase 4 — Conversational Intelligence](#phase-4--conversational-intelligence)
 - [Phase 5 — Enterprise Hardening](#phase-5--enterprise-hardening)
-- [Phase 6 — Advanced Retrieval](#phase-6--advanced-retrieval)
-- [Phase 7 — MCP Integration](#phase-7--mcp-integration)
-- [Phase 8 — LangGraph Integration](#phase-8--langgraph-integration)
-- [Phase 9 — Agentic AI Platform](#phase-9--agentic-ai-platform)
+- [Future Track — Advanced Retrieval](#future-track--advanced-retrieval)
+- [Future Track — MCP Integration](#future-track--mcp-integration)
+- [Future Track — LangGraph Integration](#future-track--langgraph-integration)
+- [Future Track — Agentic AI Platform](#future-track--agentic-ai-platform)
 - [Architectural Readiness Assessment](#architectural-readiness-assessment)
 - [Technology Upgrade Path](#technology-upgrade-path)
 - [Decision Log](#decision-log)
@@ -24,17 +27,25 @@
 
 ## Delivery Phases
 
+Corrected against actual delivery (v1.0 Roadmap Freeze). Original phase numbers kept for traceability to the sections below; actual delivery happened under different names — see the "Delivered as" column.
+
 ```
-Phase 1   Foundation                     ████████████  ✅ Complete
-Phase 2   Ingestion Pipeline             ███░░░░░░░░░  🔄 In Progress
-Phase 3   Retrieval & Generation         ░░░░░░░░░░░░  ⏳ Planned
-Phase 4   Conversational Intelligence    ░░░░░░░░░░░░  ⏳ Planned
-Phase 5   Enterprise Hardening          ░░░░░░░░░░░░  ⏳ Planned
-Phase 6   Advanced Retrieval            ░░░░░░░░░░░░  Future
-Phase 7   MCP Server                    ░░░░░░░░░░░░  Future
-Phase 8   LangGraph Integration         ░░░░░░░░░░░░  Future
-Phase 9   Agentic AI Platform           ░░░░░░░░░░░░  Future
+Phase 1   Foundation                     ████████████  ✅ Complete   — delivered as Phase 1–3 foundation work
+Phase 2   Ingestion Pipeline             ████████████  ✅ Complete   — delivered as P04.x (Retrieval Foundation)
+Phase 3   Retrieval & Generation         ████████████  ✅ Complete   — delivered as P04.x (Retrieval Foundation)
+Phase 4   Conversational Intelligence    ████████████  ✅ Complete   — delivered as P04.9–P04.13
+Phase 5   Enterprise Hardening          ████████████  ✅ Complete   — delivered as P05.x + v0.6.1 (Application
+                                                                       Platform + Engineering Excellence)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+                                          Current release: v0.6.1 — see .claude/PROJECT_STATE.md
+──────────────────────────────────────────────────────────────────────────────────────────────────
+Future    Advanced Retrieval             ░░░░░░░░░░░░  Content folded into the new Phase 7 (re-ranking, HyDE)
+Future    MCP Integration                ░░░░░░░░░░░░  Content folded into the new Phase 8 (spike/go-no-go)
+Future    LangGraph Integration          ░░░░░░░░░░░░  Post-v1.0 — explicitly out of scope before v1.0.0
+Future    Agentic AI Platform            ░░░░░░░░░░░░  Post-v1.0 — explicitly out of scope before v1.0.0
 ```
+
+The authoritative Phase 6 / Phase 7 / Phase 8 plan (the actual path from v0.6.1 to v1.0.0) lives in `.claude/PROJECT_STATE.md`. This file no longer defines "Phase 6" onward.
 
 ---
 
@@ -71,7 +82,7 @@ Phase 9   Agentic AI Platform           ░░░░░░░░░░░░  Fu
 
 **Scope:** Complete document processing from upload to queryable vector embeddings.
 
-**Status:** 🔄 In Progress — Weaviate collection design and adapter underway.
+**Status:** ✅ Complete — delivered as part of P04.x (Retrieval Foundation). See `.claude/PROJECT_STATE.md`.
 
 **Deliverables:**
 
@@ -196,7 +207,9 @@ Phase 9   Agentic AI Platform           ░░░░░░░░░░░░  Fu
 
 ---
 
-## Phase 6 — Advanced Retrieval
+## Future Track — Advanced Retrieval
+
+*(Formerly "Phase 6" in this document's original numbering — superseded, see notice at top of file. This scope is folded into the authoritative Phase 7 — Retrieval Quality & Operational Integrity, defined in `.claude/PROJECT_STATE.md`.)*
 
 **Scope:** Retrieval quality improvements that lift answer accuracy without changing the architectural model.
 
@@ -221,7 +234,9 @@ Phase 9   Agentic AI Platform           ░░░░░░░░░░░░  Fu
 
 ---
 
-## Phase 7 — MCP Integration
+## Future Track — MCP Integration
+
+*(Formerly "Phase 7" in this document's original numbering — superseded, see notice at top of file. This scope is folded into the authoritative Phase 8 — Scale & Ecosystem Readiness, defined in `.claude/PROJECT_STATE.md`, as a spike/go-no-go, not full delivery.)*
 
 **Scope:** Expose the knowledge base as MCP tools, making it accessible to Claude Desktop, external agents, and any MCP-compatible client.
 
@@ -282,7 +297,9 @@ MCP is transport — it is functionally identical to the HTTP REST API at the ad
 
 ---
 
-## Phase 8 — LangGraph Integration
+## Future Track — LangGraph Integration
+
+*(Formerly "Phase 8" in this document's original numbering — superseded, see notice at top of file. Explicitly out of scope before v1.0.0 per the frozen roadmap in `.claude/PROJECT_STATE.md`; revisit as a post-v1.0 initiative.)*
 
 **Scope:** Replace the linear retrieval pipeline with a graph-based orchestration model, enabling conditional routing, parallel execution, and iterative refinement.
 
@@ -390,7 +407,9 @@ GraphState:
 
 ---
 
-## Phase 9 — Agentic AI Platform
+## Future Track — Agentic AI Platform
+
+*(Formerly "Phase 9" in this document's original numbering — superseded, see notice at top of file. Explicitly out of scope before v1.0.0 per the frozen roadmap in `.claude/PROJECT_STATE.md`; revisit as a post-v1.0 initiative.)*
 
 **Scope:** Evolve from a retrieval platform into an orchestrated multi-agent system capable of complex, multi-step knowledge tasks.
 
@@ -513,7 +532,7 @@ This table evaluates how prepared the current Phase 1 codebase is for each futur
 
 ## Decision Log
 
-This log records the significant architectural decisions made during Phase 1 and their rationale. It is a living document.
+This log records the significant architectural decisions made during Phase 1 and their rationale. **Not a living document as of the v1.0 Roadmap Freeze (ADR GOV03)** — `.claude/DECISIONS.md` is the authoritative, actively-maintained ADR log from P04.x onward; entries below are frozen as historical record. Where a later ADR superseded one of these, that's noted inline rather than silently edited.
 
 | Date | Decision | Alternatives Considered | Rationale |
 |---|---|---|---|
@@ -521,7 +540,7 @@ This log records the significant architectural decisions made during Phase 1 and
 | 2026-06 | Hexagonal Architecture with ArchUnit enforcement | Layered architecture | Provider independence for AI components; testability |
 | 2026-06 | PostgreSQL for FTS (not Elasticsearch) | Elasticsearch, OpenSearch | Reduces operational dependencies; BM25 via `tsvector` is sufficient at current scale |
 | 2026-06 | Weaviate native multi-tenancy | Property-based filtering | Physical data isolation; performance at multi-tenant scale |
-| 2026-06 | JWT RS256 (not HS256) | HS256 shared secret | Asymmetric keys allow verification without exposing signing key |
+| 2026-06 | ~~JWT RS256 (not HS256)~~ **Superseded — see ADR A01** | HS256 shared secret | Asymmetric keys allow verification without exposing signing key. *Superseded: P05.2 (ADR A01) shipped HS256 deliberately — appropriate for a single monolith that both signs and verifies its own tokens; RS256 key-pair management was judged unnecessary complexity for that deployment shape.* |
 | 2026-06 | Domain-assigned UUIDs | Database-generated IDs | Domain identity independence from persistence technology |
 | 2026-06 | Domain-owned `PageRequest`/`PageResult` | Spring `Pageable` in domain | No Spring imports in domain layer (ArchUnit-enforced) |
 | 2026-06 | Append-only `audit_logs` with PostgreSQL RULE | Application-level enforcement | Database-level immutability cannot be bypassed by application bugs |

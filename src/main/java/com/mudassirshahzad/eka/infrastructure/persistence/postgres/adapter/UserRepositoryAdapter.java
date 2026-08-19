@@ -69,6 +69,13 @@ public class UserRepositoryAdapter implements UserRepository {
         return userJpaRepository.existsByEmailAndTenant(email, tenant);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByTenantId(TenantId tenantId) {
+        TenantEntity tenant = tenantJpaRepository.getReferenceById(tenantId.value());
+        return userJpaRepository.existsByTenant(tenant);
+    }
+
     private Set<RoleEntity> resolveRoles(Set<UserRole> roles) {
         return roles.stream()
                 .map(r -> roleJpaRepository.findByName(r.name())

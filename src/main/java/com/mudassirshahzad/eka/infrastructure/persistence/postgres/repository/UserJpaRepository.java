@@ -18,6 +18,8 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
 
     boolean existsByEmailAndTenant(String email, TenantEntity tenant);
 
+    boolean existsByTenant(TenantEntity tenant);
+
     @Modifying
     @Query("UPDATE UserEntity u SET u.active = false WHERE u.id = :id")
     void deactivateById(@Param("id") UUID id);

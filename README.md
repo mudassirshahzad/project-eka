@@ -12,7 +12,7 @@
 [![Weaviate](https://img.shields.io/badge/Weaviate-1.25-FF6D00?style=flat-square)](https://weaviate.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Apache Tika](https://img.shields.io/badge/Apache_Tika-2.9.2-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
-[![Tests](https://img.shields.io/badge/tests-623_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
+[![Tests](https://img.shields.io/badge/tests-673_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b?style=flat-square)](LICENSE)
 
 </div>
@@ -31,7 +31,7 @@
 - Hybrid Search *(v0.5.0)*
 - MCP Ready *(v0.8.0)*
 - LangGraph Ready *(v0.9.0)*
-- 623 Automated Tests, 0 failures
+- 673 Automated Tests, 0 failures
 
 ---
 
@@ -62,14 +62,14 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.6.1 — Engineering Excellence & Repository Governance (post-Phase-5) |
+| **Current Release** | v0.7.0 — P06.1: Product Completeness & Authorization Depth (Phase 6, milestone 1) |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 623 passing, 0 failures · 63 test classes |
+| **Automated Tests** | 673 passing, 0 failures · 67 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
 | **CI** | GitHub Actions — build + full test suite + ArchUnit on every PR and push to `main` |
 | **Schema Migrations** | Flyway V001–V017 (17 migrations) |
-| **Current Focus** | v0.6.1 — Engineering Excellence & Repository Governance (complete) |
-| **Next Milestone** | Phase 6 — not yet scoped |
+| **Current Focus** | P06.1 — Product Completeness & Authorization Depth — REST Surface Foundation (complete) |
+| **Next Milestone** | P06.2 — Authorization Filter (Phase 6, milestone 2 of 5; v0.7.1) — not yet started |
 
 ---
 
@@ -77,7 +77,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 **Implemented — v0.4.0 (ingestion foundation)**
 
-- ✅ Multi-format document upload with format-filename consistency validation — implemented at the application layer (`UploadDocumentUseCase`) and fully tested; **no REST endpoint exposes it yet** (`POST /api/v1/documents` does not exist — intentionally deferred, v0.6.1 ADR EX09, not an oversight). Reachable today via direct Java invocation only.
+- ✅ Multi-format document upload with format-filename consistency validation — implemented at the application layer (`UploadDocumentUseCase`) and fully tested; **REST-exposed as of P06.1** via `POST /api/v1/documents` (multipart, closes v0.6.1 ADR EX09's deferral and post-Phase-5 audit finding H2). See "Application Platform" below.
 - ✅ Apache Tika parsing with magic-byte format detection
 - ✅ Token-aware sliding window chunking with paragraph-boundary snapping
 - ✅ Batch embedding generation via Ollama (`nomic-embed-text`, 768-dim)
@@ -114,8 +114,18 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Application `Dockerfile` (multi-stage, non-root) — closes the gap where only the *dependencies* (Postgres/Weaviate/Ollama) were containerized
 - ✅ Single source of truth for the release version (`build.gradle` → `/actuator/info`'s `build.version`, no more hand-maintained duplicate)
 
-**Planned — Phase 6 and beyond**
+**Implemented — v0.7.0 / P06.1 (Product Completeness & Authorization Depth — REST Surface Foundation, Phase 6 milestone 1)**
 
+- ✅ Document ingestion REST API — `POST /api/v1/documents` (multipart upload), `GET /{id}`, `GET` (paginated list), `DELETE /{id}`; documents are tenant-wide readable (shared knowledge base), not owner-scoped like conversations
+- ✅ First-user bootstrap and minimal admin surface — public `POST /api/v1/admin/bootstrap` (once per tenant), `ADMIN`-only `POST /api/v1/admin/users`, `GET /api/v1/admin/users/{id}`, `POST /api/v1/admin/users/{id}/deactivate`
+- ✅ Conversation list and delete — `GET /api/v1/conversations` (own conversations, paginated), `DELETE /api/v1/conversations/{id}`
+- ✅ Closed a real cross-tenant read gap in user administration — `getUser`/`activateUser`/`deactivateUser` now verify tenant ownership, not just a valid ID
+- ✅ Application-layer validation errors (e.g. `DeleteConversationUseCase`'s active-session guard) now return `400`, not a misleading `500`
+- ✅ Request-size protection narrowed to support real uploads without weakening the general limit — only the upload route is exempt, matched on method + path + content type together
+
+**Planned — Phase 6 (continued) and beyond**
+
+- ⏳ Authorization Filter (P06.2) — fine-grained, metadata-based retrieval-pipeline authorization; named in this project's target architecture since before Phase 4, still unbuilt
 - ⏳ Server-Sent Events streaming responses with source citations
 - ⏳ MCP server — knowledge base and ingestion exposed as MCP tools
 - ⏳ LangGraph agentic pipeline with self-correction loop
@@ -243,22 +253,34 @@ error, carries an `X-Correlation-Id` header.
 
 ### 5. Authenticate
 
-Every endpoint under `/api/v1/conversations` now requires a JWT (v0.5.2). There is no
-self-service registration endpoint yet — seed at least one user directly (e.g. via a migration
-or a one-off script, with a BCrypt-hashed password and at least one of the four `UserRole`
-values) before logging in:
+Every endpoint under `/api/v1/conversations` requires a JWT (v0.5.2). A **tenant** row still has
+to be seeded directly (e.g. via a migration or a one-off script) — there is no tenant-creation
+endpoint (P06.1, ADR PC03; tenant provisioning is deliberately an ops/database concern, not
+application scope). Once a tenant exists, its first `ADMIN` user no longer needs to be seeded
+directly — `POST /api/v1/admin/bootstrap` creates it (works exactly once per tenant):
+
+```
+POST /api/v1/admin/bootstrap
+{"tenantId": "<uuid>", "email": "admin@example.com", "password": "at-least-8-chars"}
+
+→ 201 {"id": "...", "email": "admin@example.com", "roles": ["ADMIN"], "active": true, ...}
+```
+
+Then log in as usual:
 
 ```
 POST /api/v1/auth/login
-{"tenantId": "<uuid>", "email": "user@example.com", "password": "..."}
+{"tenantId": "<uuid>", "email": "admin@example.com", "password": "at-least-8-chars"}
 
 → {"accessToken": "...", "tokenType": "Bearer", "expiresInMs": 900000}
 ```
 
 Send the returned token as `Authorization: Bearer <accessToken>` on every subsequent request.
-As of v0.5.3, the seeded user's role also matters: creating a conversation or sending a message
-requires `USER` or `ADMIN` — a `VIEWER`/`AUDITOR` token gets `403` on those two endpoints (reading
-a conversation is open to all four roles, subject to ownership).
+As of v0.5.3, role also matters: creating a conversation, sending a message, uploading or
+deleting a document, or deleting a conversation all require `USER` or `ADMIN` — a
+`VIEWER`/`AUDITOR` token gets `403` on those. Reading/listing conversations and documents is
+open to all four roles, subject to ownership (conversations) or tenant membership (documents).
+Registering additional users (`POST /api/v1/admin/users`) requires an authenticated `ADMIN` token.
 
 ### Configuration
 
@@ -335,10 +357,16 @@ for the authoritative, currently-maintained status of everything from v0.5.1 onw
 | v0.5.4 | Observability Foundation (P05.4) | ✅ Complete |
 | v0.6.0 | Operational Hardening & Phase 5 Completion (P05.5) | ✅ Complete |
 | v0.6.1 | Engineering Excellence & Repository Governance (post-Phase-5 audit response) | ✅ Complete |
-| v0.7.0 | Conversational AI streaming responses | ⏳ Planned |
-| v0.8.0 | MCP Integration — knowledge base and ingestion exposed as MCP tools | ⏳ Planned |
-| v0.9.0 | LangGraph & Agentic AI — graph orchestration, self-correction, multi-agent | ⏳ Planned |
-| v1.0.0 | First Stable Release — production hardening, observability, load testing | ⏳ Planned |
+| v0.7.0 | Phase 6, P06.1 — Product Completeness & Authorization Depth: REST surface foundation (document ingestion, admin/bootstrap, conversation list/delete) | ✅ Complete |
+| v0.7.1 | Phase 6, P06.2 — Authorization Filter (retrieval-pipeline stage) | ⏳ Planned |
+| v0.7.2 | Phase 6, P06.3 — not yet scoped | ⏳ Planned |
+| v0.7.3 | Phase 6, P06.4 — not yet scoped | ⏳ Planned |
+| v0.7.4 | Phase 6, P06.5 — Phase 6 Complete gate | ⏳ Planned |
+| v0.8.0 | Phase 7 — Retrieval Quality & Operational Integrity: re-ranking, HyDE, Postgres↔Weaviate reconciliation, refresh tokens | ⏳ Planned |
+| v0.9.0 | Phase 8 — Scale & Ecosystem Readiness: metrics dashboards, streaming, MCP spike (go/no-go) | ⏳ Planned |
+| v1.0.0 | First Stable Release — gated on the full product definition in `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section | ⏳ Planned |
+
+Table reassigned by the v1.0 Roadmap Freeze (ADR GOV03) — v0.7.0–v0.9.0 previously named streaming/MCP/LangGraph directly; that content still exists, just resequenced into Phase 7/8 above rather than driving version numbers on its own. Phase 6 versioning further refined by ADR GOV04 — one point release per P06.x milestone (v0.7.0–v0.7.4) rather than one version for the whole phase; Phase 7/8/v1.0.0 entry versions are unchanged. See `.claude/ROADMAP.md` and `.claude/PROJECT_STATE.md` for the authoritative, currently-maintained sequence.
 
 ---
 

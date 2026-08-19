@@ -11,9 +11,11 @@ import com.mudassirshahzad.eka.api.security.RequestSizeLimitFilter;
 import com.mudassirshahzad.eka.api.security.RestAuthenticationEntryPoint;
 import com.mudassirshahzad.eka.application.conversation.ConversationApplicationService;
 import com.mudassirshahzad.eka.application.conversation.CreateConversationUseCase;
+import com.mudassirshahzad.eka.application.conversation.DeleteConversationUseCase;
 import com.mudassirshahzad.eka.application.generation.GenerationException;
 import com.mudassirshahzad.eka.application.orchestration.RagOrchestrationService;
 import com.mudassirshahzad.eka.application.orchestration.RagTurnResult;
+import com.mudassirshahzad.eka.application.shared.ApplicationException;
 import com.mudassirshahzad.eka.application.shared.DuplicateResourceException;
 import com.mudassirshahzad.eka.application.shared.ResourceNotFoundException;
 import com.mudassirshahzad.eka.domain.chunk.ChunkId;
@@ -22,6 +24,8 @@ import com.mudassirshahzad.eka.domain.conversation.Conversation;
 import com.mudassirshahzad.eka.domain.conversation.ConversationId;
 import com.mudassirshahzad.eka.domain.conversation.Message;
 import com.mudassirshahzad.eka.domain.generation.model.GeneratedResponse;
+import com.mudassirshahzad.eka.domain.shared.PageRequest;
+import com.mudassirshahzad.eka.domain.shared.PageResult;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -43,8 +47,12 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -73,6 +81,7 @@ class ConversationControllerTest {
 
     @MockitoBean private ConversationApplicationService conversationApplicationService;
     @MockitoBean private CreateConversationUseCase       createConversationUseCase;
+    @MockitoBean private DeleteConversationUseCase       deleteConversationUseCase;
     @MockitoBean private RagOrchestrationService         ragOrchestrationService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
 
@@ -248,6 +257,89 @@ class ConversationControllerTest {
                         .with(authenticated()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
+    }
+
+    // ── GET /conversations (P06.1) ──────────────────────────────────────────────
+
+    @Test
+    void listConversations_returnsPageOfOwnConversations() throws Exception {
+        Conversation conversation = Conversation.create(UserId.of(userId), TenantId.of(tenantId), "My chat");
+        PageResult<Conversation> page = PageResult.of(List.of(conversation), 0, 20, 1);
+        when(conversationApplicationService.listConversations(any(), any(), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/conversations")
+                        .with(authenticated()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].title").value("My chat"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void listConversations_unauthenticated_returnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/v1/conversations"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listConversations_viewerRole_isPermitted() throws Exception {
+        PageResult<Conversation> page = PageResult.of(List.of(), 0, 20, 0);
+        when(conversationApplicationService.listConversations(any(), any(), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/conversations")
+                        .with(authenticatedAs("ROLE_VIEWER")))
+                .andExpect(status().isOk());
+    }
+
+    // ── DELETE /conversations/{id} (P06.1) ──────────────────────────────────────
+
+    @Test
+    void deleteConversation_returnsNoContent() throws Exception {
+        UUID conversationId = UUID.randomUUID();
+        doNothing().when(deleteConversationUseCase).execute(any(), any(), any());
+
+        mockMvc.perform(delete("/api/v1/conversations/{id}", conversationId)
+                        .with(authenticated()))
+                .andExpect(status().isNoContent());
+
+        verify(deleteConversationUseCase).execute(ConversationId.of(conversationId), UserId.of(userId), TenantId.of(tenantId));
+    }
+
+    @Test
+    void deleteConversation_notFound_returnsProblemDetail() throws Exception {
+        UUID missingId = UUID.randomUUID();
+        doThrow(new ResourceNotFoundException("Conversation", missingId.toString()))
+                .when(deleteConversationUseCase).execute(any(), any(), any());
+
+        mockMvc.perform(delete("/api/v1/conversations/{id}", missingId)
+                        .with(authenticated()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteConversation_activeSessionGuard_returnsBadRequest() throws Exception {
+        // P06.1, ADR PC04: a bare ApplicationException (here, DeleteConversationUseCase's
+        // active-chat-session guard) now maps to 400, not 500.
+        doThrow(new ApplicationException("Cannot delete conversation with an active session"))
+                .when(deleteConversationUseCase).execute(any(), any(), any());
+
+        mockMvc.perform(delete("/api/v1/conversations/{id}", UUID.randomUUID())
+                        .with(authenticated()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(containsString("active session")));
+    }
+
+    @Test
+    void deleteConversation_unauthenticated_returnsUnauthorized() throws Exception {
+        mockMvc.perform(delete("/api/v1/conversations/{id}", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deleteConversation_viewerRole_returnsForbidden() throws Exception {
+        mockMvc.perform(delete("/api/v1/conversations/{id}", UUID.randomUUID())
+                        .with(authenticatedAs("ROLE_VIEWER")))
+                .andExpect(status().isForbidden());
     }
 
     // ── POST /conversations/{id}/messages ─────────────────────────────────────

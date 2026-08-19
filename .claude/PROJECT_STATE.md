@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.6.1 (Complete) — Engineering Excellence & Repository Governance (post-Phase-5, not Phase 6)
+v0.7.0 (Complete) — P06.1: Product Completeness & Authorization Depth — REST Surface Foundation (Phase 6, milestone 1 of N)
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -145,6 +145,91 @@ If a milestone is complete: close it. If work doesn't land in time: move the rem
 
 ---
 
+## Roadmap to v1.0.0 (Frozen)
+
+**Status: FROZEN (v1.0 Roadmap Freeze, ADR GOV03).** This is the single, official roadmap from v0.6.1 to v1.0.0. `docs/roadmap.md` predates this model, is marked superseded for numbering/status, and is retained as historical content only (its Phase 6–9 material informed Phase 7/Phase 8 below, but does not define them). Do not reorder Phase 6/7/8 or reinterpret v1.0.0 scope without an explicit new planning session — this is deliberately not something to silently drift.
+
+### Why this sequence (critical-review summary)
+
+A second, adversarial pass against the drafted plan changed two things before freezing it — recorded here so the reasoning isn't lost:
+
+- **Weaviate client timeout** (deferred technical debt since P05.5, ADR HD03) was previously unscheduled. It belongs in Phase 7: a hung Weaviate call can hang a retrieval request indefinitely, which is squarely an operational-integrity problem, not a someday-nice-to-have.
+- **Prompt-injection / indirect-injection risk review** was missing from the draft entirely. Phase 6 opens real document ingestion to real users — the moment arbitrary user-supplied document content can be retrieved into an LLM prompt, indirect prompt injection becomes a live risk, not a theoretical one. Added to Phase 7 as a direct consequence of what Phase 6 ships.
+
+Everything else held up under review: the 3-phase structure (make it reachable → make it good and safe → make it scale) is kept as-is — collapsing Phase 6 and 7 would mix new construction with quality gates in one phase, which this project's own review philosophy already rejects elsewhere; adding a 4th phase would split closely-related work for no benefit. MCP/LangGraph/Agentic AI remain explicitly post-v1.0 — the project's own Architectural Readiness Assessment (`docs/roadmap.md`) already rates them "High readiness," meaning deferring them costs nothing today.
+
+### Official Project EKA v1.0.0 definition
+
+| Dimension | Definition |
+|---|---|
+| Intended users | Mid-size to large organizations running an internal, self-hosted knowledge assistant over their own documents. Not a consumer product — every design decision (tenant isolation, on-prem model hosting, no external API dependency) targets an IT/security-conscious enterprise buyer. |
+| Primary use cases | Upload internal documents; ask natural-language questions and receive cited, grounded answers; scope results by tenant, role, and document classification; maintain a persistent, auditable conversation history per user. |
+| Functional capabilities | Full ingestion lifecycle reachable over REST (upload, status, list, delete). Fine-grained authorization enforced at the retrieval layer, not just the tenant boundary. Complete conversation management (create, list, rename, delete) exposed over REST. Admin capability to provision tenants and users without direct database access. At least one retrieval re-ranking stage beyond RRF fusion. |
+| Security expectations | Authorization Filter live and tested. Refresh tokens with revocation — a leaked access token must be killable. Indirect prompt-injection risk reviewed against real ingested content. A documented secrets-management upgrade path beyond env vars (doesn't have to be built, has to be written down). |
+| Operational expectations | Prometheus scraping and a Grafana dashboard for metrics that already exist. Postgres↔Weaviate reconciliation job running on a schedule with alerting on drift, not passive logging. Weaviate client timeout configured — no unbounded-hang path in the retrieval pipeline. |
+| Deployment expectations | Docker image verified by a real `docker build` in CI (not just written and assumed). Single-instance deployment is the supported shape for v1.0.0; any component that would silently break under a second instance (today: `LoginRateLimiter`) is either made instance-safe or explicitly documented as a single-instance constraint — not silently left. |
+| Production readiness expectations | Branch protection actually applied (`docs/governance/branch-protection.md` executed, not just written). Dependency/vulnerability scanning wired into CI. |
+| Explicit out-of-scope items | MCP server, LangGraph orchestration, multi-agent platform, streaming (SSE) responses beyond what Phase 8 ships, semantic caching, external cloud LLM providers (Bedrock, Azure OpenAI), microservice extraction, Kafka event bus, S3/cloud storage migration. All rated "High readiness" in the project's own architectural assessment — the ports they'd plug into already exist, so deferring them costs nothing architecturally. |
+
+### Phase 6 — Product Completeness & Authorization Depth
+
+- **Objective:** Make every capability that already exists internally actually reachable, and correctly scoped, before building anything new.
+- **Scope:** Document ingestion REST surface; Authorization Filter (the retrieval-pipeline stage `.claude/CLAUDE.md` has named as planned since before Phase 4); admin/registration REST surface; conversation list and delete routes (use cases already exist and are tested — only the routes are missing).
+- **Success criteria:** A brand-new tenant can be fully operated — users provisioned, documents uploaded, conversations held and managed — without a single direct database write. Retrieval results are provably scoped by document-level authorization in a test, not just by tenant.
+- **Exit criteria:** Full REST surface live for ingestion, conversations, and admin. Authorization Filter enforced and covered by tests proving a wrong-classification request is denied. Audit finding H2 (post-Phase-5 audit) formally closed, not merely documented as deferred.
+- **Deliverables:** `POST /api/v1/documents` (+ status/list/delete routes); Authorization Filter as a retrieval-pipeline stage; admin/registration REST endpoints; `GET/DELETE` conversation routes wired to the already-existing `GetConversationUseCase`-equivalent/`DeleteConversationUseCase`.
+- **Dependencies:** None blocking. Every port and application-layer service this phase needs already exists; this is a REST-exposure and one net-new authorization-enforcement phase, not a from-scratch build.
+
+**Phase 6 milestone tracking:**
+
+| Milestone | Version | Description | New Tests | Status |
+|---|---|---|---|---|
+| P06.1 | v0.7.0 | Product Completeness & Authorization Depth — REST Surface Foundation (document ingestion, admin/bootstrap, conversation list/delete REST surfaces) | +50 | ✅ Complete |
+| P06.2 | v0.7.1 | Authorization Filter (retrieval-pipeline stage) | — | ⏳ Not started |
+| P06.3 | v0.7.2 | Not yet scoped | — | ⏳ Not started |
+| P06.4 | v0.7.3 | Not yet scoped | — | ⏳ Not started |
+| P06.5 | v0.7.4 | Not yet scoped — Phase 6 Complete gate | — | ⏳ Not started |
+
+**Grand total tests: 673 — 0 failures** (net +50)
+
+**Phase 6 is not yet complete** — P06.1 deliberately excluded the Authorization Filter (explicit "out of scope" in its own brief); Phase 6's own exit criteria aren't met until that ships too. Do not tag `v0.8.0` (Phase 7) as a phase-complete boundary until P06.5 (the Phase 6 Complete gate) closes. Versioning within Phase 6 was refined to one point release per P06.x milestone rather than one version for the whole phase (ADR GOV04) — P06.3/P06.4/P06.5 have reserved version numbers only; their scope is deliberately not defined here and will be set in its own planning session before implementation, same as P06.2.
+
+### Phase 7 — Retrieval Quality & Operational Integrity
+
+- **Objective:** Raise answer quality and close the operational gaps that would turn into a real incident under production load. Assumes real traffic is now flowing through the REST surface Phase 6 built.
+- **Scope:** Cross-encoder re-ranking + HyDE evaluation; Postgres↔Weaviate reconciliation job; refresh tokens with revocation; Weaviate client connect/read timeout (ADR HD03, closed here); indirect prompt-injection risk review against real ingested content; dependency/vulnerability scanning in CI; branch protection actually applied; Docker image build-verified in CI.
+- **Success criteria:** Measurable relevance improvement on an internal evaluation set. A simulated partial-write failure is detected and repaired without manual intervention. A compromised access token can be revoked without waiting out its expiry. A hung Weaviate call can no longer hang a retrieval request indefinitely.
+- **Exit criteria:** Quality benchmark result documented in an ADR. Reconciliation job running on a schedule with alerting. CI includes SCA. Branch protection live. Prompt-injection review documented with either mitigations shipped or residual risk explicitly accepted.
+- **Deliverables:** Re-ranking adapter (cross-encoder); HyDE evaluation results; scheduled reconciliation job; refresh-token issuance/revocation; `RestClientCustomizer`-equivalent (or custom `WeaviateClient` bean) for Weaviate timeouts; prompt-injection review write-up; CI dependency scanning; applied branch protection; CI-verified Docker build.
+- **Dependencies:** Phase 6's ingestion REST surface — re-ranking can't be meaningfully evaluated, and prompt-injection risk can't be meaningfully reviewed, against a corpus that only ever enters the system through test fixtures.
+
+### Phase 8 — Scale & Ecosystem Readiness
+
+- **Objective:** Prepare for more than one instance and for external consumption — without committing to an ecosystem before there's a real reason to.
+- **Scope:** Prometheus + Grafana deployment; streaming (SSE) responses; distributed rate-limit store (conditional — only if a genuine multi-instance deployment is actually being planned by the time this phase starts); MCP server spike (go/no-go recommendation, not delivery).
+- **Success criteria:** Dashboards exist and are actually used to answer an operational question. Streaming measurably reduces perceived response latency. The MCP spike produces a written go/no-go, not an assumption that it belongs in v1.0.0.
+- **Exit criteria:** Metrics deployment live. Streaming shipped on at least the primary chat endpoint. MCP go/no-go documented in an ADR either way.
+- **Deliverables:** Prometheus scrape endpoint + Grafana dashboard definitions; SSE streaming on `sendMessage`; (conditional) distributed rate-limit store; MCP spike write-up.
+- **Dependencies:** Phase 7's operational-integrity work — dashboards are much less useful without the reconciliation job's signals feeding them.
+
+### Release strategy
+
+| Version | Milestone | Gate |
+|---|---|---|
+| v0.6.1 | Enterprise Foundation Complete | Shipped — closed milestone |
+| v0.7.0 | P06.1 — REST Surface Foundation | Shipped — document ingestion, admin/bootstrap, conversation list/delete REST surfaces live |
+| v0.7.1 | P06.2 — Authorization Filter | Retrieval-pipeline authorization enforced, tested against a wrong-classification denial |
+| v0.7.2 | P06.3 | Not yet scoped |
+| v0.7.3 | P06.4 | Not yet scoped |
+| v0.7.4 | P06.5 — Phase 6 Complete | Every Phase 6 exit criterion (see above) met |
+| v0.8.0 | Phase 7 complete | Re-ranking shipped, reconciliation job live, branch protection applied |
+| v0.9.0 | Phase 8 complete | Metrics dashboarded, streaming shipped, MCP go/no-go decided |
+| v1.0.0 | Version 1.0.0 milestone | Every item in the official v1.0.0 definition above is met — reviewed as a gate, not assumed from phase completion alone |
+
+Follows the Release Workflow already codified above (ADR GOV02) — no new process, this is the existing model applied forward. Row split for v0.7.0–v0.7.4 reflects ADR GOV04's refinement of Phase 6 versioning to one point release per P06.x milestone; the Phase 7/8/v1.0.0 entry versions are unchanged from ADR GOV03.
+
+---
+
 ## Architecture Notes
 
 Architecture is frozen.
@@ -227,6 +312,15 @@ Security layer (Authorization Filter) is planned but not implemented.
 | EX08 | `CreateConversationUseCase` wired to the controller + title invariant moved into `Conversation` domain aggregate; `GetConversationUseCase`/`ListConversationsUseCase` deleted (added no value) |
 | EX09 | Document ingestion REST endpoint intentionally deferred — new platform capability, out of this milestone's scope |
 | EX10 | Production `Dockerfile` for the Spring Boot app added; `docker-compose.yml` untouched (no deployment redesign) |
+| GOV01 | GitHub Milestones introduced as repository governance; Releases stay the sole historical record; one retrospective milestone only (Enterprise Foundation) |
+| GOV02 | Canonical, numbered 12-step Release Workflow + 15-item Repository Completion Checklist |
+| GOV03 | Roadmap to v1.0.0 frozen (Phase 6 → 7 → 8 → v1.0.0); `docs/roadmap.md` superseded for numbering/status, retained for content |
+| GOV04 | Phase 6 versioning refined to one point release per P06.x milestone (v0.7.0–v0.7.4, Phase 6 Complete at v0.7.4); Phase 7/8/v1.0.0 entry versions unchanged |
+| PC01 | `RequestSizeLimitFilter`'s multipart exemption is scoped to the exact upload route (method + path), not any multipart-content-typed request — closes a self-review-caught bypass |
+| PC02 | `UserApplicationService.getUser`/`activateUser`/`deactivateUser` now verify tenant ownership after fetch — closed a real cross-tenant gap this milestone made reachable for the first time |
+| PC03 | No `Tenant` domain aggregate/port introduced; bootstrap operates against an already-provisioned tenant; a nonexistent tenant surfaces via a new `DataIntegrityViolationException` → 400 handler |
+| PC04 | `GlobalExceptionHandler` gained `ApplicationException` → 400 and `DataIntegrityViolationException` → 400 handlers |
+| PC05 | Documents stay tenant-wide readable (not owner-scoped); admin surface deliberately minimal (bootstrap/register/get/deactivate only); `DeleteConversationUseCase` given its first route |
 
 ---
 
@@ -403,7 +497,7 @@ GeneratedResponse
 - `PolicyBasedOutputGuardrailsAdapter` implements `OutputGuardrailsPort` (blocks null/blank output, strips control characters, truncates to `app.guardrails.max-response-length` — P04.12)
 - `PositionalCitationAdapter` implements `CitationPort` (parses `[SOURCE:N]` markers, resolves against `AssembledContext` by `AssembledChunk.position()` — P04.11)
 - `RagOrchestrationService` is the sole caller wiring `ConversationApplicationService` + `RetrievalService` + `ContextAssemblyPort` + `GenerationService` together (P05.1, ADR O01)
-- `ConversationController` is the sole REST entry point for conversations (`/api/v1/conversations`); `AuthController` is the sole token-issuing entry point (`/api/v1/auth/login`, P05.2); `GlobalExceptionHandler` is the sole `@RestControllerAdvice` (P05.1, ADR O03)
+- `ConversationController` is the sole REST entry point for conversations (`/api/v1/conversations`, now including list/delete — P06.1); `AuthController` is the sole token-issuing entry point (`/api/v1/auth/login`, P05.2); `DocumentController` is the sole REST entry point for documents (`/api/v1/documents`, P06.1); `AdminController` is the sole REST entry point for bootstrap/user administration (`/api/v1/admin`, P06.1); `GlobalExceptionHandler` is the sole `@RestControllerAdvice` (P05.1, ADR O03)
 - `SecurityConfig` requires a valid JWT on every endpoint except `/api/v1/auth/login`, `/actuator/health`, `/actuator/info` (P05.4, ADR OB01), and the Swagger/OpenAPI paths — real HS256 validation as of P05.2 (ADR A01), replacing the P05.1 permissive seam outright (ADR O05)
 - `JwtTokenProvider` (`api.security`) is the sole component that signs or verifies tokens; `JwtAuthenticationFilter` is the sole component that populates the `SecurityContext`; `RestAuthenticationEntryPoint` is the sole source of a 401 response (ADR A04)
 - `AuthenticateUserUseCase` (`application.user`) is the sole verifier of login credentials, via the existing `UserRepository` port and a `BCryptPasswordEncoder` (`infrastructure.config.PasswordEncoderConfig`) — always throws the same `InvalidCredentialsException` regardless of failure cause (ADR A03)
@@ -423,10 +517,15 @@ GeneratedResponse
 - `GlobalExceptionHandler extends ResponseEntityExceptionHandler` — Spring MVC's own framework exceptions (malformed JSON, non-UUID path variables, unsupported methods) now resolve to correct 4xx `ProblemDetail` responses instead of the generic 500 fallback (v0.6.1, ADR EX02)
 - `JwtProperties`'s compact constructor validates HS256 key strength (≥32 bytes) and positive expiry at application-context startup, not on first token signed (v0.6.1, ADR EX04)
 - `LoginRateLimiter` (`api.security`) gates `AuthController.login()` — in-memory, per-IP, fixed-window (10/min default), checked before credential verification; `ProjectEkaApplication` gained `@EnableScheduling` for its periodic cleanup sweep (v0.6.1, ADR EX05)
-- `RequestSizeLimitFilter` (`api.security`), registered in `SecurityConfig` right after `CorrelationIdFilter`, rejects any request whose `Content-Length` exceeds `app.request.max-body-bytes` (default 1 MiB) before Spring MVC/Jackson ever process it (v0.6.1, ADR EX06)
+- `RequestSizeLimitFilter` (`api.security`), registered in `SecurityConfig` right after `CorrelationIdFilter`, rejects any request whose `Content-Length` exceeds `app.request.max-body-bytes` (default 1 MiB) before Spring MVC/Jackson ever process it (v0.6.1, ADR EX06); exempts only `POST /api/v1/documents` multipart requests, matched on method + path + content type together, not content type alone (P06.1, ADR PC01)
 - `ConversationController.createConversation` now calls `CreateConversationUseCase`, not `ConversationApplicationService` directly; the title invariant it used to duplicate now lives in `Conversation.create`/`.rename` (domain); `GetConversationUseCase`/`ListConversationsUseCase` were deleted (v0.6.1, ADR EX08)
 - `build.gradle`'s `version` (now `0.6.1`, previously a permanent `1.0.0-SNAPSHOT` placeholder) is the sole source of truth for the release number; `springBoot { buildInfo() }` surfaces it at `/actuator/info` as `info.build.version` (v0.6.1, ADR EX03)
 - `.github/workflows/build.yml` runs `gradle clean build` (full test suite + ArchUnit) on every PR and push to `main` — the repository's first CI gate (v0.6.1, ADR EX01)
+- `DocumentController` (`/api/v1/documents`) reuses `UploadDocumentUseCase`/`GetDocumentUseCase`/`ListDocumentsUseCase`/`DeleteDocumentUseCase` unchanged; reads/lists stay tenant-wide, not owner-scoped, matching `DocumentApplicationService`'s pre-existing semantics (P06.1, ADR PC05)
+- `AdminController` (`/api/v1/admin`) exposes exactly four endpoints — public `POST /bootstrap` (first-user-only, guarded by `UserApplicationService.tenantHasAnyUser`), `POST /users`, `GET /users/{id}`, `POST /users/{id}/deactivate`, all `ADMIN`-only except bootstrap (P06.1, ADR PC03/PC05)
+- `UserApplicationService.getUser`/`.activateUser`/`.deactivateUser` now call a `requireTenantMatch` helper identical in shape to `ConversationApplicationService`'s (P06.1, ADR PC02); `UserRepository` gained `existsByTenantId`
+- `GlobalExceptionHandler` gained `ApplicationException` → 400 and `DataIntegrityViolationException` → 400 handlers (P06.1, ADR PC04)
+- `PageResponse<T>` (`api.dto`) is the shared paginated-list response shape for both `DocumentController.listDocuments` and `ConversationController.listConversations` (P06.1)
 
 ---
 
@@ -461,8 +560,10 @@ com.mudassirshahzad.eka
 │   │                                  CreateConversationUseCase now the controller's actual entry
 │   │                                  point (v0.6.1, ADR EX08); GetConversationUseCase/
 │   │                                  ListConversationsUseCase removed (added no value, ADR EX08)
-│   └── user                         — RegisterUserUseCase, GetUserUseCase, DeactivateUserUseCase,
-│                                      AuthenticateUserUseCase (P05.2, ADR A03), UserApplicationService
+│   └── user                         — RegisterUserUseCase, GetUserUseCase (tenantId param — P06.1,
+│                                      ADR PC02), DeactivateUserUseCase, AuthenticateUserUseCase
+│                                      (P05.2, ADR A03), UserApplicationService (requireTenantMatch
+│                                      + tenantHasAnyUser — P06.1, ADR PC02/PC03)
 ├── infrastructure
 │   ├── citation                     — PositionalCitationAdapter
 │   ├── context                      — DefaultContextAssemblyAdapter
@@ -489,14 +590,19 @@ com.mudassirshahzad.eka
     ├── config                       — SecurityConfig (real JWT validation, P05.2 — ADR A01/O05;
     │                                  correlation ID filter registration, P05.4 — ADR OB03),
     │                                  OpenApiConfig, WebMvcConfig (P05.3 — registers AuthorizationInterceptor)
-    ├── controller                   — ConversationController (createConversation/sendMessage now
-    │                                  @RequireRole-annotated — P05.3, ADR AZ02; createConversation
-    │                                  now calls CreateConversationUseCase — v0.6.1, ADR EX08),
-    │                                  AuthController (P05.2; login now rate-limited — v0.6.1, ADR EX05)
+    ├── controller                   — ConversationController (createConversation/sendMessage/
+    │                                  deleteConversation @RequireRole-annotated — P05.3 ADR AZ02,
+    │                                  P06.1; createConversation calls CreateConversationUseCase
+    │                                  — v0.6.1 ADR EX08; listConversations/getConversation open to
+    │                                  all roles), AuthController (P05.2; login rate-limited —
+    │                                  v0.6.1 ADR EX05), DocumentController (P06.1, ADR PC05),
+    │                                  AdminController (P06.1, ADR PC03/PC05)
     ├── dto                          — CreateConversationRequest, SendMessageRequest (both
     │                                  identity-free — ADR A05), ConversationResponse,
     │                                  ConversationDetailResponse, MessageResponse, CitationResponse,
-    │                                  GeneratedAnswerResponse, LoginRequest, LoginResponse (P05.2)
+    │                                  GeneratedAnswerResponse, LoginRequest, LoginResponse (P05.2),
+    │                                  PageResponse<T>, DocumentResponse, BootstrapRequest,
+    │                                  RegisterUserRequest, UserResponse (P06.1)
     ├── observability                — CorrelationIdFilter (P05.4, ADR OB03)
     ├── security                     — JwtProperties (startup-validates key strength/expiry — v0.6.1,
     │                                  ADR EX04), JwtTokenProvider, JwtAuthenticationToken,
@@ -520,10 +626,10 @@ This file's Milestone/ADR tracking above covers the **retrieval/generation pipel
 |---|---|---|
 | `domain.document`, `domain.chunk` | `Document`, `Chunk` aggregates | Used by both threads |
 | `domain.user`, `domain.query` | `User`, `KnowledgeQuery` aggregates | Foundation-only |
-| `application.document` | `ChunkingService`, `EmbeddingService`, `DocumentIndexingService`, ingestion use cases | Foundation-only, self-contained ingestion pipeline |
-| `application.conversation` | `ConversationApplicationService` + CRUD use cases | Write side of P04.13's `ConversationHistoryPort` fix (ADR R01); **now also reachable via REST** — `ConversationController` calls `createConversation`/`getConversation` directly and indirectly via `RagOrchestrationService` (P05.1) |
+| `application.document` | `ChunkingService`, `EmbeddingService`, `DocumentIndexingService`, ingestion use cases | **Now reachable via REST (P06.1)** — `DocumentController` calls `UploadDocumentUseCase`/`GetDocumentUseCase`/`ListDocumentsUseCase`/`DeleteDocumentUseCase` directly |
+| `application.conversation` | `ConversationApplicationService` + CRUD use cases | Write side of P04.13's `ConversationHistoryPort` fix (ADR R01); **fully reachable via REST as of P06.1** — `ConversationController` now covers create/get/list/delete/send-message, the last two added this milestone |
 | `application.chat`, `application.query` | Chat session and knowledge-query use cases | Foundation-only, not yet wired to `application.generation`/`application.retrieval` (see P04.13.8) |
-| `application.user` | User registration/lookup/role/password use cases, plus `AuthenticateUserUseCase` (P05.2) | **Partially reachable via REST as of P05.2** — `AuthController` calls `AuthenticateUserUseCase` for login; `RegisterUserUseCase`, role management, and password change remain unreached (no admin/registration endpoint yet) |
+| `application.user` | User registration/lookup/role/password use cases, plus `AuthenticateUserUseCase` (P05.2) | **Further reachable via REST as of P06.1** — `AdminController` calls `RegisterUserUseCase`/`GetUserUseCase`/`DeactivateUserUseCase`. Role management and password change remain unreached (ADR PC05, deliberate) |
 | `application.event` + `infrastructure.event` | 17 domain event records + `SpringDomainEventPublisher` | Built, unused — no `@EventListener` anywhere (see P04.13.8) |
 | `infrastructure.parsing`, `.embedding`, `.storage`, `.vectorstore` | Tika parsing, Ollama embedding, local file storage, Weaviate vector store (ingestion side) | Foundation-only ingestion adapters |
 | `infrastructure.persistence.postgres` | 8 repository adapters, 12 entities, 7 mappers, 11 JPA repositories | Foundation-only; now has baseline tests (P04.13.4) |
@@ -537,6 +643,8 @@ This file's Milestone/ADR tracking above covers the **retrieval/generation pipel
 
 **Update (P05.5):** `.renameConversation` and `.deleteConversation` now take and verify `TenantId` as well (ADR HD02) — every ownership-scoped method on `ConversationApplicationService` is tenant-checked, closing the P05.3 gap noted above. Both remain unreached by any REST endpoint; the fix was made ahead of a route existing, not in response to one.
 
+**Update (P06.1):** Three new REST entry points reach the foundation layer for the first time: `DocumentController` (`/api/v1/documents`) reaches `application.document`; `AdminController` (`/api/v1/admin`) reaches `application.user`'s registration/lookup/deactivation slice; `ConversationController` gained `GET /` and `DELETE /{id}`, reaching `.listConversations` and `DeleteConversationUseCase` for the first time. `UserApplicationService.getUser`/`activateUser`/`deactivateUser` gained the same defensive tenant check `ConversationApplicationService` got in P05.3/P05.5 (ADR PC02) — closed specifically because this milestone is what made them reachable. `application.chat`/`application.query` remain the only foundation-layer packages with zero REST reachability.
+
 ### Deferred Items (P04.13.8)
 
 Reviewed without implementing — each classified so none of these become a future undocumented surprise:
@@ -549,14 +657,17 @@ Reviewed without implementing — each classified so none of these become a futu
 | `UploadDocumentUseCase`'s `@Transactional` spanning Tika/Ollama/Weaviate calls | **CLOSED (P05.5, ADR HD01)** | Class-level `@Transactional` removed; each collaborator service keeps its own short transaction. Failures now call `Document.markFailed(...)`, previously unused. |
 | `AppProperties` (`@ConfigurationProperties`) vs. scattered `@Value` config binding | No action required | Both patterns are valid Spring idioms already in active use; forcing one convention across every adapter is cosmetic churn without measurable long-term value (rejected per review philosophy). |
 | `ConversationApplicationService.renameConversation`/`.deleteConversation` lack the P05.3 tenant check (ADR TN01) | **CLOSED (P05.5, ADR HD02)** | Both methods now call `requireTenantMatch`, identically to the three previously-checked methods. Still unreached by any REST endpoint — closed ahead of exposure, not in response to it. |
-| No registration/admin endpoint for `application.user` | Known limitation (P05.2, still true) | Users must be seeded directly; `RegisterUserUseCase` remains unwired to REST. |
+| No registration/admin endpoint for `application.user` | **Partially CLOSED (P06.1)** | `POST /api/v1/admin/bootstrap` (first-user, public) and `POST /api/v1/admin/users` (ADMIN-only) now exist. Still no self-service registration, no list-users, no role-assignment/password-change REST — deliberately minimal (ADR PC05), not oversight. |
 | `/actuator/metrics`/`/actuator/prometheus` require a JWT rather than being scraped anonymously | Partially addressed (P05.5, ADR HD05) | `management.server.port` now exists as an opt-in escape hatch — setting it moves actuator onto a separate embedded connector outside this app's JWT-based `SecurityFilterChain`, the standard production pattern. Not enabled by default (deployment-topology decision, left to the operator); `/actuator/metrics`/`/actuator/prometheus` remain JWT-gated when `MANAGEMENT_PORT` is unset. |
 | Weaviate HTTP client has no configurable connect/read timeout | Deferred technical debt (P05.5, ADR HD03) | Verified via bytecode inspection of `spring-ai-autoconfigure-vector-store-weaviate-1.0.0.jar`: `WeaviateVectorStoreProperties` exposes no timeout property, and the auto-configured `WeaviateClient` bean has no `RestClientCustomizer`-equivalent hook. A fix would require overriding the auto-configured client and hand-constructing `io.weaviate.client.Config` — genuine architectural expansion, out of this milestone's "document, don't expand" scope. Revisit as a Phase 6 candidate. |
-| No REST endpoint for document ingestion (`POST /api/v1/documents` does not exist) | **Deferred, intentionally (v0.6.1, ADR EX09)** | `UploadDocumentUseCase` and the full ingestion pipeline are reachable only via direct Java invocation. Identified by the independent post-Phase-5 audit (finding H2); adding a REST endpoint is new platform capability, explicitly out of scope for an engineering-excellence milestone. Revisit as a Phase 6 candidate. `README.md` corrected in the meantime to not claim unqualified "✅ Implemented" without this caveat. |
-| `DeleteConversationUseCase` has no REST route | Known limitation, reconfirmed (v0.6.1, ADR EX08) | Correctly designed (its active-chat-session guard is genuine business logic), still unreached — adding a `DELETE` route is new capability, out of this milestone's scope for the same reason as the item above. |
+| No REST endpoint for document ingestion (`POST /api/v1/documents` does not exist) | **CLOSED (P06.1)** | `DocumentController` now exposes upload (multipart), get, list, and delete, all reusing `UploadDocumentUseCase`/`GetDocumentUseCase`/`ListDocumentsUseCase`/`DeleteDocumentUseCase` unchanged. Closes audit finding H2. |
+| `DeleteConversationUseCase` has no REST route | **CLOSED (P06.1)** | `DELETE /api/v1/conversations/{id}` now calls it — its active-chat-session guard is exercised by a real caller for the first time. |
 | Docker image (new `Dockerfile`, v0.6.1 ADR EX10) not empirically build-verified | Known gap, disclosed | No Docker daemon was available in the implementing environment; the Dockerfile was verified by careful reading against known-correct multi-stage Spring Boot patterns, not by an actual `docker build`. Whoever next has Docker available should confirm it builds and starts before relying on it in a real deployment. |
 | No dependency vulnerability scanning (SCA) in CI | Not addressed this milestone | `.github/workflows/build.yml` (v0.6.1, ADR EX01) runs build/test/ArchUnit only; adding Dependabot/OWASP Dependency-Check was not in this milestone's numbered scope. Reasonable next CI addition. |
 | No rate limiting beyond login; no distributed rate-limit store | Accepted limitation (v0.6.1, ADR EX05) | `LoginRateLimiter` is deliberately per-instance/in-memory — correct for the current single-instance deployment (`docker-compose.yml` defines no load balancer or replica count). Revisit with a shared store only if a multi-instance deployment shape is actually adopted. |
+| No `Tenant` domain aggregate or repository port; tenant creation stays an ops/database concern | Deferred, intentionally (P06.1, ADR PC03) | `POST /api/v1/admin/bootstrap` operates against an already-provisioned, still-empty tenant — it does not create one. Building tenant provisioning would be new domain modeling, out of a "REST Surface Foundation" milestone's scope. A nonexistent tenant on bootstrap surfaces as a generic 400 (`DataIntegrityViolationException` handler), not a clean domain 404 — a known, accepted trade-off of not introducing a `TenantRepository` port for this alone. |
+| Authorization Filter still not built | Open, explicitly out of P06.1's scope | Named in `.claude/CLAUDE.md`'s target architecture since before Phase 4; frozen as Phase 6's second milestone (P06.2) in the "Roadmap to v1.0.0" section above. Document reads/lists remain tenant-wide, not per-document-scoped, until this ships. |
+| No list-users, role-assignment, or password-change REST endpoints | Deliberately minimal (P06.1, ADR PC05) | `UserApplicationService.activateUser`/`assignRole`/`removeRole`/`changePassword` all already work; no REST surface was added for them since nothing in this milestone's scope needed them. Add when a concrete caller/requirement exists, not speculatively. |
 
 ---
 

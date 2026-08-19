@@ -44,18 +44,38 @@ Completed
 
 ✅ v0.6.1 Engineering Excellence & Repository Governance (post-Phase-5, not Phase 6 — closes findings from the independent post-Phase-5 audit: CI/CD, branch protection docs, version alignment, exception handling, JWT startup validation, login rate limiting, request size limits, dead Use Case layer resolution, document-ingestion-endpoint deferral decision, application Dockerfile)
 
-Upcoming
+**Roadmap to v1.0.0 is frozen (v1.0 Roadmap Freeze, ADR GOV03).** Full detail — official v1.0.0 definition, per-phase objective/scope/success/exit criteria/deliverables/dependencies, release strategy — lives in `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section. This file stays a short index; do not duplicate that detail here.
 
-Phase 6 — not yet scoped. Awaiting explicit direction before any Phase 6 work begins. Tracked at the repository-governance level by the open GitHub Milestone "Phase 6"; see `.claude/PROJECT_STATE.md`'s "Milestone Governance" section for the full model (GitHub Milestones "Phase 6" and "Version 1.0.0" are open; "Enterprise Foundation Complete" is closed and covers everything above through v0.6.1).
+✅ v0.7.0 — P06.1: Product Completeness & Authorization Depth — REST Surface Foundation (document ingestion REST surface, admin bootstrap/registration, conversation list/delete). First milestone of Phase 6 — the Authorization Filter (P06.2) has not started; **Phase 6 itself is not yet complete.**
 
-Future
+Phase 6 versioning (ADR GOV04): one point release per P06.x milestone, not one version for the whole phase — P06.1 → v0.7.0 (shipped), P06.2 → v0.7.1, P06.3 → v0.7.2, P06.4 → v0.7.3, P06.5 → v0.7.4 (Phase 6 Complete gate). P06.3–P06.5 have reserved version numbers only; scope is not yet defined. Phase 7 still begins at v0.8.0, Phase 8 still begins at v0.9.0 — unchanged.
 
-Full Authorization Filter (fine-grained, metadata-based content filtering)
+In progress (Phase 6, milestone 2 of 5)
 
-Streaming Responses
+○ P06.2 — Authorization Filter (retrieval-pipeline stage), v0.7.1. GitHub Milestone "Phase 6" (open). Awaiting explicit direction before implementation begins.
 
-Caching
+○ P06.3, P06.4, P06.5 (v0.7.2–v0.7.4) — reserved version slots, not yet scoped (ADR GOV04).
 
-MCP Integration
+Upcoming (frozen sequence, not yet started)
 
-Agent Support
+○ Phase 7 — Retrieval Quality & Operational Integrity. Re-ranking, HyDE, Postgres↔Weaviate reconciliation, refresh tokens, Weaviate client timeout, prompt-injection review, SCA in CI, applied branch protection. GitHub Milestone: create when Phase 6 closes, not before.
+
+○ Phase 8 — Scale & Ecosystem Readiness. Metrics dashboards, streaming, conditional distributed rate limiting, MCP spike (go/no-go only). GitHub Milestone: create when Phase 7 closes, not before.
+
+○ Version 1.0.0 — gate review against the frozen product definition in `.claude/PROJECT_STATE.md`. GitHub Milestone "Version 1.0.0" (open).
+
+Post-v1.0 (explicitly out of scope before v1.0.0)
+
+MCP server (full delivery, beyond Phase 8's spike)
+
+LangGraph orchestration
+
+Multi-agent platform
+
+Semantic caching
+
+External cloud LLM providers (Bedrock, Azure OpenAI)
+
+Microservice extraction, Kafka event bus, S3/cloud storage migration
+
+`docs/roadmap.md` is the historical, pre-milestone-governance version of this document — superseded for phase numbering and status, retained for technical content (Advanced Retrieval / MCP / LangGraph / Agentic AI Platform sections). It does not define current scope; this file and `.claude/PROJECT_STATE.md` do.

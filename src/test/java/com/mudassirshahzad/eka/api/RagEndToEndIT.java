@@ -38,6 +38,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -260,6 +261,150 @@ class RagEndToEndIT {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void bootstrapThenLogin_realPasswordHashRoundTrip() throws Exception {
+        // P06.1: proves the real chain, not a mock — bootstrap's PasswordEncoder.encode(...)
+        // output must be verifiable by AuthenticateUserUseCase's real PasswordEncoder.matches(...)
+        // on a genuinely separate request, against a real Postgres-persisted row.
+        TenantEntity tenant = persistTenant();
+        String email = "admin-" + UUID.randomUUID() + "@example.com";
+
+        mockMvc.perform(post("/api/v1/admin/bootstrap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenantId":"%s","email":"%s","password":"bootstrap123"}
+                                """.formatted(tenant.getId(), email)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.roles[0]").value("ADMIN"));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenantId":"%s","email":"%s","password":"bootstrap123"}
+                                """.formatted(tenant.getId(), email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+    }
+
+    @Test
+    void bootstrap_secondCallOnSameTenant_returnsBadRequest_realDatabaseProof() throws Exception {
+        // Proves the "only once per tenant" guard against a real existsByTenantId query, not a
+        // mocked repository — the first call genuinely persists a row the second call must see.
+        TenantEntity tenant = persistTenant();
+
+        mockMvc.perform(post("/api/v1/admin/bootstrap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenantId":"%s","email":"first-admin@example.com","password":"bootstrap123"}
+                                """.formatted(tenant.getId())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/admin/bootstrap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenantId":"%s","email":"second-admin@example.com","password":"bootstrap123"}
+                                """.formatted(tenant.getId())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getDocument_crossTenantAccess_returnsNotFound_realDatabaseProof() throws Exception {
+        // Mirrors the conversation cross-tenant proof above, applied to the new document
+        // endpoint — DocumentApplicationService.getDocument is tenant-scoped, not owner-scoped
+        // (documents are shared tenant knowledge-base content), so this proves the tenant
+        // boundary specifically, against a real DocumentRepository/Postgres round trip.
+        TenantEntity tenantA   = persistTenant();
+        UserEntity   ownerA    = persistUser(tenantA);
+        DocumentEntity document = persistDocument(tenantA, ownerA);
+
+        TenantEntity tenantB = persistTenant();
+        UserEntity   userB   = persistUser(tenantB);
+        String       tokenB  = jwtTokenProvider.generateAccessToken(
+                UserId.of(userB.getId()), TenantId.of(tenantB.getId()), Set.of(UserRole.USER));
+
+        mockMvc.perform(get("/api/v1/documents/{id}", document.getId())
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getDocument_sameTenant_anyRole_isReadable_realDatabaseProof() throws Exception {
+        // Confirms the deliberate design (DocumentController Javadoc, P06.1): documents are
+        // tenant-wide readable, not owner-scoped like conversations — any authenticated role in
+        // the same tenant can read another user's uploaded document.
+        TenantEntity tenant = persistTenant();
+        UserEntity   owner  = persistUser(tenant);
+        UserEntity   reader = persistUser(tenant);
+        DocumentEntity document = persistDocument(tenant, owner);
+        String readerToken = jwtTokenProvider.generateAccessToken(
+                UserId.of(reader.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.VIEWER));
+
+        mockMvc.perform(get("/api/v1/documents/{id}", document.getId())
+                        .header("Authorization", "Bearer " + readerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filename").value("policy.pdf"));
+    }
+
+    @Test
+    void deleteConversation_thenGet_returnsNotFound_realDatabaseProof() throws Exception {
+        // Proves the new DELETE route's soft-delete actually reaches Postgres — a subsequent GET
+        // through the real findByIdAndUserId query no longer finds it, not just that DELETE
+        // itself returned 204.
+        TenantEntity tenant = persistTenant();
+        UserEntity   user   = persistUser(tenant);
+        String       token  = jwtTokenProvider.generateAccessToken(
+                UserId.of(user.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/conversations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"to be deleted"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        UUID conversationId = UUID.fromString(
+                objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText());
+
+        mockMvc.perform(delete("/api/v1/conversations/{id}", conversationId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/conversations/{id}", conversationId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void listConversations_returnsOnlyCallersOwnConversations_realDatabaseProof() throws Exception {
+        TenantEntity tenant = persistTenant();
+        UserEntity   userA  = persistUser(tenant);
+        UserEntity   userB  = persistUser(tenant);
+        String       tokenA = jwtTokenProvider.generateAccessToken(
+                UserId.of(userA.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
+        String       tokenB = jwtTokenProvider.generateAccessToken(
+                UserId.of(userB.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
+
+        mockMvc.perform(post("/api/v1/conversations")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"A's chat"}
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/conversations")
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", org.hamcrest.Matchers.hasSize(0)));
+
+        mockMvc.perform(get("/api/v1/conversations")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.content[0].title").value("A's chat"));
+    }
+
     private TenantEntity persistTenant() {
         TenantEntity tenant = TenantEntity.builder()
                 .name("Acme").slug("acme-" + UUID.randomUUID()).active(true).build();
@@ -273,6 +418,15 @@ class RagEndToEndIT {
                 .passwordHash("hash").active(true).build();
         user.setId(UUID.randomUUID());
         return userJpaRepository.save(user);
+    }
+
+    private DocumentEntity persistDocument(TenantEntity tenant, UserEntity owner) {
+        DocumentEntity document = DocumentEntity.builder()
+                .tenant(tenant).owner(owner)
+                .filename("policy.pdf").format("PDF").status("INDEXED")
+                .build();
+        document.setId(UUID.randomUUID());
+        return documentJpaRepository.save(document);
     }
 
     /**

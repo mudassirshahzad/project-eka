@@ -30,6 +30,17 @@ import java.io.IOException;
  * chunked-encoding attacker without it is a smaller, harder-to-execute residual risk than the
  * unbounded-body-size gap this closes.
  *
+ * <p><b>The document upload route is exempt (P06.1, ADR PC01).</b> {@code app.request.max-body-bytes}
+ * defaults to 1 MiB, correctly sized for JSON API bodies but far too small for a document upload;
+ * multipart size there is already governed by the dedicated, purpose-built
+ * {@code spring.servlet.multipart.max-file-size}/{@code max-request-size} properties (Tomcat-level
+ * enforcement during multipart parsing). The exemption is scoped to the exact upload path <em>and</em>
+ * a {@code multipart/*} content type, deliberately not "any multipart-content-typed request" —
+ * content type is caller-supplied and unverified at this point in the chain, so exempting by
+ * content type alone would let a request to any other endpoint claim to be multipart and bypass
+ * the 1 MiB limit in favor of the much larger 100 MB one. Path-scoping closes that: a request has
+ * to actually target the one endpoint that legitimately needs the larger limit.
+ *
  * <p>Constructs the {@link ProblemDetail} body directly (rather than throwing into
  * {@code GlobalExceptionHandler}) because a {@code Filter} runs before {@code DispatcherServlet},
  * outside the reach of {@code @ExceptionHandler}-based resolution — this keeps the JSON shape
@@ -38,6 +49,12 @@ import java.io.IOException;
 @Slf4j
 @Component
 public class RequestSizeLimitFilter extends OncePerRequestFilter {
+
+    private static final String MULTIPART_PREFIX = "multipart/";
+
+    /** The sole multipart-consuming route today — see {@code DocumentController#uploadDocument}. */
+    private static final String DOCUMENT_UPLOAD_PATH   = "/api/v1/documents";
+    private static final String DOCUMENT_UPLOAD_METHOD = "POST";
 
     private final long maxBodyBytes;
     private final ObjectMapper objectMapper;
@@ -52,16 +69,25 @@ public class RequestSizeLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
                                      @NonNull FilterChain filterChain) throws ServletException, IOException {
-        long contentLength = request.getContentLengthLong();
-
-        if (contentLength > maxBodyBytes) {
-            log.warn("Rejected oversized request: path={} contentLength={} maxBodyBytes={}",
-                    request.getRequestURI(), contentLength, maxBodyBytes);
-            writeRejection(response);
-            return;
+        if (!isExemptUpload(request)) {
+            long contentLength = request.getContentLengthLong();
+            if (contentLength > maxBodyBytes) {
+                log.warn("Rejected oversized request: path={} contentLength={} maxBodyBytes={}",
+                        request.getRequestURI(), contentLength, maxBodyBytes);
+                writeRejection(response);
+                return;
+            }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isExemptUpload(HttpServletRequest request) {
+        String contentType = request.getContentType();
+        boolean isMultipart = contentType != null && contentType.toLowerCase().startsWith(MULTIPART_PREFIX);
+        return isMultipart
+                && DOCUMENT_UPLOAD_METHOD.equals(request.getMethod())
+                && DOCUMENT_UPLOAD_PATH.equals(request.getRequestURI());
     }
 
     private void writeRejection(HttpServletResponse response) throws IOException {
