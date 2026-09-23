@@ -46,15 +46,15 @@ Completed
 
 **Roadmap to v1.0.0 is frozen (v1.0 Roadmap Freeze, ADR GOV03).** Full detail — official v1.0.0 definition, per-phase objective/scope/success/exit criteria/deliverables/dependencies, release strategy — lives in `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section. This file stays a short index; do not duplicate that detail here.
 
-✅ v0.7.0 — P06.1: Product Completeness & Authorization Depth — REST Surface Foundation (document ingestion REST surface, admin bootstrap/registration, conversation list/delete). First milestone of Phase 6 — the Authorization Filter (P06.2) has not started; **Phase 6 itself is not yet complete.**
+✅ v0.7.0 — P06.1: Product Completeness & Authorization Depth — REST Surface Foundation (document ingestion REST surface, admin bootstrap/registration, conversation list/delete). First milestone of Phase 6.
 
-Phase 6 versioning (ADR GOV04): one point release per P06.x milestone, not one version for the whole phase — P06.1 → v0.7.0 (shipped), P06.2 → v0.7.1, P06.3 → v0.7.2, P06.4 → v0.7.3, P06.5 → v0.7.4 (Phase 6 Complete gate). P06.3–P06.5 have reserved version numbers only; scope is not yet defined. Phase 7 still begins at v0.8.0, Phase 8 still begins at v0.9.0 — unchanged.
+✅ v0.7.1 — P06.2: Authorization Filter — role-based document-classification clearance (`PUBLIC`/`INTERNAL`/`CONFIDENTIAL`/`RESTRICTED`) enforced both in the retrieval pipeline (`RetrievalService`, post-fetch, engine-agnostic — ADR AF03) and across every REST document endpoint (`getDocument`/`listDocuments`/`deleteDocument` — ADR AF05), via a single shared `ClassificationPolicyPort` (ADR AF04). Fail-closed on unknown/null classification (ADR AF07); classification now mandatory at ingestion (ADR AF06). Closes the item named in `.claude/CLAUDE.md`'s target architecture since before Phase 4. Second milestone of Phase 6 — **Phase 6's exit criteria are now all met by P06.1+P06.2; Phase 6 itself is not yet formally closed** (see below).
 
-In progress (Phase 6, milestone 2 of 5)
+Phase 6 versioning (ADR GOV04): one point release per P06.x milestone, not one version for the whole phase — P06.1 → v0.7.0 (shipped), P06.2 → v0.7.1 (shipped), P06.3 → v0.7.2, P06.4 → v0.7.3, P06.5 → v0.7.4 (Phase 6 Complete gate). Phase 7 still begins at v0.8.0, Phase 8 still begins at v0.9.0 — unchanged.
 
-○ P06.2 — Authorization Filter (retrieval-pipeline stage), v0.7.1. GitHub Milestone "Phase 6" (open). Awaiting explicit direction before implementation begins.
+Pending (Phase 6 completion review)
 
-○ P06.3, P06.4, P06.5 (v0.7.2–v0.7.4) — reserved version slots, not yet scoped (ADR GOV04).
+○ Post-P06.2 self-review/architecture-review (the same discipline that produced v0.6.1 and P05.5) — decides whether P06.3 opens at all. Explicit decision made before P06.2 began: P06.3–P06.5 are **not** pre-scoped; a milestone opens only for a genuine gap the review finds, not speculatively. If none is found, Phase 6 completes directly at v0.7.1 and the reserved v0.7.2–v0.7.4 slots are recorded as deliberately unused.
 
 Upcoming (frozen sequence, not yet started)
 

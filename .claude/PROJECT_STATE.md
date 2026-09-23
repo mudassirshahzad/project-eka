@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.7.0 (Complete) — P06.1: Product Completeness & Authorization Depth — REST Surface Foundation (Phase 6, milestone 1 of N)
+v0.7.1 (Complete) — P06.2: Authorization Filter (Phase 6, milestone 2 of N)
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -185,14 +185,14 @@ Everything else held up under review: the 3-phase structure (make it reachable �
 | Milestone | Version | Description | New Tests | Status |
 |---|---|---|---|---|
 | P06.1 | v0.7.0 | Product Completeness & Authorization Depth — REST Surface Foundation (document ingestion, admin/bootstrap, conversation list/delete REST surfaces) | +50 | ✅ Complete |
-| P06.2 | v0.7.1 | Authorization Filter (retrieval-pipeline stage) | — | ⏳ Not started |
-| P06.3 | v0.7.2 | Not yet scoped | — | ⏳ Not started |
-| P06.4 | v0.7.3 | Not yet scoped | — | ⏳ Not started |
-| P06.5 | v0.7.4 | Not yet scoped — Phase 6 Complete gate | — | ⏳ Not started |
+| P06.2 | v0.7.1 | Authorization Filter (retrieval-pipeline stage + consistent REST document-endpoint enforcement) | +53 | ✅ Complete |
+| P06.3 | v0.7.2 | Not yet scoped — opened only if the post-P06.2 self-review/architecture-review surfaces a genuine gap | — | ⏳ Pending review |
+| P06.4 | v0.7.3 | Reserved, contingent on P06.3 | — | ⏳ Reserved |
+| P06.5 | v0.7.4 | Reserved — Phase 6 Complete gate, contingent on P06.3/P06.4 | — | ⏳ Reserved |
 
-**Grand total tests: 673 — 0 failures** (net +50)
+**Grand total tests: 726 — 0 failures** (net +53)
 
-**Phase 6 is not yet complete** — P06.1 deliberately excluded the Authorization Filter (explicit "out of scope" in its own brief); Phase 6's own exit criteria aren't met until that ships too. Do not tag `v0.8.0` (Phase 7) as a phase-complete boundary until P06.5 (the Phase 6 Complete gate) closes. Versioning within Phase 6 was refined to one point release per P06.x milestone rather than one version for the whole phase (ADR GOV04) — P06.3/P06.4/P06.5 have reserved version numbers only; their scope is deliberately not defined here and will be set in its own planning session before implementation, same as P06.2.
+**Phase 6 is not yet complete** — the Authorization Filter (P06.2) has now shipped, closing the item explicitly deferred out of P06.1's scope; Phase 6's exit criteria (full REST surface, Authorization Filter enforced and tested, audit finding H2 closed) are now all met by P06.1+P06.2. Per an explicit decision made before P06.2's implementation began, P06.3–P06.5 are deliberately **not** pre-scoped: the next step is this project's own established self-review/architecture-review discipline (the same kind that produced v0.6.1 and P05.5), and a further milestone is opened only if that review finds a genuine, concrete gap — not invented speculatively. If it finds nothing that rises to that bar, Phase 6 completes at v0.7.1 and the reserved v0.7.2–v0.7.4 slots are recorded as deliberately unused, not left dangling. Do not tag `v0.8.0` (Phase 7) until this Phase 6 completion gate — however it resolves — actually closes.
 
 ### Phase 7 — Retrieval Quality & Operational Integrity
 
@@ -218,10 +218,10 @@ Everything else held up under review: the 3-phase structure (make it reachable �
 |---|---|---|
 | v0.6.1 | Enterprise Foundation Complete | Shipped — closed milestone |
 | v0.7.0 | P06.1 — REST Surface Foundation | Shipped — document ingestion, admin/bootstrap, conversation list/delete REST surfaces live |
-| v0.7.1 | P06.2 — Authorization Filter | Retrieval-pipeline authorization enforced, tested against a wrong-classification denial |
-| v0.7.2 | P06.3 | Not yet scoped |
-| v0.7.3 | P06.4 | Not yet scoped |
-| v0.7.4 | P06.5 — Phase 6 Complete | Every Phase 6 exit criterion (see above) met |
+| v0.7.1 | P06.2 — Authorization Filter | Shipped — retrieval-pipeline authorization and every REST document endpoint enforce classification clearance, tested against a wrong-classification denial (unit + real-database IT) |
+| v0.7.2 | P06.3 | Pending — opened only if the post-P06.2 review finds a genuine gap |
+| v0.7.3 | P06.4 | Reserved, contingent on P06.3 |
+| v0.7.4 | P06.5 — Phase 6 Complete | Every Phase 6 exit criterion (see above) met — may be satisfied directly by v0.7.1 if no further milestone is opened |
 | v0.8.0 | Phase 7 complete | Re-ranking shipped, reconciliation job live, branch protection applied |
 | v0.9.0 | Phase 8 complete | Metrics dashboarded, streaming shipped, MCP go/no-go decided |
 | v1.0.0 | Version 1.0.0 milestone | Every item in the official v1.0.0 definition above is met — reviewed as a gate, not assumed from phase completion alone |
@@ -321,6 +321,13 @@ Security layer (Authorization Filter) is planned but not implemented.
 | PC03 | No `Tenant` domain aggregate/port introduced; bootstrap operates against an already-provisioned tenant; a nonexistent tenant surfaces via a new `DataIntegrityViolationException` → 400 handler |
 | PC04 | `GlobalExceptionHandler` gained `ApplicationException` → 400 and `DataIntegrityViolationException` → 400 handlers |
 | PC05 | Documents stay tenant-wide readable (not owner-scoped); admin surface deliberately minimal (bootstrap/register/get/deactivate only); `DeleteConversationUseCase` given its first route |
+| AF01 | `DocumentClassification` carries an explicit numeric `level`, never `Enum.ordinal()`; `DocumentMetadata.classification` is now this enum, not a raw `String` |
+| AF02 | Role → minimum-clearance is a fixed, in-code mapping (VIEWER=INTERNAL, AUDITOR/USER=CONFIDENTIAL, ADMIN=RESTRICTED); a caller's clearance is the maximum across every role they hold |
+| AF03 | Classification enforcement is a single post-fetch pass in `RetrievalService`, not pushed into either retrieval engine's native filter — Weaviate indexes no per-chunk classification property and shares one `MetadataFilter` with BM25 via `HybridRetrievalAdapter` |
+| AF04 | `ClassificationPolicyPort` (+ sole adapter `RoleBasedClassificationPolicyAdapter`) is the one place clearance is decided; both `RetrievalService` and `DocumentApplicationService` call it |
+| AF05 | Every document REST endpoint (`getDocument`/`listDocuments`/`listDocumentsByOwner`/`deleteDocument`) enforces classification consistently; list-level enforcement is pushed into the JPQL query itself, not filtered after pagination |
+| AF06 | Classification is now mandatory at ingestion (`DocumentController.uploadDocument` + `Document.create`, defense in depth); `Document.reconstitute` stays unvalidated (ADR EX08 precedent) |
+| AF07 | Null-classification handling is a single fail-closed code path (`DocumentClassification.UNKNOWN_LEVEL`) — the V018 backfill migration and enforcement code ship in the same release, so no separate "pre-backfill" runtime behavior exists |
 
 ---
 
@@ -404,7 +411,48 @@ ConversationApplicationService.<method>()  ← findByIdAndUserId (ownership, pre
 <normal response>
 ```
 
-`AccessDeniedException` (from the interceptor) and `ResourceNotFoundException` (from the ownership/tenant check) both surface via the existing `api.exception.GlobalExceptionHandler` (ADR O03/AZ03) — 403 and 404 respectively. No role, including `ADMIN`, bypasses the ownership/tenant check (ADR AZ03). Fine-grained, metadata-based content filtering integrated into the retrieval pipeline itself (`ROADMAP.md`'s "Full Authorization Filter") remains unbuilt — this pipeline is the REST-boundary half only.
+`AccessDeniedException` (from the interceptor) and `ResourceNotFoundException` (from the ownership/tenant check) both surface via the existing `api.exception.GlobalExceptionHandler` (ADR O03/AZ03) — 403 and 404 respectively. No role, including `ADMIN`, bypasses the ownership/tenant check (ADR AZ03). This pipeline is the REST-boundary role/ownership/tenant half only — fine-grained, classification-based content filtering is the separate Authorization Filter pipeline below (P06.2).
+
+---
+
+## Authorization Filter — classification clearance (P06.2 — new)
+
+```
+Retrieval pipeline:
+
+RetrievalService.doRetrieve()
+       │
+       ├─▶ queryRewritePort.rewrite()
+       ├─▶ retrievalPort.retrieve()                 ← HybridRetrievalAdapter (Weaviate + BM25),
+       │                                               tenant-scoped as before, no classification
+       │                                               criterion pushed into MetadataFilter (ADR AF03)
+       ▼
+applyClassificationFilter(chunks, roles)        ← NEW — batch-resolves each distinct
+       │                                            RetrievedChunk.documentId()'s classification via
+       │                                            DocumentRepository.findByIds, then
+       │                                            ClassificationPolicyPort.isPermitted(roles, ·)
+       │  denied chunk → silently dropped, never a distinct error (ADR OW01/A06 extended)
+       ▼
+rankingPort.rank(authorized chunks)             ← RRF ranks only what the caller is cleared to see
+
+
+REST document endpoints:
+
+DocumentController.getDocument / listDocuments / deleteDocument
+       │
+       ▼
+DocumentApplicationService.<method>()
+       │  getDocument/deleteDocument: fetch by id+tenant, then
+       │      requireClassificationClearance() → ClassificationPolicyPort.isPermitted(roles, ·)
+       │      denied → ResourceNotFoundException (404, never 403 — same as tenant/ownership mismatch)
+       │  listDocuments/listDocumentsByOwner: classificationPolicyPort.maxClearanceLevel(roles)
+       │      pushed into DocumentRepository's query itself (JPQL CASE predicate, ADR AF05) —
+       │      enforced before LIMIT/OFFSET, so pagination stays correct
+       ▼
+<response — never includes a document/chunk the caller isn't cleared to see>
+```
+
+Both halves call the same `ClassificationPolicyPort` (ADR AF04) — a caller's clearance is the maximum across every `UserRole` they hold (`RoleBasedClassificationPolicyAdapter`, ADR AF02): `VIEWER`→`INTERNAL`, `AUDITOR`/`USER`→`CONFIDENTIAL`, `ADMIN`→`RESTRICTED`. An unknown/unparseable/null stored classification always resolves to `DocumentClassification.UNKNOWN_LEVEL` (ADR AF07) — permitted to no one, including `ADMIN`. New documents must specify a valid classification at ingestion (ADR AF06); `V018__backfill_null_document_classification.sql` classified every pre-existing document `INTERNAL`.
 
 ---
 
@@ -526,6 +574,11 @@ GeneratedResponse
 - `UserApplicationService.getUser`/`.activateUser`/`.deactivateUser` now call a `requireTenantMatch` helper identical in shape to `ConversationApplicationService`'s (P06.1, ADR PC02); `UserRepository` gained `existsByTenantId`
 - `GlobalExceptionHandler` gained `ApplicationException` → 400 and `DataIntegrityViolationException` → 400 handlers (P06.1, ADR PC04)
 - `PageResponse<T>` (`api.dto`) is the shared paginated-list response shape for both `DocumentController.listDocuments` and `ConversationController.listConversations` (P06.1)
+- `ClassificationPolicyPort` (`domain.document`) has one implementation, `RoleBasedClassificationPolicyAdapter` (`infrastructure.authorization`) — the sole place role→classification-clearance is decided; `RetrievalService` and `DocumentApplicationService` both call it, neither re-implements the comparison (P06.2, ADR AF02/AF04)
+- `RetrievalService.applyClassificationFilter` runs once, engine-agnostically, after `RetrievalPort.retrieve(...)` returns and before `RankingPort.rank(...)` — not pushed into `MetadataFilter`/either adapter's native filter translation, since `HybridRetrievalAdapter` shares one `MetadataFilter` across Weaviate and BM25 and Weaviate indexes no per-chunk classification property (P06.2, ADR AF03)
+- `DocumentRepository` gained `findByIds` (batch classification lookup for the retrieval path), `countUnclassified` (startup-check support), and classification-aware overloads of `findByTenantId`/`findByOwnerIdAndTenantId` backed by new JPQL `CASE`-predicate queries on `DocumentJpaRepository` — enforced before `LIMIT`/`OFFSET`, keeping pagination correct (P06.2, ADR AF05)
+- `DocumentController.uploadDocument` now requires a valid `classification` request parameter, parsed via `DocumentClassification.parse(...)`; `Document.create` independently rejects a null classification (`Document.reconstitute` stays unvalidated, ADR EX08 precedent) (P06.2, ADR AF06)
+- `UnclassifiedDocumentStartupCheck` (`infrastructure.authorization`, `ApplicationRunner`) logs a `WARN` with a count if any document is still unclassified at startup — operational visibility, not the enforcement mechanism itself, which already fails closed via `DocumentClassification.UNKNOWN_LEVEL` regardless (P06.2, ADR AF07)
 
 ---
 
@@ -538,7 +591,9 @@ com.mudassirshahzad.eka
 │   ├── conversation                 — Conversation (title invariant enforced in create/rename,
 │   │                                  MAX_TITLE_LENGTH=500 — v0.6.1, ADR EX08), Message, MessageRole,
 │   │                                  Citation
-│   ├── document                     — DocumentId, Document
+│   ├── document                     — DocumentId, Document, DocumentClassification (explicit numeric
+│   │                                  level, not ordinal — P06.2, ADR AF01), ClassificationPolicyPort
+│   │                                  (P06.2, ADR AF04)
 │   ├── generation
 │   │   ├── exception                — LlmException
 │   │   ├── model                    — FinishReason, GenerationOptions, LlmRequest, LlmResponse,
@@ -553,9 +608,10 @@ com.mudassirshahzad.eka
 ├── application
 │   ├── generation                   — GenerationRequest, GenerationException, GenerationService
 │   ├── orchestration                — SendMessageCommand, RagTurnResult, RagOrchestrationService (P05.1)
-│   ├── retrieval                    — RetrievalRequest, RetrievalException,
+│   ├── retrieval                    — RetrievalRequest (carries caller roles — P06.2), RetrievalException,
 │   │                                  InvalidRetrievalRequestException, RetrievalService
-│   │                                  (wraps infra exceptions — P05.5, ADR HD04)
+│   │                                  (wraps infra exceptions — P05.5, ADR HD04; applies the
+│   │                                  Authorization Filter post-fetch — P06.2, ADR AF03)
 │   ├── conversation                 — RenameConversationCommand now carries TenantId (P05.5, ADR HD02);
 │   │                                  CreateConversationUseCase now the controller's actual entry
 │   │                                  point (v0.6.1, ADR EX08); GetConversationUseCase/
@@ -565,6 +621,8 @@ com.mudassirshahzad.eka
 │                                      (P05.2, ADR A03), UserApplicationService (requireTenantMatch
 │                                      + tenantHasAnyUser — P06.1, ADR PC02/PC03)
 ├── infrastructure
+│   ├── authorization                 — RoleBasedClassificationPolicyAdapter (P06.2, ADR AF02/AF04),
+│   │                                  UnclassifiedDocumentStartupCheck (P06.2, ADR AF07)
 │   ├── citation                     — PositionalCitationAdapter
 │   ├── context                      — DefaultContextAssemblyAdapter
 │   ├── config                       — DatabaseConfig, AsyncConfig, AppProperties,
@@ -626,7 +684,7 @@ This file's Milestone/ADR tracking above covers the **retrieval/generation pipel
 |---|---|---|
 | `domain.document`, `domain.chunk` | `Document`, `Chunk` aggregates | Used by both threads |
 | `domain.user`, `domain.query` | `User`, `KnowledgeQuery` aggregates | Foundation-only |
-| `application.document` | `ChunkingService`, `EmbeddingService`, `DocumentIndexingService`, ingestion use cases | **Now reachable via REST (P06.1)** — `DocumentController` calls `UploadDocumentUseCase`/`GetDocumentUseCase`/`ListDocumentsUseCase`/`DeleteDocumentUseCase` directly |
+| `application.document` | `ChunkingService`, `EmbeddingService`, `DocumentIndexingService`, ingestion use cases, `DocumentApplicationService` (classification-clearance enforcement — P06.2, ADR AF04/AF05) | **Now reachable via REST (P06.1)** — `DocumentController` calls `UploadDocumentUseCase`/`GetDocumentUseCase`/`ListDocumentsUseCase`/`DeleteDocumentUseCase` directly, every read/delete path now classification-checked (P06.2) |
 | `application.conversation` | `ConversationApplicationService` + CRUD use cases | Write side of P04.13's `ConversationHistoryPort` fix (ADR R01); **fully reachable via REST as of P06.1** — `ConversationController` now covers create/get/list/delete/send-message, the last two added this milestone |
 | `application.chat`, `application.query` | Chat session and knowledge-query use cases | Foundation-only, not yet wired to `application.generation`/`application.retrieval` (see P04.13.8) |
 | `application.user` | User registration/lookup/role/password use cases, plus `AuthenticateUserUseCase` (P05.2) | **Further reachable via REST as of P06.1** — `AdminController` calls `RegisterUserUseCase`/`GetUserUseCase`/`DeactivateUserUseCase`. Role management and password change remain unreached (ADR PC05, deliberate) |
@@ -644,6 +702,8 @@ This file's Milestone/ADR tracking above covers the **retrieval/generation pipel
 **Update (P05.5):** `.renameConversation` and `.deleteConversation` now take and verify `TenantId` as well (ADR HD02) — every ownership-scoped method on `ConversationApplicationService` is tenant-checked, closing the P05.3 gap noted above. Both remain unreached by any REST endpoint; the fix was made ahead of a route existing, not in response to one.
 
 **Update (P06.1):** Three new REST entry points reach the foundation layer for the first time: `DocumentController` (`/api/v1/documents`) reaches `application.document`; `AdminController` (`/api/v1/admin`) reaches `application.user`'s registration/lookup/deactivation slice; `ConversationController` gained `GET /` and `DELETE /{id}`, reaching `.listConversations` and `DeleteConversationUseCase` for the first time. `UserApplicationService.getUser`/`activateUser`/`deactivateUser` gained the same defensive tenant check `ConversationApplicationService` got in P05.3/P05.5 (ADR PC02) — closed specifically because this milestone is what made them reachable. `application.chat`/`application.query` remain the only foundation-layer packages with zero REST reachability.
+
+**Update (P06.2):** `DocumentApplicationService.getDocument`/`listDocuments`/`listDocumentsByOwner`/`deleteDocument` now enforce classification clearance via `ClassificationPolicyPort`, closing the gap ADR PC05 explicitly deferred ("that is where fine-grained document access control belongs"). `RetrievalService` gained the same enforcement for the retrieval-pipeline path. Both call the same port (ADR AF04) — see the "Authorization Filter — classification clearance" pipeline section above.
 
 ### Deferred Items (P04.13.8)
 
@@ -666,7 +726,7 @@ Reviewed without implementing — each classified so none of these become a futu
 | No dependency vulnerability scanning (SCA) in CI | Not addressed this milestone | `.github/workflows/build.yml` (v0.6.1, ADR EX01) runs build/test/ArchUnit only; adding Dependabot/OWASP Dependency-Check was not in this milestone's numbered scope. Reasonable next CI addition. |
 | No rate limiting beyond login; no distributed rate-limit store | Accepted limitation (v0.6.1, ADR EX05) | `LoginRateLimiter` is deliberately per-instance/in-memory — correct for the current single-instance deployment (`docker-compose.yml` defines no load balancer or replica count). Revisit with a shared store only if a multi-instance deployment shape is actually adopted. |
 | No `Tenant` domain aggregate or repository port; tenant creation stays an ops/database concern | Deferred, intentionally (P06.1, ADR PC03) | `POST /api/v1/admin/bootstrap` operates against an already-provisioned, still-empty tenant — it does not create one. Building tenant provisioning would be new domain modeling, out of a "REST Surface Foundation" milestone's scope. A nonexistent tenant on bootstrap surfaces as a generic 400 (`DataIntegrityViolationException` handler), not a clean domain 404 — a known, accepted trade-off of not introducing a `TenantRepository` port for this alone. |
-| Authorization Filter still not built | Open, explicitly out of P06.1's scope | Named in `.claude/CLAUDE.md`'s target architecture since before Phase 4; frozen as Phase 6's second milestone (P06.2) in the "Roadmap to v1.0.0" section above. Document reads/lists remain tenant-wide, not per-document-scoped, until this ships. |
+| Authorization Filter still not built | **CLOSED (P06.2)** | `ClassificationPolicyPort`/`RoleBasedClassificationPolicyAdapter` now enforce role-based classification clearance in both `RetrievalService` (retrieval pipeline) and `DocumentApplicationService` (every REST document endpoint). Document reads/lists stay tenant-wide as their base scope (ADR PC05, unchanged), now further narrowed by classification clearance within that tenant. |
 | No list-users, role-assignment, or password-change REST endpoints | Deliberately minimal (P06.1, ADR PC05) | `UserApplicationService.activateUser`/`assignRole`/`removeRole`/`changePassword` all already work; no REST surface was added for them since nothing in this milestone's scope needed them. Add when a concrete caller/requirement exists, not speculatively. |
 
 ---

@@ -1,6 +1,7 @@
 package com.mudassirshahzad.eka.infrastructure.persistence.postgres.mapper;
 
 import com.mudassirshahzad.eka.domain.document.Document;
+import com.mudassirshahzad.eka.domain.document.DocumentClassification;
 import com.mudassirshahzad.eka.domain.document.DocumentId;
 import com.mudassirshahzad.eka.domain.document.DocumentMetadata;
 import com.mudassirshahzad.eka.domain.document.DocumentStatus;
@@ -49,7 +50,7 @@ public class DocumentPersistenceMapper {
                 .author(d.getMetadata().author())
                 .description(d.getMetadata().description())
                 .department(d.getMetadata().department())
-                .classification(d.getMetadata().classification())
+                .classification(classificationName(d.getMetadata()))
                 .tags(toTagArray(d.getMetadata().tags()))
                 .rawContentPath(d.getRawContentPath())
                 .parsedTextPath(d.getParsedTextPath())
@@ -67,7 +68,7 @@ public class DocumentPersistenceMapper {
         entity.setAuthor(d.getMetadata().author());
         entity.setDescription(d.getMetadata().description());
         entity.setDepartment(d.getMetadata().department());
-        entity.setClassification(d.getMetadata().classification());
+        entity.setClassification(classificationName(d.getMetadata()));
         entity.setTags(toTagArray(d.getMetadata().tags()));
         entity.setRawContentPath(d.getRawContentPath());
         entity.setParsedTextPath(d.getParsedTextPath());
@@ -85,12 +86,23 @@ public class DocumentPersistenceMapper {
                 .author(e.getAuthor())
                 .description(e.getDescription())
                 .department(e.getDepartment())
-                .classification(e.getClassification())
+                .classification(DocumentClassification.parse(e.getClassification()).orElse(null))
                 .tags(tags)
                 .build();
     }
 
     private String[] toTagArray(Set<String> tags) {
         return tags == null || tags.isEmpty() ? new String[0] : tags.toArray(String[]::new);
+    }
+
+    /**
+     * A garbage/unparseable stored string is deliberately collapsed to {@code null} here, the
+     * same as a genuinely absent classification — {@link DocumentClassification#levelOf(String)}
+     * treats both identically (fail-closed), so there is no authorization-relevant difference
+     * between the two, and re-persisting {@code null} rather than round-tripping garbage is the
+     * simpler, self-correcting behavior.
+     */
+    private String classificationName(DocumentMetadata metadata) {
+        return metadata.classification() == null ? null : metadata.classification().name();
     }
 }

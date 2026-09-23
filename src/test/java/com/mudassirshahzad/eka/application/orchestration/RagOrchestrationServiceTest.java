@@ -21,6 +21,7 @@ import com.mudassirshahzad.eka.domain.retrieval.model.SearchMetadata;
 import com.mudassirshahzad.eka.domain.retrieval.port.ContextAssemblyPort;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
+import com.mudassirshahzad.eka.domain.user.UserRole;
 import io.micrometer.observation.ObservationRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -59,6 +61,7 @@ class RagOrchestrationServiceTest {
     private final ConversationId conversationId = ConversationId.generate();
     private final UserId         userId         = UserId.generate();
     private final TenantId       tenantId       = TenantId.generate();
+    private final Set<UserRole>  roles          = Set.of(UserRole.USER);
 
     @BeforeEach
     void setUp() {
@@ -130,7 +133,7 @@ class RagOrchestrationServiceTest {
     @Test
     void handleUserMessage_persistsUserMessageFirst() {
         stubHappyPath();
-        SendMessageCommand cmd = new SendMessageCommand(conversationId, userId, tenantId, "What is RAG?");
+        SendMessageCommand cmd = new SendMessageCommand(conversationId, userId, tenantId, roles, "What is RAG?");
 
         orchestrator.handleUserMessage(cmd);
 
@@ -144,7 +147,7 @@ class RagOrchestrationServiceTest {
     @Test
     void handleUserMessage_retrievesWithOriginalUserContent() {
         stubHappyPath();
-        SendMessageCommand cmd = new SendMessageCommand(conversationId, userId, tenantId, "What is RAG?");
+        SendMessageCommand cmd = new SendMessageCommand(conversationId, userId, tenantId, roles, "What is RAG?");
 
         orchestrator.handleUserMessage(cmd);
 
@@ -165,7 +168,7 @@ class RagOrchestrationServiceTest {
         when(contextAssemblyPort.assemble(any(), any(), anyInt())).thenReturn(assembledContext);
         stubGenerationAndPersistence();
 
-        orchestrator.handleUserMessage(new SendMessageCommand(conversationId, userId, tenantId, "SLA?"));
+        orchestrator.handleUserMessage(new SendMessageCommand(conversationId, userId, tenantId, roles, "SLA?"));
 
         verify(contextAssemblyPort).assemble(eq(List.of(chunk)), eq("rewritten query"), eq(TOKEN_BUDGET));
     }
@@ -173,7 +176,7 @@ class RagOrchestrationServiceTest {
     @Test
     void handleUserMessage_generatesWithOriginalUserContentAndAssembledContext() {
         stubHappyPath();
-        SendMessageCommand cmd = new SendMessageCommand(conversationId, userId, tenantId, "What is RAG?");
+        SendMessageCommand cmd = new SendMessageCommand(conversationId, userId, tenantId, roles, "What is RAG?");
 
         orchestrator.handleUserMessage(cmd);
 
@@ -193,7 +196,7 @@ class RagOrchestrationServiceTest {
         when(conversationApplicationService.addAssistantMessage(any()))
                 .thenReturn(conversationWithAssistantMessage("the answer", List.of(citation)));
 
-        orchestrator.handleUserMessage(new SendMessageCommand(conversationId, userId, tenantId, "question"));
+        orchestrator.handleUserMessage(new SendMessageCommand(conversationId, userId, tenantId, roles, "question"));
 
         ArgumentCaptor<AddAssistantMessageCommand> captor = ArgumentCaptor.forClass(AddAssistantMessageCommand.class);
         verify(conversationApplicationService).addAssistantMessage(captor.capture());
@@ -211,7 +214,7 @@ class RagOrchestrationServiceTest {
                 .thenReturn(conversationWithAssistantMessage("answer text", List.of()));
 
         RagTurnResult result = orchestrator.handleUserMessage(
-                new SendMessageCommand(conversationId, userId, tenantId, "question"));
+                new SendMessageCommand(conversationId, userId, tenantId, roles, "question"));
 
         assertThat(result.assistantMessage().content()).isEqualTo("answer text");
         assertThat(result.generatedResponse()).isSameAs(generated);
@@ -221,7 +224,7 @@ class RagOrchestrationServiceTest {
     void handleUserMessage_callsCollaboratorsInOrder() {
         stubHappyPath();
 
-        orchestrator.handleUserMessage(new SendMessageCommand(conversationId, userId, tenantId, "question"));
+        orchestrator.handleUserMessage(new SendMessageCommand(conversationId, userId, tenantId, roles, "question"));
 
         InOrder order = inOrder(conversationApplicationService, retrievalService, contextAssemblyPort, generationService);
         order.verify(conversationApplicationService).addUserMessage(any());
@@ -243,7 +246,7 @@ class RagOrchestrationServiceTest {
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> orchestrator.handleUserMessage(
-                        new SendMessageCommand(conversationId, userId, tenantId, "question")));
+                        new SendMessageCommand(conversationId, userId, tenantId, roles, "question")));
 
         verify(conversationApplicationService, never()).addAssistantMessage(any());
     }
@@ -254,7 +257,7 @@ class RagOrchestrationServiceTest {
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> orchestrator.handleUserMessage(
-                        new SendMessageCommand(conversationId, userId, tenantId, "question")));
+                        new SendMessageCommand(conversationId, userId, tenantId, roles, "question")));
 
         verifyNoInteractions(contextAssemblyPort, generationService);
         verify(conversationApplicationService, never()).addAssistantMessage(any());

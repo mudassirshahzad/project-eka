@@ -62,14 +62,14 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.7.0 — P06.1: Product Completeness & Authorization Depth (Phase 6, milestone 1) |
+| **Current Release** | v0.7.1 — P06.2: Authorization Filter (Phase 6, milestone 2) |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 673 passing, 0 failures · 67 test classes |
+| **Automated Tests** | 726 passing, 0 failures · 73 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
 | **CI** | GitHub Actions — build + full test suite + ArchUnit on every PR and push to `main` |
-| **Schema Migrations** | Flyway V001–V017 (17 migrations) |
-| **Current Focus** | P06.1 — Product Completeness & Authorization Depth — REST Surface Foundation (complete) |
-| **Next Milestone** | P06.2 — Authorization Filter (Phase 6, milestone 2 of 5; v0.7.1) — not yet started |
+| **Schema Migrations** | Flyway V001–V018 (18 migrations) |
+| **Current Focus** | P06.2 — Authorization Filter (complete) |
+| **Next Milestone** | Phase 6 completion review — a post-P06.2 self-review/architecture-review decides whether P06.3 opens at all; Phase 6 may complete directly at v0.7.1 |
 
 ---
 
@@ -123,9 +123,17 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Application-layer validation errors (e.g. `DeleteConversationUseCase`'s active-session guard) now return `400`, not a misleading `500`
 - ✅ Request-size protection narrowed to support real uploads without weakening the general limit — only the upload route is exempt, matched on method + path + content type together
 
+**Implemented — v0.7.1 / P06.2 (Authorization Filter, Phase 6 milestone 2)**
+
+- ✅ Role-based document-classification clearance — `PUBLIC` < `INTERNAL` < `CONFIDENTIAL` < `RESTRICTED`; `VIEWER`→`INTERNAL`, `AUDITOR`/`USER`→`CONFIDENTIAL`, `ADMIN`→`RESTRICTED`; a caller's clearance is the maximum across every role they hold
+- ✅ Enforced in the retrieval pipeline — a chunk from a document above the caller's clearance is silently excluded before ranking, indistinguishable from "didn't match the query," never a distinct error
+- ✅ Enforced consistently across every document REST endpoint — `GET /{id}`, `GET` (list, filtered inside the query itself so pagination stays correct), `DELETE /{id}` — a document above clearance resolves to `404`, never `403` (same anti-enumeration precedent as tenant/ownership checks)
+- ✅ Classification now required at ingestion — `POST /api/v1/documents` rejects a missing or unrecognized `classification` value with `400`
+- ✅ Fail-closed by design — an unknown, unparseable, or null classification is never granted to any role, including `ADMIN`; a one-time migration classified every pre-existing document `INTERNAL`, with a startup check logging a warning if any document is still unclassified
+- ✅ Closes the item this project's target architecture has named since before Phase 4 ("Authorization Filter (planned)... do not assume it already exists")
+
 **Planned — Phase 6 (continued) and beyond**
 
-- ⏳ Authorization Filter (P06.2) — fine-grained, metadata-based retrieval-pipeline authorization; named in this project's target architecture since before Phase 4, still unbuilt
 - ⏳ Server-Sent Events streaming responses with source citations
 - ⏳ MCP server — knowledge base and ingestion exposed as MCP tools
 - ⏳ LangGraph agentic pipeline with self-correction loop
@@ -181,7 +189,7 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 | Vector Store | Weaviate | 1.25 | ANN search, native multi-tenancy |
 | Relational DB | PostgreSQL | 16 | Metadata, audit log, BM25 full-text search |
 | ORM | Hibernate 6 / Spring Data JPA | Bundled | JPA persistence with custom domain mappers |
-| Migrations | Flyway | 10+ | Versioned schema migrations (V001–V017) |
+| Migrations | Flyway | 10+ | Versioned schema migrations (V001–V018) |
 | Document Parsing | Apache Tika | 2.9.2 | Multi-format extraction, magic-byte detection |
 | Generation | Qwen3 via Ollama | Latest | Local LLM for query rewriting and chat generation |
 | Security | Spring Security + JJWT 0.12+ | — | JWT (HS256) authentication (v0.5.2); role + tenant/ownership authorization (v0.5.3, extended to every ownership-scoped method in v0.6.0) |
@@ -358,10 +366,10 @@ for the authoritative, currently-maintained status of everything from v0.5.1 onw
 | v0.6.0 | Operational Hardening & Phase 5 Completion (P05.5) | ✅ Complete |
 | v0.6.1 | Engineering Excellence & Repository Governance (post-Phase-5 audit response) | ✅ Complete |
 | v0.7.0 | Phase 6, P06.1 — Product Completeness & Authorization Depth: REST surface foundation (document ingestion, admin/bootstrap, conversation list/delete) | ✅ Complete |
-| v0.7.1 | Phase 6, P06.2 — Authorization Filter (retrieval-pipeline stage) | ⏳ Planned |
-| v0.7.2 | Phase 6, P06.3 — not yet scoped | ⏳ Planned |
-| v0.7.3 | Phase 6, P06.4 — not yet scoped | ⏳ Planned |
-| v0.7.4 | Phase 6, P06.5 — Phase 6 Complete gate | ⏳ Planned |
+| v0.7.1 | Phase 6, P06.2 — Authorization Filter (retrieval-pipeline stage + REST document-endpoint enforcement) | ✅ Complete |
+| v0.7.2 | Phase 6, P06.3 — opened only if the post-P06.2 review finds a genuine gap | ⏳ Pending review |
+| v0.7.3 | Phase 6, P06.4 — reserved, contingent on P06.3 | ⏳ Reserved |
+| v0.7.4 | Phase 6, P06.5 — Phase 6 Complete gate (may be satisfied directly by v0.7.1) | ⏳ Reserved |
 | v0.8.0 | Phase 7 — Retrieval Quality & Operational Integrity: re-ranking, HyDE, Postgres↔Weaviate reconciliation, refresh tokens | ⏳ Planned |
 | v0.9.0 | Phase 8 — Scale & Ecosystem Readiness: metrics dashboards, streaming, MCP spike (go/no-go) | ⏳ Planned |
 | v1.0.0 | First Stable Release — gated on the full product definition in `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section | ⏳ Planned |

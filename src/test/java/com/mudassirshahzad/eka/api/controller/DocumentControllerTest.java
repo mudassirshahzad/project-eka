@@ -15,6 +15,7 @@ import com.mudassirshahzad.eka.application.document.ListDocumentsUseCase;
 import com.mudassirshahzad.eka.application.document.UploadDocumentUseCase;
 import com.mudassirshahzad.eka.application.shared.ResourceNotFoundException;
 import com.mudassirshahzad.eka.domain.document.Document;
+import com.mudassirshahzad.eka.domain.document.DocumentClassification;
 import com.mudassirshahzad.eka.domain.document.DocumentMetadata;
 import com.mudassirshahzad.eka.domain.document.SupportedFormat;
 import com.mudassirshahzad.eka.domain.shared.PageResult;
@@ -90,7 +91,10 @@ class DocumentControllerTest {
 
     private Document sampleDocument() {
         return Document.create(TenantId.of(tenantId), UserId.of(userId), "report.pdf",
-                SupportedFormat.PDF, DocumentMetadata.builder().title("Report").build());
+                SupportedFormat.PDF, DocumentMetadata.builder()
+                        .title("Report")
+                        .classification(DocumentClassification.PUBLIC)
+                        .build());
     }
 
     // ── POST /documents ──────────────────────────────────────────────────────
@@ -101,7 +105,8 @@ class DocumentControllerTest {
         when(uploadDocumentUseCase.execute(any())).thenReturn(document);
         MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
 
-        mockMvc.perform(multipart("/api/v1/documents").file(file).with(authenticated()))
+        mockMvc.perform(multipart("/api/v1/documents").file(file)
+                        .param("classification", "PUBLIC").with(authenticated()))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/v1/documents/" + document.getId().value()))
                 .andExpect(jsonPath("$.filename").value("report.pdf"))
@@ -135,6 +140,24 @@ class DocumentControllerTest {
     }
 
     @Test
+    void uploadDocument_missingClassification_returnsBadRequest() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/documents").file(file).with(authenticated()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("classification")));
+    }
+
+    @Test
+    void uploadDocument_invalidClassification_returnsBadRequest() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/documents").file(file)
+                        .param("classification", "TOP_SECRET").with(authenticated()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void uploadDocument_viewerRole_returnsForbidden() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes());
 
@@ -147,7 +170,7 @@ class DocumentControllerTest {
     @Test
     void getDocument_returnsDocumentDetail() throws Exception {
         Document document = sampleDocument();
-        when(getDocumentUseCase.execute(any(), any())).thenReturn(document);
+        when(getDocumentUseCase.execute(any(), any(), any())).thenReturn(document);
 
         mockMvc.perform(get("/api/v1/documents/{id}", document.getId().value()).with(authenticated()))
                 .andExpect(status().isOk())
@@ -158,7 +181,7 @@ class DocumentControllerTest {
     @Test
     void getDocument_notFound_returnsProblemDetail() throws Exception {
         UUID missingId = UUID.randomUUID();
-        when(getDocumentUseCase.execute(any(), any()))
+        when(getDocumentUseCase.execute(any(), any(), any()))
                 .thenThrow(new ResourceNotFoundException("Document", missingId.toString()));
 
         mockMvc.perform(get("/api/v1/documents/{id}", missingId).with(authenticated()))
@@ -167,7 +190,7 @@ class DocumentControllerTest {
 
     @Test
     void getDocument_viewerRole_isPermitted() throws Exception {
-        when(getDocumentUseCase.execute(any(), any())).thenReturn(sampleDocument());
+        when(getDocumentUseCase.execute(any(), any(), any())).thenReturn(sampleDocument());
 
         mockMvc.perform(get("/api/v1/documents/{id}", UUID.randomUUID()).with(authenticatedAs("ROLE_VIEWER")))
                 .andExpect(status().isOk());
@@ -184,7 +207,7 @@ class DocumentControllerTest {
     @Test
     void listDocuments_returnsPage() throws Exception {
         PageResult<Document> page = PageResult.of(List.of(sampleDocument()), 0, 20, 1);
-        when(listDocumentsUseCase.execute(any(), any())).thenReturn(page);
+        when(listDocumentsUseCase.execute(any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/documents").with(authenticated()))
                 .andExpect(status().isOk())

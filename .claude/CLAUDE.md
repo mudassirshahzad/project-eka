@@ -150,7 +150,7 @@ Preferred layered architecture:
 Query Rewrite
 ↓
 
-Authorization Filter (planned)
+Authorization Filter
 
 ↓
 
@@ -172,8 +172,11 @@ LLM
 
 Output Guardrails
 
-Authorization Filter is planned for future implementation.
-Do not assume it already exists.
+Authorization Filter shipped in P06.2 (v0.7.1) — role-based document-classification clearance
+(`ClassificationPolicyPort`), enforced both in the retrieval pipeline (as a post-fetch pass in
+`RetrievalService`, not pushed into either retrieval engine's own filter — see `.claude/DECISIONS.md`
+ADR AF03 for why) and across every REST document endpoint. See `.claude/PROJECT_STATE.md`'s
+"Authorization Filter — classification clearance (P06.2)" section for the full pipeline.
 
 ---
 

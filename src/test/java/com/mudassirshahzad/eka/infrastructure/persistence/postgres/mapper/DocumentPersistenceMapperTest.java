@@ -1,6 +1,7 @@
 package com.mudassirshahzad.eka.infrastructure.persistence.postgres.mapper;
 
 import com.mudassirshahzad.eka.domain.document.Document;
+import com.mudassirshahzad.eka.domain.document.DocumentClassification;
 import com.mudassirshahzad.eka.domain.document.DocumentMetadata;
 import com.mudassirshahzad.eka.domain.document.DocumentStatus;
 import com.mudassirshahzad.eka.domain.document.SupportedFormat;
@@ -86,7 +87,7 @@ class DocumentPersistenceMapperTest {
         Document domain = Document.create(
                 TenantId.of(tenant.getId()), UserId.of(owner.getId()),
                 "empty-tags.txt", SupportedFormat.TXT,
-                DocumentMetadata.builder().tags(Set.of()).build());
+                DocumentMetadata.builder().tags(Set.of()).classification(DocumentClassification.PUBLIC).build());
 
         DocumentEntity entity = mapper.toEntity(domain, tenant, owner);
 
@@ -101,7 +102,8 @@ class DocumentPersistenceMapperTest {
         Document original = Document.create(
                 TenantId.of(tenant.getId()), UserId.of(owner.getId()),
                 "tagged.pdf", SupportedFormat.PDF,
-                DocumentMetadata.builder().tags(Set.of("legal", "contract")).title("Contract").build());
+                DocumentMetadata.builder().tags(Set.of("legal", "contract")).title("Contract")
+                        .classification(DocumentClassification.PUBLIC).build());
 
         DocumentEntity entity = mapper.toEntity(original, tenant, owner);
         stampTimestamps(entity);
@@ -119,7 +121,8 @@ class DocumentPersistenceMapperTest {
         UserEntity   owner  = ownerEntity(tenant);
         Document domain = Document.create(
                 TenantId.of(tenant.getId()), UserId.of(owner.getId()),
-                "doc.pdf", SupportedFormat.PDF, DocumentMetadata.EMPTY);
+                "doc.pdf", SupportedFormat.PDF,
+                DocumentMetadata.builder().classification(DocumentClassification.PUBLIC).build());
         DocumentEntity entity = mapper.toEntity(domain, tenant, owner);
         entity.setStatus(DocumentStatus.PENDING.name());
 

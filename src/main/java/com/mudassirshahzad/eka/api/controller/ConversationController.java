@@ -134,7 +134,8 @@ public class ConversationController {
 
         JwtAuthenticationToken principal = (JwtAuthenticationToken) authentication;
         RagTurnResult result = ragOrchestrationService.handleUserMessage(new SendMessageCommand(
-                ConversationId.of(conversationId), principal.userId(), principal.tenantId(), request.content()));
+                ConversationId.of(conversationId), principal.userId(), principal.tenantId(),
+                principal.roles(), request.content()));
 
         return GeneratedAnswerResponse.from(result);
     }

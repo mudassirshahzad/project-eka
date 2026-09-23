@@ -30,9 +30,14 @@ public class Document {
             SupportedFormat format,
             DocumentMetadata metadata
     ) {
+        Objects.requireNonNull(metadata, "metadata");
+        if (metadata.classification() == null) {
+            throw new IllegalArgumentException(
+                    "metadata.classification must not be null — every newly ingested document must be explicitly classified");
+        }
         Document doc = new Document(DocumentId.generate(), tenantId, ownerId, filename, format, Instant.now());
         doc.status     = DocumentStatus.PENDING;
-        doc.metadata   = Objects.requireNonNull(metadata, "metadata");
+        doc.metadata   = metadata;
         doc.chunkCount = 0;
         doc.updatedAt  = doc.createdAt;
         return doc;

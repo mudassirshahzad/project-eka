@@ -8,6 +8,7 @@ import com.mudassirshahzad.eka.domain.document.DocumentId;
 import com.mudassirshahzad.eka.domain.document.DocumentMetadata;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
+import com.mudassirshahzad.eka.domain.user.UserRole;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,12 +34,13 @@ class DeleteDocumentUseCaseTest {
     @Mock private VectorStore                vectorStore;
     @InjectMocks private DeleteDocumentUseCase useCase;
 
-    private final TenantId   tenantId   = TenantId.generate();
-    private final DocumentId documentId = DocumentId.generate();
-    private final UserId     deletedBy  = UserId.generate();
+    private final TenantId      tenantId   = TenantId.generate();
+    private final DocumentId    documentId = DocumentId.generate();
+    private final UserId        deletedBy  = UserId.generate();
+    private final Set<UserRole> roles      = Set.of(UserRole.USER);
 
     private DeleteDocumentCommand cmd() {
-        return new DeleteDocumentCommand(documentId, tenantId, deletedBy);
+        return new DeleteDocumentCommand(documentId, tenantId, deletedBy, roles);
     }
 
     private Chunk indexedChunk(String vectorId) {
@@ -53,19 +56,19 @@ class DeleteDocumentUseCaseTest {
 
     @Test
     void execute_rejectsNullDocumentId() {
-        var cmd = new DeleteDocumentCommand(null, tenantId, deletedBy);
+        var cmd = new DeleteDocumentCommand(null, tenantId, deletedBy, roles);
         assertThatNullPointerException().isThrownBy(() -> useCase.execute(cmd));
     }
 
     @Test
     void execute_rejectsNullTenantId() {
-        var cmd = new DeleteDocumentCommand(documentId, null, deletedBy);
+        var cmd = new DeleteDocumentCommand(documentId, null, deletedBy, roles);
         assertThatNullPointerException().isThrownBy(() -> useCase.execute(cmd));
     }
 
     @Test
     void execute_rejectsNullDeletedBy() {
-        var cmd = new DeleteDocumentCommand(documentId, tenantId, null);
+        var cmd = new DeleteDocumentCommand(documentId, tenantId, null, roles);
         assertThatNullPointerException().isThrownBy(() -> useCase.execute(cmd));
     }
 

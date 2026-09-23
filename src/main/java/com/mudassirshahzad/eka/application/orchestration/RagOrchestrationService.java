@@ -97,7 +97,8 @@ public class RagOrchestrationService {
                 new AddUserMessageCommand(cmd.conversationId(), cmd.userId(), cmd.tenantId(), cmd.content()));
 
         RetrievalResult retrievalResult = retrievalService.retrieve(new RetrievalRequest(
-                cmd.content(), cmd.tenantId(), cmd.userId(), MetadataFilter.NONE, RetrievalOptions.DEFAULT));
+                cmd.content(), cmd.tenantId(), cmd.userId(), cmd.roles(),
+                MetadataFilter.NONE, RetrievalOptions.DEFAULT));
 
         AssembledContext assembledContext = contextAssemblyPort.assemble(
                 retrievalResult.items(), retrievalResult.effectiveQueryText(), contextTokenBudget);

@@ -2,11 +2,14 @@ package com.mudassirshahzad.eka.api.security;
 
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
+import com.mudassirshahzad.eka.domain.user.UserRole;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * The sole {@link org.springframework.security.core.Authentication} type this application ever
@@ -34,6 +37,28 @@ public final class JwtAuthenticationToken extends AbstractAuthenticationToken {
 
     public TenantId tenantId() {
         return tenantId;
+    }
+
+    /**
+     * The caller's roles, decoded from the {@code ROLE_*} authorities {@link JwtTokenProvider}
+     * encodes (the exact format {@link AuthorizationInterceptor} already matches against). This
+     * application is the sole minter of its own tokens, but decoding defensively (skipping, not
+     * throwing on, an authority that isn't a recognized role) keeps a request from failing with an
+     * unrelated 500 if that ever stops being true.
+     */
+    public Set<UserRole> roles() {
+        Set<UserRole> roles = EnumSet.noneOf(UserRole.class);
+        for (GrantedAuthority authority : getAuthorities()) {
+            String name = authority.getAuthority();
+            if (name != null && name.startsWith("ROLE_")) {
+                try {
+                    roles.add(UserRole.valueOf(name.substring("ROLE_".length())));
+                } catch (IllegalArgumentException ignored) {
+                    // Not a recognized role — skip rather than fail the request.
+                }
+            }
+        }
+        return roles;
     }
 
     @Override

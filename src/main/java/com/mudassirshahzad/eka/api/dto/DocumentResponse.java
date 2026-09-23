@@ -38,7 +38,7 @@ public record DocumentResponse(
                 document.getIngestionError(),
                 document.getMetadata().title(),
                 document.getMetadata().department(),
-                document.getMetadata().classification(),
+                document.getMetadata().classification() != null ? document.getMetadata().classification().name() : null,
                 document.getMetadata().tags(),
                 document.getCreatedAt(),
                 document.getUpdatedAt());

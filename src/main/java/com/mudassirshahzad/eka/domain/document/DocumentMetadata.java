@@ -8,7 +8,7 @@ public record DocumentMetadata(
         String author,
         String description,
         String department,
-        String classification,
+        DocumentClassification classification,
         Set<String> tags
 ) {
 
@@ -27,15 +27,15 @@ public record DocumentMetadata(
         private String author;
         private String description;
         private String department;
-        private String classification;
+        private DocumentClassification classification;
         private Set<String> tags = Set.of();
 
-        public Builder title(String title)                   { this.title          = title;          return this; }
-        public Builder author(String author)                 { this.author         = author;         return this; }
-        public Builder description(String description)       { this.description    = description;    return this; }
-        public Builder department(String department)         { this.department     = department;     return this; }
-        public Builder classification(String classification) { this.classification = classification; return this; }
-        public Builder tags(Set<String> tags)                { this.tags           = tags;           return this; }
+        public Builder title(String title)                                 { this.title          = title;          return this; }
+        public Builder author(String author)                               { this.author         = author;         return this; }
+        public Builder description(String description)                     { this.description    = description;    return this; }
+        public Builder department(String department)                       { this.department     = department;     return this; }
+        public Builder classification(DocumentClassification classification) { this.classification = classification; return this; }
+        public Builder tags(Set<String> tags)                              { this.tags           = tags;           return this; }
 
         public DocumentMetadata build() {
             return new DocumentMetadata(title, author, description, department, classification, tags);

@@ -19,7 +19,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -63,11 +65,22 @@ public class DocumentRepositoryAdapter implements DocumentRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Document> findByIds(List<DocumentId> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        List<UUID> rawIds = ids.stream().map(DocumentId::value).toList();
+        return documentJpaRepository.findAllById(rawIds).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<Document> findByTenantId(TenantId tenantId,
-                                               com.mudassirshahzad.eka.domain.shared.PageRequest pageRequest) {
+                                               com.mudassirshahzad.eka.domain.shared.PageRequest pageRequest,
+                                               int maxClassificationLevel) {
         TenantEntity tenant   = tenantJpaRepository.getReferenceById(tenantId.value());
-        Page<DocumentEntity> page = documentJpaRepository.findByTenant(
-                tenant,
+        Page<DocumentEntity> page = documentJpaRepository.findByTenantWithMaxClassificationLevel(
+                tenant, maxClassificationLevel,
                 org.springframework.data.domain.PageRequest.of(pageRequest.pageNumber(), pageRequest.pageSize())
         );
         return PageResult.of(
@@ -81,11 +94,12 @@ public class DocumentRepositoryAdapter implements DocumentRepository {
     @Override
     @Transactional(readOnly = true)
     public PageResult<Document> findByOwnerIdAndTenantId(UserId ownerId, TenantId tenantId,
-                                                          com.mudassirshahzad.eka.domain.shared.PageRequest pageRequest) {
+                                                          com.mudassirshahzad.eka.domain.shared.PageRequest pageRequest,
+                                                          int maxClassificationLevel) {
         TenantEntity tenant = tenantJpaRepository.getReferenceById(tenantId.value());
         UserEntity   owner  = userJpaRepository.getReferenceById(ownerId.value());
-        Page<DocumentEntity> page = documentJpaRepository.findByOwnerAndTenant(
-                owner, tenant,
+        Page<DocumentEntity> page = documentJpaRepository.findByOwnerAndTenantWithMaxClassificationLevel(
+                owner, tenant, maxClassificationLevel,
                 org.springframework.data.domain.PageRequest.of(pageRequest.pageNumber(), pageRequest.pageSize())
         );
         return PageResult.of(
@@ -100,5 +114,11 @@ public class DocumentRepositoryAdapter implements DocumentRepository {
     @Transactional
     public void softDelete(DocumentId id) {
         documentJpaRepository.softDeleteById(id.value(), Instant.now());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countUnclassified() {
+        return documentJpaRepository.countByClassificationIsNull();
     }
 }

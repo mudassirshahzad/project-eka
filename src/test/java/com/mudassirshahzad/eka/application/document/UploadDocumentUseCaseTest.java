@@ -7,6 +7,7 @@ import com.mudassirshahzad.eka.application.shared.DomainEventPublisher;
 import com.mudassirshahzad.eka.domain.chunk.Chunk;
 import com.mudassirshahzad.eka.domain.chunk.ChunkMetadata;
 import com.mudassirshahzad.eka.domain.document.Document;
+import com.mudassirshahzad.eka.domain.document.DocumentClassification;
 import com.mudassirshahzad.eka.domain.document.DocumentId;
 import com.mudassirshahzad.eka.domain.document.DocumentMetadata;
 import com.mudassirshahzad.eka.domain.document.DocumentParser;
@@ -58,7 +59,8 @@ class UploadDocumentUseCaseTest {
 
     private final TenantId         tenantId = TenantId.generate();
     private final UserId           ownerId  = UserId.generate();
-    private final DocumentMetadata metadata = DocumentMetadata.EMPTY;
+    private final DocumentMetadata metadata =
+            DocumentMetadata.builder().classification(DocumentClassification.PUBLIC).build();
     private final byte[]           content  = "test content".getBytes(StandardCharsets.UTF_8);
 
     @Test

@@ -24,6 +24,14 @@ import java.util.Map;
  * <p>Unknown keys produce a warning and are silently skipped — they do not cause
  * query failure. This keeps the BM25 adapter forward-compatible as the filter
  * vocabulary grows.
+ *
+ * <p><b>P06.2 note:</b> classification-clearance enforcement (the Authorization Filter) does
+ * <em>not</em> live here, deliberately. {@link MetadataFilter} is shared verbatim across every
+ * {@code RetrievalPort} adapter by {@code HybridRetrievalAdapter} — a criterion this translator
+ * understood but the Weaviate-side translator interpreted as a generic equality match (Weaviate
+ * indexes no per-chunk classification property) would silently return zero vector-search results
+ * the moment it was populated. Enforcement instead happens once, engine-agnostically, in
+ * {@code RetrievalService} after both engines' results are back — see that class.
  */
 @Slf4j
 @Component

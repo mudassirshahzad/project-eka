@@ -26,6 +26,12 @@ public record MetadataFilter(Map<String, Object> criteria) {
     public static class Builder {
         private final Map<String, Object> criteria = new HashMap<>();
 
+        // No "maximum classification level" criterion here (P06.2): every criteria entry is
+        // interpreted uniformly by each RetrievalPort adapter's translator as an exact/membership
+        // match against a stored per-item property, and Weaviate does not index document
+        // classification per chunk. A numeric "<=" clearance comparison doesn't fit that generic
+        // contract safely across engines — see RetrievalService for where that check actually
+        // happens (a single post-fetch pass over RetrievedChunk.documentId(), engine-agnostic).
         public Builder department(String department)     { criteria.put("department", department);     return this; }
         public Builder classification(String cls)        { criteria.put("classification", cls);         return this; }
         public Builder tags(List<String> tags)           { criteria.put("tags", tags);                  return this; }

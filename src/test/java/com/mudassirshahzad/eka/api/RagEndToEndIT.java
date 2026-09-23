@@ -346,6 +346,62 @@ class RagEndToEndIT {
     }
 
     @Test
+    void getDocument_wrongClassificationForCallerRole_returnsNotFound_realDatabaseProof() throws Exception {
+        // The literal Phase 6 exit criterion: "retrieval results are provably scoped by
+        // document-level authorization... a wrong-classification request is denied" — proven
+        // here against a real Postgres row and a real HTTP round trip, not a mock. VIEWER's
+        // clearance tops out at INTERNAL (RoleBasedClassificationPolicyAdapter); RESTRICTED is
+        // above it, so the same-tenant, correctly-authenticated caller still gets 404 — identical
+        // to the tenant/ownership-mismatch anti-enumeration precedent (ADR OW01), never a 403.
+        TenantEntity tenant = persistTenant();
+        UserEntity   owner  = persistUser(tenant);
+        UserEntity   reader = persistUser(tenant);
+        DocumentEntity restrictedDocument = persistDocument(tenant, owner, "RESTRICTED");
+        String readerToken = jwtTokenProvider.generateAccessToken(
+                UserId.of(reader.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.VIEWER));
+
+        mockMvc.perform(get("/api/v1/documents/{id}", restrictedDocument.getId())
+                        .header("Authorization", "Bearer " + readerToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getDocument_sufficientClearanceForCallerRole_isReadable_realDatabaseProof() throws Exception {
+        // Same RESTRICTED document as above; an ADMIN in the same tenant is cleared to read it —
+        // proves denial above is genuinely classification-driven, not merely "always 404."
+        TenantEntity tenant = persistTenant();
+        UserEntity   owner  = persistUser(tenant);
+        UserEntity   admin  = persistUser(tenant);
+        DocumentEntity restrictedDocument = persistDocument(tenant, owner, "RESTRICTED");
+        String adminToken = jwtTokenProvider.generateAccessToken(
+                UserId.of(admin.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.ADMIN));
+
+        mockMvc.perform(get("/api/v1/documents/{id}", restrictedDocument.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.classification").value("RESTRICTED"));
+    }
+
+    @Test
+    void listDocuments_excludesDocumentsAboveCallerClearance_realDatabaseProof() throws Exception {
+        // Proves the classification bound is enforced inside the listing query itself (not a
+        // post-fetch filter that would silently break pagination) — a real Postgres row above the
+        // caller's clearance never appears in the page at all.
+        TenantEntity tenant = persistTenant();
+        UserEntity   owner  = persistUser(tenant);
+        persistDocument(tenant, owner, "PUBLIC");
+        persistDocument(tenant, owner, "RESTRICTED");
+        UserEntity   viewer = persistUser(tenant);
+        String viewerToken = jwtTokenProvider.generateAccessToken(
+                UserId.of(viewer.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.VIEWER));
+
+        mockMvc.perform(get("/api/v1/documents").header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].classification").value("PUBLIC"));
+    }
+
+    @Test
     void deleteConversation_thenGet_returnsNotFound_realDatabaseProof() throws Exception {
         // Proves the new DELETE route's soft-delete actually reaches Postgres — a subsequent GET
         // through the real findByIdAndUserId query no longer finds it, not just that DELETE
@@ -421,9 +477,14 @@ class RagEndToEndIT {
     }
 
     private DocumentEntity persistDocument(TenantEntity tenant, UserEntity owner) {
+        return persistDocument(tenant, owner, "PUBLIC");
+    }
+
+    private DocumentEntity persistDocument(TenantEntity tenant, UserEntity owner, String classification) {
         DocumentEntity document = DocumentEntity.builder()
                 .tenant(tenant).owner(owner)
                 .filename("policy.pdf").format("PDF").status("INDEXED")
+                .classification(classification)
                 .build();
         document.setId(UUID.randomUUID());
         return documentJpaRepository.save(document);
@@ -438,6 +499,7 @@ class RagEndToEndIT {
         DocumentEntity document = DocumentEntity.builder()
                 .tenant(tenant).owner(owner)
                 .filename("policy.pdf").format("PDF").status("INDEXED")
+                .classification("PUBLIC")
                 .build();
         document.setId(UUID.randomUUID());
         documentJpaRepository.save(document);

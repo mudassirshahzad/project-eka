@@ -12,6 +12,7 @@ import com.mudassirshahzad.eka.application.document.UploadDocumentCommand;
 import com.mudassirshahzad.eka.application.document.UploadDocumentUseCase;
 import com.mudassirshahzad.eka.application.shared.ApplicationException;
 import com.mudassirshahzad.eka.domain.document.Document;
+import com.mudassirshahzad.eka.domain.document.DocumentClassification;
 import com.mudassirshahzad.eka.domain.document.DocumentId;
 import com.mudassirshahzad.eka.domain.document.DocumentMetadata;
 import com.mudassirshahzad.eka.domain.document.SupportedFormat;
@@ -85,10 +86,18 @@ public class DocumentController {
                 .orElseThrow(() -> new ApplicationException(
                         "Unsupported or undetectable document format for: " + filename));
 
+        // P06.2: every newly ingested document must carry an explicit, valid classification —
+        // enforced here (a clear 400) and again in Document.create (defense in depth for any
+        // other caller of that factory).
+        DocumentClassification parsedClassification = DocumentClassification.parse(classification)
+                .orElseThrow(() -> new ApplicationException(
+                        "classification is required and must be one of "
+                        + Arrays.toString(DocumentClassification.values())));
+
         DocumentMetadata metadata = DocumentMetadata.builder()
                 .title(title)
                 .department(department)
-                .classification(classification)
+                .classification(parsedClassification)
                 .tags(parseTags(tags))
                 .build();
 
@@ -102,7 +111,8 @@ public class DocumentController {
     @GetMapping("/{documentId}")
     public DocumentResponse getDocument(Authentication authentication, @PathVariable UUID documentId) {
         JwtAuthenticationToken principal = (JwtAuthenticationToken) authentication;
-        Document document = getDocumentUseCase.execute(DocumentId.of(documentId), principal.tenantId());
+        Document document = getDocumentUseCase.execute(
+                DocumentId.of(documentId), principal.tenantId(), principal.roles());
         return DocumentResponse.from(document);
     }
 
@@ -113,7 +123,7 @@ public class DocumentController {
             @RequestParam(defaultValue = "20") int size) {
         JwtAuthenticationToken principal = (JwtAuthenticationToken) authentication;
         PageResult<Document> result = listDocumentsUseCase.execute(
-                principal.tenantId(), PageRequest.of(page, size));
+                principal.tenantId(), PageRequest.of(page, size), principal.roles());
         return PageResponse.from(result, DocumentResponse::from);
     }
 
@@ -122,7 +132,7 @@ public class DocumentController {
     public ResponseEntity<Void> deleteDocument(Authentication authentication, @PathVariable UUID documentId) {
         JwtAuthenticationToken principal = (JwtAuthenticationToken) authentication;
         deleteDocumentUseCase.execute(new DeleteDocumentCommand(
-                DocumentId.of(documentId), principal.tenantId(), principal.userId()));
+                DocumentId.of(documentId), principal.tenantId(), principal.userId(), principal.roles()));
         return ResponseEntity.noContent().build();
     }
 
