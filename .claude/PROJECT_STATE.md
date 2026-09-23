@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.7.1 (Complete) — P06.2: Authorization Filter (Phase 6, milestone 2 of N)
+v0.7.1 (Complete) — P06.2: Authorization Filter — **Phase 6 is now complete** (P06.1 + P06.2; P06.3–P06.5 deliberately not opened, ADR GOV05)
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -86,7 +86,7 @@ GitHub Milestones were formally introduced as a repository governance mechanism 
 | Milestone | State | Scope |
 |---|---|---|
 | Enterprise Foundation Complete | Closed | Everything through v0.6.1 (Foundation → Phase 5 → Engineering Excellence & Repository Governance). The one intentionally-preserved retrospective milestone — see below. |
-| Phase 6 | Open | Tracks all Phase 6 implementation work. Scope not yet defined. |
+| Phase 6 | Closed (v0.7.1) | Complete — P06.1 (REST surface) + P06.2 (Authorization Filter); P06.3–P06.5 deliberately not opened (ADR GOV05). |
 | Version 1.0.0 | Open | Tracks every remaining deliverable required before Project EKA is declared stable/production-ready. |
 
 ### Retrospective milestones — one exception, not a pattern
@@ -186,13 +186,13 @@ Everything else held up under review: the 3-phase structure (make it reachable �
 |---|---|---|---|---|
 | P06.1 | v0.7.0 | Product Completeness & Authorization Depth — REST Surface Foundation (document ingestion, admin/bootstrap, conversation list/delete REST surfaces) | +50 | ✅ Complete |
 | P06.2 | v0.7.1 | Authorization Filter (retrieval-pipeline stage + consistent REST document-endpoint enforcement) | +53 | ✅ Complete |
-| P06.3 | v0.7.2 | Not yet scoped — opened only if the post-P06.2 self-review/architecture-review surfaces a genuine gap | — | ⏳ Pending review |
-| P06.4 | v0.7.3 | Reserved, contingent on P06.3 | — | ⏳ Reserved |
-| P06.5 | v0.7.4 | Reserved — Phase 6 Complete gate, contingent on P06.3/P06.4 | — | ⏳ Reserved |
+| P06.3 | v0.7.2 | **Deliberately unused** — the post-P06.2 independent audit found no genuine gap | — | ✅ Not opened (by decision) |
+| P06.4 | v0.7.3 | **Deliberately unused** — reserved slot, contingent on P06.3, never triggered | — | ✅ Not opened (by decision) |
+| P06.5 | v0.7.4 | **Deliberately unused** — Phase 6 Complete gate satisfied directly by v0.7.1 instead | — | ✅ Not opened (by decision) |
 
 **Grand total tests: 726 — 0 failures** (net +53)
 
-**Phase 6 is not yet complete** — the Authorization Filter (P06.2) has now shipped, closing the item explicitly deferred out of P06.1's scope; Phase 6's exit criteria (full REST surface, Authorization Filter enforced and tested, audit finding H2 closed) are now all met by P06.1+P06.2. Per an explicit decision made before P06.2's implementation began, P06.3–P06.5 are deliberately **not** pre-scoped: the next step is this project's own established self-review/architecture-review discipline (the same kind that produced v0.6.1 and P05.5), and a further milestone is opened only if that review finds a genuine, concrete gap — not invented speculatively. If it finds nothing that rises to that bar, Phase 6 completes at v0.7.1 and the reserved v0.7.2–v0.7.4 slots are recorded as deliberately unused, not left dangling. Do not tag `v0.8.0` (Phase 7) until this Phase 6 completion gate — however it resolves — actually closes.
+**Phase 6 is complete as of v0.7.1.** The Authorization Filter (P06.2) shipped, and a post-P06.2 independent, adversarial audit (mirroring the v0.6.1/P05.5 precedent — conducted as a separate turn, explicitly instructed to challenge the implementation, not defend it) found no genuine gap: fail-closed enforcement traced across every `.classification()` read site with no bypass, the JPQL `CASE` mapping verified against `DocumentClassification`'s levels exactly, citation/chat paths confirmed to draw only from the already-filtered `RetrievalResult`, ArchUnit 8/8 and the full 726-test suite both green. One minor finding (a stale `DocumentController` Javadoc sentence contradicting the code immediately below it — the same class of drift ADR EX07 caught once before, just smaller) was fixed directly rather than opening a milestone for it. Per the explicit decision made before P06.2 began — P06.3–P06.5 are pre-invented scope this project's own precedent already rejects twice (ADR PC05; the deleted `GetConversationUseCase`/`ListConversationsUseCase`) — the three reserved version slots are recorded above as deliberately unused, not left dangling as "not yet scoped." See ADR GOV05 (`.claude/DECISIONS.md`) for the full closure record. `v0.8.0` (Phase 7) may now be planned in its own session.
 
 ### Phase 7 — Retrieval Quality & Operational Integrity
 
@@ -219,9 +219,9 @@ Everything else held up under review: the 3-phase structure (make it reachable �
 | v0.6.1 | Enterprise Foundation Complete | Shipped — closed milestone |
 | v0.7.0 | P06.1 — REST Surface Foundation | Shipped — document ingestion, admin/bootstrap, conversation list/delete REST surfaces live |
 | v0.7.1 | P06.2 — Authorization Filter | Shipped — retrieval-pipeline authorization and every REST document endpoint enforce classification clearance, tested against a wrong-classification denial (unit + real-database IT) |
-| v0.7.2 | P06.3 | Pending — opened only if the post-P06.2 review finds a genuine gap |
-| v0.7.3 | P06.4 | Reserved, contingent on P06.3 |
-| v0.7.4 | P06.5 — Phase 6 Complete | Every Phase 6 exit criterion (see above) met — may be satisfied directly by v0.7.1 if no further milestone is opened |
+| v0.7.2 | P06.3 | Not opened — post-P06.2 audit found no genuine gap (see ADR GOV05) |
+| v0.7.3 | P06.4 | Not opened — reserved slot never triggered |
+| v0.7.4 | P06.5 — Phase 6 Complete | **Satisfied directly by v0.7.1** — every Phase 6 exit criterion met without a separate gate release |
 | v0.8.0 | Phase 7 complete | Re-ranking shipped, reconciliation job live, branch protection applied |
 | v0.9.0 | Phase 8 complete | Metrics dashboarded, streaming shipped, MCP go/no-go decided |
 | v1.0.0 | Version 1.0.0 milestone | Every item in the official v1.0.0 definition above is met — reviewed as a gate, not assumed from phase completion alone |

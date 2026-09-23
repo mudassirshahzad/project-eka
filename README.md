@@ -69,7 +69,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 | **CI** | GitHub Actions — build + full test suite + ArchUnit on every PR and push to `main` |
 | **Schema Migrations** | Flyway V001–V018 (18 migrations) |
 | **Current Focus** | P06.2 — Authorization Filter (complete) |
-| **Next Milestone** | Phase 6 completion review — a post-P06.2 self-review/architecture-review decides whether P06.3 opens at all; Phase 6 may complete directly at v0.7.1 |
+| **Next Milestone** | Phase 6 is complete (v0.7.1) — Phase 7 (Retrieval Quality & Operational Integrity) awaits its own planning session before implementation begins |
 
 ---
 
@@ -366,10 +366,8 @@ for the authoritative, currently-maintained status of everything from v0.5.1 onw
 | v0.6.0 | Operational Hardening & Phase 5 Completion (P05.5) | ✅ Complete |
 | v0.6.1 | Engineering Excellence & Repository Governance (post-Phase-5 audit response) | ✅ Complete |
 | v0.7.0 | Phase 6, P06.1 — Product Completeness & Authorization Depth: REST surface foundation (document ingestion, admin/bootstrap, conversation list/delete) | ✅ Complete |
-| v0.7.1 | Phase 6, P06.2 — Authorization Filter (retrieval-pipeline stage + REST document-endpoint enforcement) | ✅ Complete |
-| v0.7.2 | Phase 6, P06.3 — opened only if the post-P06.2 review finds a genuine gap | ⏳ Pending review |
-| v0.7.3 | Phase 6, P06.4 — reserved, contingent on P06.3 | ⏳ Reserved |
-| v0.7.4 | Phase 6, P06.5 — Phase 6 Complete gate (may be satisfied directly by v0.7.1) | ⏳ Reserved |
+| v0.7.1 | Phase 6, P06.2 — Authorization Filter (retrieval-pipeline stage + REST document-endpoint enforcement). **Phase 6 Complete gate satisfied directly here** — a post-P06.2 independent audit found no genuine gap; P06.3–P06.5 formally not opened (ADR GOV05) | ✅ Complete — **Phase 6 complete** |
+| v0.7.2–v0.7.4 | Phase 6, P06.3–P06.5 | Not opened (ADR GOV05) |
 | v0.8.0 | Phase 7 — Retrieval Quality & Operational Integrity: re-ranking, HyDE, Postgres↔Weaviate reconciliation, refresh tokens | ⏳ Planned |
 | v0.9.0 | Phase 8 — Scale & Ecosystem Readiness: metrics dashboards, streaming, MCP spike (go/no-go) | ⏳ Planned |
 | v1.0.0 | First Stable Release — gated on the full product definition in `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section | ⏳ Planned |

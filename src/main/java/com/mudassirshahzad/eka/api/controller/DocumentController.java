@@ -49,9 +49,10 @@ import java.util.stream.Collectors;
  *
  * <p>{@code getDocument}/{@code listDocuments} are tenant-scoped, not owner-scoped — matching
  * {@code DocumentApplicationService}'s existing, unchanged semantics: documents are shared
- * tenant knowledge-base content, not private per-user resources like conversations. This
- * milestone does not add per-document authorization beyond the tenant boundary; that is the
- * Authorization Filter, explicitly out of scope here (frozen roadmap, Phase 6 vs. later phases).
+ * tenant knowledge-base content, not private per-user resources like conversations. Beyond the
+ * tenant boundary, every method here (get/list/delete) is further scoped by document-level
+ * classification clearance — the Authorization Filter, shipped in P06.2 (see
+ * {@code DocumentApplicationService.requireClassificationClearance}/{@code ClassificationPolicyPort}).
  */
 @Slf4j
 @RestController

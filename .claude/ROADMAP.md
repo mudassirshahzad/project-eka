@@ -48,17 +48,15 @@ Completed
 
 ✅ v0.7.0 — P06.1: Product Completeness & Authorization Depth — REST Surface Foundation (document ingestion REST surface, admin bootstrap/registration, conversation list/delete). First milestone of Phase 6.
 
-✅ v0.7.1 — P06.2: Authorization Filter — role-based document-classification clearance (`PUBLIC`/`INTERNAL`/`CONFIDENTIAL`/`RESTRICTED`) enforced both in the retrieval pipeline (`RetrievalService`, post-fetch, engine-agnostic — ADR AF03) and across every REST document endpoint (`getDocument`/`listDocuments`/`deleteDocument` — ADR AF05), via a single shared `ClassificationPolicyPort` (ADR AF04). Fail-closed on unknown/null classification (ADR AF07); classification now mandatory at ingestion (ADR AF06). Closes the item named in `.claude/CLAUDE.md`'s target architecture since before Phase 4. Second milestone of Phase 6 — **Phase 6's exit criteria are now all met by P06.1+P06.2; Phase 6 itself is not yet formally closed** (see below).
+✅ v0.7.1 — P06.2: Authorization Filter — role-based document-classification clearance (`PUBLIC`/`INTERNAL`/`CONFIDENTIAL`/`RESTRICTED`) enforced both in the retrieval pipeline (`RetrievalService`, post-fetch, engine-agnostic — ADR AF03) and across every REST document endpoint (`getDocument`/`listDocuments`/`deleteDocument` — ADR AF05), via a single shared `ClassificationPolicyPort` (ADR AF04). Fail-closed on unknown/null classification (ADR AF07); classification now mandatory at ingestion (ADR AF06). Closes the item named in `.claude/CLAUDE.md`'s target architecture since before Phase 4. Second milestone of Phase 6.
 
-Phase 6 versioning (ADR GOV04): one point release per P06.x milestone, not one version for the whole phase — P06.1 → v0.7.0 (shipped), P06.2 → v0.7.1 (shipped), P06.3 → v0.7.2, P06.4 → v0.7.3, P06.5 → v0.7.4 (Phase 6 Complete gate). Phase 7 still begins at v0.8.0, Phase 8 still begins at v0.9.0 — unchanged.
+**Phase 6 (Product Completeness & Authorization Depth) is complete as of v0.7.1.** A post-P06.2 independent, adversarial audit (same discipline as v0.6.1/P05.5) found no genuine gap — P06.3–P06.5 are formally **not opened** (ADR GOV05), not left "pending." GitHub Milestone "Phase 6" closed.
 
-Pending (Phase 6 completion review)
-
-○ Post-P06.2 self-review/architecture-review (the same discipline that produced v0.6.1 and P05.5) — decides whether P06.3 opens at all. Explicit decision made before P06.2 began: P06.3–P06.5 are **not** pre-scoped; a milestone opens only for a genuine gap the review finds, not speculatively. If none is found, Phase 6 completes directly at v0.7.1 and the reserved v0.7.2–v0.7.4 slots are recorded as deliberately unused.
+Phase 6 versioning (ADR GOV04, closed out by ADR GOV05): one point release per P06.x milestone — P06.1 → v0.7.0 (shipped), P06.2 → v0.7.1 (shipped, Phase 6 Complete gate satisfied directly here). v0.7.2–v0.7.4 (P06.3–P06.5) are formally not opened. Phase 7 still begins at v0.8.0, Phase 8 still begins at v0.9.0 — unchanged.
 
 Upcoming (frozen sequence, not yet started)
 
-○ Phase 7 — Retrieval Quality & Operational Integrity. Re-ranking, HyDE, Postgres↔Weaviate reconciliation, refresh tokens, Weaviate client timeout, prompt-injection review, SCA in CI, applied branch protection. GitHub Milestone: create when Phase 6 closes, not before.
+○ Phase 7 — Retrieval Quality & Operational Integrity. Re-ranking, HyDE, Postgres↔Weaviate reconciliation, refresh tokens, Weaviate client timeout, prompt-injection review, SCA in CI, applied branch protection. Not yet planned in its own session — do not begin implementation without one (ADR GOV03/CLAUDE.md). GitHub Milestone: create when Phase 7 planning begins.
 
 ○ Phase 8 — Scale & Ecosystem Readiness. Metrics dashboards, streaming, conditional distributed rate limiting, MCP spike (go/no-go only). GitHub Milestone: create when Phase 7 closes, not before.
 
