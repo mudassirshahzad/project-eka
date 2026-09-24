@@ -17,9 +17,8 @@ public record AppProperties(
     ) {}
 
     public record Retrieval(
-            int    topKCandidates,
-            int    topKResults,
-            double hybridAlpha
+            int topKCandidates,
+            int topKResults
     ) {}
 
     public record Conversation(

@@ -107,7 +107,6 @@ app:
   retrieval:
     top-k-candidates: 20
     top-k-results: 5
-    hybrid-alpha: 0.75
     rrf-k: 60
     query-rewrite:
       enabled: true

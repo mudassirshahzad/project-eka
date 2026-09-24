@@ -12,7 +12,7 @@
 [![Weaviate](https://img.shields.io/badge/Weaviate-1.25-FF6D00?style=flat-square)](https://weaviate.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Apache Tika](https://img.shields.io/badge/Apache_Tika-2.9.2-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
-[![Tests](https://img.shields.io/badge/tests-673_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
+[![Tests](https://img.shields.io/badge/tests-726_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b?style=flat-square)](LICENSE)
 
 </div>
@@ -26,12 +26,12 @@
 - Spring AI 1.0.0 — unified abstraction over embedding models and vector stores
 - Apache Tika 2.9.2 — multi-format document parsing with magic-byte detection
 - Ollama — local embedding (`nomic-embed-text`, 768-dim) and generation (`qwen3`)
-- Weaviate 1.25 — vector store with native multi-tenancy support
-- PostgreSQL 16 — relational metadata, full-text search, append-only audit log
+- Weaviate 1.25 — vector store, tenant-isolated via a mandatory query-time filter
+- PostgreSQL 16 — relational metadata, full-text search
 - Hybrid Search *(v0.5.0)*
-- MCP Ready *(v0.8.0)*
-- LangGraph Ready *(v0.9.0)*
-- 673 Automated Tests, 0 failures
+- Authorization Filter *(v0.7.1)* — role-based document-classification clearance
+- MCP & LangGraph Ready — architecturally (port interfaces align with both), not yet on the release roadmap; see [Roadmap](#release-roadmap)
+- 726 Automated Tests, 0 failures
 
 ---
 
@@ -51,7 +51,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 |---|---|
 | **Hexagonal Architecture — enforced** | The build fails if an infrastructure class is imported into the domain layer. Eight ArchUnit rules run on every `gradle test`. Architecture is not a convention — it is a constraint. |
 | **Zero external API dependency** | No OpenAI key. No cloud vector store account. Ollama, Weaviate, and PostgreSQL run locally via Docker. Complete data ownership from day one. |
-| **Multi-tenancy as a first-class citizen** | Every entity carries `TenantId`. Weaviate uses native per-tenant collections — not property-based filtering. This is in V001 of the schema, not retrofitted. |
+| **Multi-tenancy as a first-class citizen** | Every entity carries `TenantId`, in V001 of the schema, not retrofitted. Weaviate isolation is a mandatory `tenantId` query-time filter applied server-side on every call (property-based, not Weaviate's native per-collection multi-tenancy). |
 | **Provider independence is real** | To swap the embedding provider, implement `EmbeddingProvider` (one file) and update `application.yml`. Zero domain or application layer changes — enforced by the port boundary, not by documentation. |
 | **Document lifecycle as a state machine** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` with valid transitions enforced in the domain aggregate. Not a status field — a state machine. |
 | **Built for LangGraph and MCP** | Every application service is stateless. The `KnowledgeQuery` aggregate holds retrieval state. Port interfaces align with what MCP tools and LangGraph nodes expect. Adopting these frameworks requires zero domain rewrites. |
@@ -62,14 +62,14 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.7.1 — P06.2: Authorization Filter (Phase 6, milestone 2) |
+| **Current Release** | v0.7.2 — Post-Phase-6 Independent Audit Remediation (maintenance release, not a Phase 7 milestone) |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
 | **Automated Tests** | 726 passing, 0 failures · 73 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
 | **CI** | GitHub Actions — build + full test suite + ArchUnit on every PR and push to `main` |
 | **Schema Migrations** | Flyway V001–V018 (18 migrations) |
-| **Current Focus** | P06.2 — Authorization Filter (complete) |
-| **Next Milestone** | Phase 6 is complete (v0.7.1) — Phase 7 (Retrieval Quality & Operational Integrity) awaits its own planning session before implementation begins |
+| **Current Focus** | Repository hardening complete (v0.7.2) — Phase 6 (v0.7.1) remains the last feature milestone |
+| **Next Milestone** | Phase 7 (Retrieval Quality & Operational Integrity) awaits its own planning session before implementation begins |
 
 ---
 
@@ -89,7 +89,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 **Implemented — v0.5.0 (retrieval & generation)**
 
 - ✅ BM25 keyword search (PostgreSQL full-text search) + ANN semantic search (Weaviate)
-- ✅ Hybrid search fusion (alpha-weighted Reciprocal Rank Fusion)
+- ✅ Hybrid search fusion (Reciprocal Rank Fusion, rank-position based, `k=60` — unweighted; no alpha/tunable weighting parameter exists today)
 - ✅ Query rewriting via Ollama
 - ✅ Context assembly with token-budget guard
 - ✅ Chat generation with output guardrails, citation engine, and persisted conversational memory
@@ -132,12 +132,11 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Fail-closed by design — an unknown, unparseable, or null classification is never granted to any role, including `ADMIN`; a one-time migration classified every pre-existing document `INTERNAL`, with a startup check logging a warning if any document is still unclassified
 - ✅ Closes the item this project's target architecture has named since before Phase 4 ("Authorization Filter (planned)... do not assume it already exists")
 
-**Planned — Phase 6 (continued) and beyond**
+**Planned — Phase 7 and beyond** (Phase 6 is complete; see [Release Roadmap](#release-roadmap))
 
-- ⏳ Server-Sent Events streaming responses with source citations
-- ⏳ MCP server — knowledge base and ingestion exposed as MCP tools
-- ⏳ LangGraph agentic pipeline with self-correction loop
-- ⏳ Configurable Weaviate client timeout — no configuration surface exists in Spring AI 1.0.0 today (see `.claude/DECISIONS.md`, ADR HD03)
+- ⏳ Phase 7 (v0.8.x) — re-ranking, HyDE evaluation, Postgres↔Weaviate reconciliation, refresh tokens with revocation, configurable Weaviate client timeout (no configuration surface exists in Spring AI 1.0.0 today — see `.claude/DECISIONS.md`, ADR HD03), indirect prompt-injection review, CI dependency scanning, applied branch protection
+- ⏳ Phase 8 (v0.9.x) — Prometheus/Grafana dashboards, Server-Sent Events streaming responses with source citations, an MCP go/no-go spike (not full delivery)
+- ⏳ Post-v1.0, not yet on the release roadmap — MCP server (full delivery), LangGraph agentic pipeline, multi-agent platform
 
 ---
 
@@ -186,8 +185,8 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 | Framework | Spring Boot | 3.5.0 | Application container and auto-configuration |
 | AI Orchestration | Spring AI | 1.0.0 | Unified embedding and vector store abstraction |
 | Embedding | nomic-embed-text via Ollama | Latest | Local 768-dim dense embeddings |
-| Vector Store | Weaviate | 1.25 | ANN search, native multi-tenancy |
-| Relational DB | PostgreSQL | 16 | Metadata, audit log, BM25 full-text search |
+| Vector Store | Weaviate | 1.25 | ANN search, tenant-isolated via a mandatory query-time filter |
+| Relational DB | PostgreSQL | 16 | Metadata, BM25 full-text search |
 | ORM | Hibernate 6 / Spring Data JPA | Bundled | JPA persistence with custom domain mappers |
 | Migrations | Flyway | 10+ | Versioned schema migrations (V001–V018) |
 | Document Parsing | Apache Tika | 2.9.2 | Multi-format extraction, magic-byte detection |
@@ -201,10 +200,10 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 
 | Category | Technology | Phase | Role |
 |---|---|---|---|
-| Observability Deployment | Prometheus + Grafana | Future | Scrape `/actuator/prometheus`, dashboards (metrics themselves already exist as of v0.5.4; separate management port available as of v0.6.0) |
-| Weaviate client timeout | Custom `WeaviateClient` bean override | Future | No configuration surface exists in Spring AI 1.0.0 today — deferred, see `.claude/DECISIONS.md` ADR HD03 |
-| AI Protocol | Spring MCP Server | v0.8.0 | Expose knowledge base as MCP tools |
-| Graph Orchestration | LangGraph4j | v0.9.0 | Agentic retrieval with self-correction |
+| Weaviate client timeout | Custom `WeaviateClient` bean override | Phase 7 (v0.8.x) | No configuration surface exists in Spring AI 1.0.0 today — deferred, see `.claude/DECISIONS.md` ADR HD03 |
+| Observability Deployment | Prometheus + Grafana | Phase 8 (v0.9.x) | Scrape `/actuator/prometheus`, dashboards (metrics themselves already exist as of v0.5.4; separate management port available as of v0.6.0) |
+| AI Protocol | MCP (go/no-go spike only) | Phase 8 (v0.9.x) | Spike evaluates whether exposing the knowledge base as MCP tools belongs in the product — full delivery is explicitly post-v1.0, not yet on the release roadmap |
+| Graph Orchestration | LangGraph4j | Post-v1.0 | Agentic retrieval with self-correction — architecturally ready (see Highlights), not yet on the release roadmap |
 
 ---
 
@@ -337,7 +336,7 @@ Override via environment variables or `application.yml`:
 | [Logical Architecture](docs/architecture/logical.md) | Layer responsibilities, dependency rules, and data flow |
 | [Component Architecture](docs/architecture/components.md) | Service responsibilities, RAG pipeline design, and sequence flows |
 | [Executive Summary](docs/architecture/executive-summary.md) | Non-technical overview for architects and engineering managers |
-| [Roadmap](docs/roadmap.md) | Detailed phase design, MCP integration, LangGraph, and multi-agent plans |
+| [Roadmap (historical)](docs/roadmap.md) | Pre-implementation phase design — superseded for numbering/status by [Release Roadmap](#release-roadmap) below and `.claude/PROJECT_STATE.md`; retained for its MCP/LangGraph/multi-agent technical content, which is post-v1.0 scope, not current roadmap |
 | [Release Notes v0.4.0](docs/releases/v0.4.0.md) | Document ingestion pipeline — full changelog |
 | [Release Notes v0.3.0](docs/releases/v0.3.0.md) | Application layer — full changelog |
 
@@ -345,34 +344,58 @@ Override via environment variables or `application.yml`:
 
 ## Release Roadmap
 
-![Release Roadmap](docs/diagrams/roadmap.svg)
+Frozen from v0.6.1 to v1.0.0 (v1.0 Roadmap Freeze, ADR GOV03; Phase 6 versioning further refined by
+ADR GOV04, closed out by ADR GOV05). This is the one authoritative roadmap story for the project —
+`.claude/ROADMAP.md` and `.claude/PROJECT_STATE.md` carry the same sequence with full milestone-level
+detail; [docs/roadmap.md](docs/roadmap.md) is pre-implementation historical content only, not current
+scope.
 
-See [docs/roadmap.md](docs/roadmap.md) for full phase design and success criteria. This table
-predates Phase 5's finer-grained milestone tracking (P05.1–P05.5); see
-[.claude/ROADMAP.md](.claude/ROADMAP.md) and [.claude/PROJECT_STATE.md](.claude/PROJECT_STATE.md)
-for the authoritative, currently-maintained status of everything from v0.5.1 onward.
+```mermaid
+graph TD
+    A["v0.1.0<br/>Architecture Foundation"] --> B["v0.2.0<br/>Persistence Foundation"]
+    B --> C["v0.3.0<br/>Application Foundation"]
+    C --> D["v0.4.0<br/>Document Ingestion"]
+    D --> E["v0.5.0<br/>Retrieval &amp; RAG"]
+    E --> F["v0.6.0<br/>Application Platform"]
+    F --> G["v0.6.1<br/>Engineering Excellence &amp;<br/>Repository Governance"]
+    G --> H["v0.7.0 — Phase 6 / P06.1<br/>REST Surface Foundation"]
+    H --> I["v0.7.1 — Phase 6 / P06.2<br/>Authorization Filter &amp;<br/>Phase 6 Completion"]
+    I --> I2["v0.7.2<br/>Post-Phase-6 Audit<br/>Remediation (maintenance)"]
+    I2 --> J["Phase 7 → v0.8.x<br/>Retrieval Quality &amp;<br/>Operational Integrity"]
+    J --> K["Phase 8 → v0.9.x<br/>Scale &amp;<br/>Ecosystem Readiness"]
+    K --> L["v1.0.0<br/>Stable Enterprise Release"]
+
+    classDef done fill:#22c55e,stroke:#16a34a,color:#ffffff
+    classDef planned fill:#e5e7eb,stroke:#9ca3af,color:#374151,stroke-dasharray: 5 5
+
+    class A,B,C,D,E,F,G,H,I,I2 done
+    class J,K,L planned
+```
 
 | Version | Scope | Status |
 |---|---|---|
-| v0.1.0 | Architecture Foundation — hexagonal scaffold, ArchUnit, domain model | ✅ Complete |
-| v0.2.0 | Persistence Foundation — Flyway schema, JPA entities, repository adapters | ✅ Complete |
-| v0.3.0 | Application Layer — use cases, domain events, commands, 46 tests | ✅ Complete |
-| v0.4.0 | Document Ingestion — Tika parsing, chunking, embedding, Weaviate indexing | ✅ Complete |
-| v0.5.0 | Retrieval & RAG — hybrid search, query rewriting, context assembly, chat generation | ✅ Complete |
-| v0.5.1 | REST API — end-to-end RAG orchestration, OpenAPI (P05.1) | ✅ Complete |
-| v0.5.2 | JWT Authentication Foundation (P05.2) | ✅ Complete |
-| v0.5.3 | Tenant & Role Authorization Boundary (P05.3) | ✅ Complete |
-| v0.5.4 | Observability Foundation (P05.4) | ✅ Complete |
-| v0.6.0 | Operational Hardening & Phase 5 Completion (P05.5) | ✅ Complete |
-| v0.6.1 | Engineering Excellence & Repository Governance (post-Phase-5 audit response) | ✅ Complete |
-| v0.7.0 | Phase 6, P06.1 — Product Completeness & Authorization Depth: REST surface foundation (document ingestion, admin/bootstrap, conversation list/delete) | ✅ Complete |
-| v0.7.1 | Phase 6, P06.2 — Authorization Filter (retrieval-pipeline stage + REST document-endpoint enforcement). **Phase 6 Complete gate satisfied directly here** — a post-P06.2 independent audit found no genuine gap; P06.3–P06.5 formally not opened (ADR GOV05) | ✅ Complete — **Phase 6 complete** |
-| v0.7.2–v0.7.4 | Phase 6, P06.3–P06.5 | Not opened (ADR GOV05) |
-| v0.8.0 | Phase 7 — Retrieval Quality & Operational Integrity: re-ranking, HyDE, Postgres↔Weaviate reconciliation, refresh tokens | ⏳ Planned |
-| v0.9.0 | Phase 8 — Scale & Ecosystem Readiness: metrics dashboards, streaming, MCP spike (go/no-go) | ⏳ Planned |
-| v1.0.0 | First Stable Release — gated on the full product definition in `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section | ⏳ Planned |
+| v0.1.0 | Architecture Foundation | ✅ Complete |
+| v0.2.0 | Persistence Foundation | ✅ Complete |
+| v0.3.0 | Application Foundation | ✅ Complete |
+| v0.4.0 | Document Ingestion | ✅ Complete |
+| v0.5.0 | Retrieval & RAG | ✅ Complete |
+| v0.6.0 | Application Platform | ✅ Complete |
+| v0.6.1 | Engineering Excellence & Repository Governance | ✅ Complete |
+| v0.7.0 | Phase 6 / P06.1 — REST Surface Foundation | ✅ Complete |
+| v0.7.1 | Phase 6 / P06.2 — Authorization Filter & Phase 6 Completion | ✅ Complete |
+| v0.7.2 | Post-Phase-6 Independent Audit Remediation (maintenance release) | ✅ Complete |
+| Phase 7 → v0.8.x | Retrieval Quality & Operational Integrity | ⏳ Planned |
+| Phase 8 → v0.9.x | Scale & Ecosystem Readiness | ⏳ Planned |
+| v1.0.0 | Stable Enterprise Release | ⏳ Planned |
 
-Table reassigned by the v1.0 Roadmap Freeze (ADR GOV03) — v0.7.0–v0.9.0 previously named streaming/MCP/LangGraph directly; that content still exists, just resequenced into Phase 7/8 above rather than driving version numbers on its own. Phase 6 versioning further refined by ADR GOV04 — one point release per P06.x milestone (v0.7.0–v0.7.4) rather than one version for the whole phase; Phase 7/8/v1.0.0 entry versions are unchanged. See `.claude/ROADMAP.md` and `.claude/PROJECT_STATE.md` for the authoritative, currently-maintained sequence.
+Phase 6 closed at v0.7.1 — a post-P06.2 independent audit found no genuine gap, so P06.3–P06.5 were
+formally not opened (ADR GOV05). v0.7.2 is a small maintenance release (four documentation-accuracy
+and transaction-boundary fixes from a second independent audit, ADR GOV06/HD07–HD10) — not a
+reopening of P06.3 and not Phase 7; the milestone-level detail behind each row above (P05.x/P06.x,
+per-phase objective/scope/exit criteria) lives in `.claude/PROJECT_STATE.md`, not duplicated here.
+MCP (full delivery), LangGraph orchestration, and a multi-agent platform remain explicitly out of
+scope before v1.0.0 — see `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section for the
+complete v1.0.0 product definition and out-of-scope list.
 
 ---
 

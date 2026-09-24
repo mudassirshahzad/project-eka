@@ -52,7 +52,9 @@ Completed
 
 **Phase 6 (Product Completeness & Authorization Depth) is complete as of v0.7.1.** A post-P06.2 independent, adversarial audit (same discipline as v0.6.1/P05.5) found no genuine gap — P06.3–P06.5 are formally **not opened** (ADR GOV05), not left "pending." GitHub Milestone "Phase 6" closed.
 
-Phase 6 versioning (ADR GOV04, closed out by ADR GOV05): one point release per P06.x milestone — P06.1 → v0.7.0 (shipped), P06.2 → v0.7.1 (shipped, Phase 6 Complete gate satisfied directly here). v0.7.2–v0.7.4 (P06.3–P06.5) are formally not opened. Phase 7 still begins at v0.8.0, Phase 8 still begins at v0.9.0 — unchanged.
+Phase 6 versioning (ADR GOV04, closed out by ADR GOV05): one point release per P06.x milestone — P06.1 → v0.7.0 (shipped), P06.2 → v0.7.1 (shipped, Phase 6 Complete gate satisfied directly here). P06.3–P06.5 are formally not opened — that record is unchanged. Phase 7 still begins at v0.8.0, Phase 8 still begins at v0.9.0 — unchanged.
+
+✅ v0.7.2 — Post-Phase-6 Independent Audit Remediation (maintenance release, not Phase 7, not a reopening of P06.3 — ADR GOV06). A second independent audit found four items worth fixing before Phase 7: the `DeleteDocumentUseCase` transaction-boundary fix mirroring ADR HD01 (ADR HD07); dead `hybrid-alpha` configuration removed and the README's "alpha-weighted RRF" claim corrected (ADR HD08); the README's "append-only audit log" claim corrected — infrastructure exists, nothing calls it (ADR HD09); the README's "native per-tenant Weaviate collections" claim corrected to the actual query-time filter (ADR HD10). No new platform capability, no Phase 7 work begun. The P06.3 version slot itself stays formally not opened (ADR GOV05 unchanged) — v0.7.2 was simply the next sequential patch version available for this unrelated maintenance release.
 
 Upcoming (frozen sequence, not yet started)
 

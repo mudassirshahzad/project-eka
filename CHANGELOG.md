@@ -5,6 +5,19 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-09-24 — Post-Phase-6 Independent Audit Remediation
+
+### Fixed (maintenance release — not Phase 7, not a reopening of P06.3)
+
+A second independent, adversarial audit (conducted after v0.7.1, same discipline as the v0.6.1/P05.5/post-P06.2 audits — "challenge the repository, don't approve it") produced findings against the shipped repository as a whole. This release closes exactly the findings judged worth fixing before Phase 7 begins; it introduces no new business functionality or platform capability, and no Phase 7 implementation was started. ADR GOV05's "P06.3–P06.5 not opened" record for Phase 6 is unchanged — v0.7.2 is simply the version number this maintenance release ships under (ADR GOV06).
+
+- **`DeleteDocumentUseCase` transaction-boundary fix** — no longer `@Transactional` at the class level, mirroring `UploadDocumentUseCase`'s existing ADR HD01 fix exactly. `chunkRepository.findByDocumentId`/`deleteByDocumentId` (already independently `@Transactional` on `ChunkRepositoryAdapter`) and `documentService.deleteDocument` (already `@Transactional` on `DocumentApplicationService`) each keep their own short transaction; `vectorStore.deleteByIds(...)` — an external Weaviate HTTP call — now runs holding no pooled database connection at all (ADR HD07)
+- **Dead `app.retrieval.hybrid-alpha` configuration removed** — `AppProperties.Retrieval.hybridAlpha` had no reader anywhere in the codebase; `RrfRankingAdapter` was confirmed to already compute unweighted RRF (`1/(k+rank)`, fixed `k=60` via the separate, real `rrf-k` property). README's "alpha-weighted Reciprocal Rank Fusion" claim corrected to describe the RRF that actually ships (ADR HD08)
+- **README "append-only audit log" claim corrected** — the schema (`V008__create_audit_logs.sql`), domain port (`AuditLogRepository`), and JPA adapter all exist, but a repo-wide check found zero application call sites; no use case, service, or controller ever writes an audit entry. The claim was removed from the Highlights and Technology Stack table, not softened to "planned" — no code changed, audit logging itself was not implemented here (ADR HD09)
+- **README "native per-tenant Weaviate collections" claim corrected** — tenant isolation is actually a mandatory, server-side, query-time `tenantId` filter (`WeaviateRetrievalAdapter.withTenantIsolation`), not Weaviate's native per-collection multi-tenancy API; no `multiTenancyConfig` exists anywhere in the codebase. The isolation itself is sound (unconditionally applied, no bypass found) — only the documented mechanism was wrong (ADR HD10)
+- ADRs GOV06, HD07–HD10 frozen (see `.claude/DECISIONS.md`)
+- 726 total tests, 0 failures (unchanged — both code fixes are annotation/dead-config removal with no new behavioral surface). ArchUnit: 8/8, no new layering violations.
+
 ## [0.7.1] — 2026-09-23 — Authorization Filter
 
 ### Added (P06.2 — Authorization Filter)

@@ -6,15 +6,23 @@ import com.mudassirshahzad.eka.domain.chunk.VectorStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Deliberately <b>not</b> {@code @Transactional} at the class level (v0.7.2, ADR HD07 — mirrors
+ * {@link UploadDocumentUseCase}'s ADR HD01). {@code chunkRepository.findByDocumentId}/
+ * {@code deleteByDocumentId} each already carry their own {@code @Transactional} boundary on
+ * {@code ChunkRepositoryAdapter}, and {@code documentService.deleteDocument} is a call into the
+ * already-{@code @Transactional} {@link DocumentApplicationService} — so each gets its own
+ * short-lived transaction/connection, and {@code vectorStore.deleteByIds} (an external Weaviate
+ * HTTP call) runs holding no database connection at all. Before this fix, a class-level
+ * {@code @Transactional} here held a pooled HikariCP connection open across that external call.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class DeleteDocumentUseCase {
 
     private final DocumentApplicationService documentService;

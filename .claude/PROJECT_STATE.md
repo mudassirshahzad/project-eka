@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.7.1 (Complete) — P06.2: Authorization Filter — **Phase 6 is now complete** (P06.1 + P06.2; P06.3–P06.5 deliberately not opened, ADR GOV05)
+v0.7.2 (Complete) — Post-Phase-6 Independent Audit Remediation (maintenance release; ADR GOV06) — **Phase 6 remains complete** (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged). Phase 7 has not started.
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -192,7 +192,25 @@ Everything else held up under review: the 3-phase structure (make it reachable �
 
 **Grand total tests: 726 — 0 failures** (net +53)
 
+*Note: v0.7.2 in the table above is the P06.3 slot ADR GOV05 formally recorded as not opened — that Phase 6 record is unchanged. The version number v0.7.2 was separately reused for an unrelated, out-of-band maintenance release (see "v0.7.2 — Post-Phase-6 Independent Audit Remediation" below and ADR GOV06) — not a reopening of P06.3.*
+
 **Phase 6 is complete as of v0.7.1.** The Authorization Filter (P06.2) shipped, and a post-P06.2 independent, adversarial audit (mirroring the v0.6.1/P05.5 precedent — conducted as a separate turn, explicitly instructed to challenge the implementation, not defend it) found no genuine gap: fail-closed enforcement traced across every `.classification()` read site with no bypass, the JPQL `CASE` mapping verified against `DocumentClassification`'s levels exactly, citation/chat paths confirmed to draw only from the already-filtered `RetrievalResult`, ArchUnit 8/8 and the full 726-test suite both green. One minor finding (a stale `DocumentController` Javadoc sentence contradicting the code immediately below it — the same class of drift ADR EX07 caught once before, just smaller) was fixed directly rather than opening a milestone for it. Per the explicit decision made before P06.2 began — P06.3–P06.5 are pre-invented scope this project's own precedent already rejects twice (ADR PC05; the deleted `GetConversationUseCase`/`ListConversationsUseCase`) — the three reserved version slots are recorded above as deliberately unused, not left dangling as "not yet scoped." See ADR GOV05 (`.claude/DECISIONS.md`) for the full closure record. `v0.8.0` (Phase 7) may now be planned in its own session.
+
+### v0.7.2 — Post-Phase-6 Independent Audit Remediation (Maintenance Release)
+
+Not a Phase 7 milestone, and not a reopening of P06.3 (ADR GOV05's "not opened" record for Phase 6 stands unchanged) — a second independent, adversarial audit (conducted after v0.7.1, same discipline as v0.6.1/P05.5/the post-P06.2 audit) produced findings against the shipped repository as a whole, and this small maintenance release closes the ones judged worth fixing before Phase 7 begins. No new business functionality or platform capability was introduced; no Phase 7 implementation was begun.
+
+| Item | Description | Status |
+|------|-------------|--------|
+| 1 | `DeleteDocumentUseCase` transaction-boundary fix — no longer `@Transactional` at the class level, mirrors `UploadDocumentUseCase` (ADR HD01/HD07) | ✅ Complete |
+| 2 | Dead `app.retrieval.hybrid-alpha` configuration removed; README's "alpha-weighted RRF" claim corrected to the actual unweighted implementation (ADR HD08) | ✅ Complete |
+| 3 | README "append-only audit log" claim corrected — infrastructure exists (schema, port, adapter), never called by the application (ADR HD09) | ✅ Complete |
+| 4 | README "native per-tenant [Weaviate] collections" claim corrected to the actual mandatory query-time filter (ADR HD10) | ✅ Complete |
+| 5 | v0.7.2 version-numbering decision recorded — reuses the P06.3 slot for this unrelated maintenance release (ADR GOV06) | ✅ Complete |
+
+**Grand total tests: 726 — 0 failures** (no tests added or removed — both code fixes are annotation/dead-config removal with zero behavioral surface for new tests; verified via the full suite + ArchUnit re-run, not assumed)
+
+**Phase 6 remains complete at v0.7.1. Phase 7 still has not started and still begins at v0.8.0** (ADR GOV03/GOV04, unchanged) — see ADR GOV06 (`.claude/DECISIONS.md`) for the full version-numbering record.
 
 ### Phase 7 — Retrieval Quality & Operational Integrity
 
@@ -219,7 +237,7 @@ Everything else held up under review: the 3-phase structure (make it reachable �
 | v0.6.1 | Enterprise Foundation Complete | Shipped — closed milestone |
 | v0.7.0 | P06.1 — REST Surface Foundation | Shipped — document ingestion, admin/bootstrap, conversation list/delete REST surfaces live |
 | v0.7.1 | P06.2 — Authorization Filter | Shipped — retrieval-pipeline authorization and every REST document endpoint enforce classification clearance, tested against a wrong-classification denial (unit + real-database IT) |
-| v0.7.2 | P06.3 | Not opened — post-P06.2 audit found no genuine gap (see ADR GOV05) |
+| v0.7.2 | P06.3 not opened (ADR GOV05, unchanged); version reused for Post-Phase-6 Independent Audit Remediation | Shipped — maintenance release only, see ADR GOV06 |
 | v0.7.3 | P06.4 | Not opened — reserved slot never triggered |
 | v0.7.4 | P06.5 — Phase 6 Complete | **Satisfied directly by v0.7.1** — every Phase 6 exit criterion met without a separate gate release |
 | v0.8.0 | Phase 7 complete | Re-ranking shipped, reconciliation job live, branch protection applied |
@@ -328,6 +346,11 @@ Security layer (Authorization Filter) is planned but not implemented.
 | AF05 | Every document REST endpoint (`getDocument`/`listDocuments`/`listDocumentsByOwner`/`deleteDocument`) enforces classification consistently; list-level enforcement is pushed into the JPQL query itself, not filtered after pagination |
 | AF06 | Classification is now mandatory at ingestion (`DocumentController.uploadDocument` + `Document.create`, defense in depth); `Document.reconstitute` stays unvalidated (ADR EX08 precedent) |
 | AF07 | Null-classification handling is a single fail-closed code path (`DocumentClassification.UNKNOWN_LEVEL`) — the V018 backfill migration and enforcement code ship in the same release, so no separate "pre-backfill" runtime behavior exists |
+| GOV06 | v0.7.2 reused for a post-Phase-6 independent-audit maintenance release, not for P06.3 — ADR GOV05's "not opened" record for Phase 6 scope is unchanged |
+| HD07 | `DeleteDocumentUseCase` no longer `@Transactional` at the class level — mirrors `UploadDocumentUseCase` (ADR HD01) exactly; `vectorStore.deleteByIds` runs holding no DB connection |
+| HD08 | Dead `app.retrieval.hybrid-alpha` config removed (`RrfRankingAdapter` was always unweighted, fixed `k=60`); README corrected to match |
+| HD09 | README's "append-only audit log" claim corrected — schema/port/adapter exist, zero application call sites; infrastructure left in place, not implemented here |
+| HD10 | README's "native per-tenant Weaviate collections" claim corrected — isolation is a mandatory query-time `tenantId` filter, not Weaviate's native multi-tenancy API |
 
 ---
 
