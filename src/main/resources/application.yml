@@ -110,6 +110,14 @@ app:
     rrf-k: 60
     query-rewrite:
       enabled: true
+    rerank:
+      # Off by default: one model call per candidate is a real latency change to every query,
+      # so an operator opts in rather than inheriting it from an upgrade (WP-4, ADR RQ01).
+      enabled: ${RERANK_ENABLED:false}
+      max-candidates: ${RERANK_MAX_CANDIDATES:20}
+    hyde:
+      # Off by default: adds a model call before retrieval even starts (WP-4, ADR RQ03).
+      enabled: ${HYDE_ENABLED:false}
   context:
     max-chunks: 10
     token-budget: 4096

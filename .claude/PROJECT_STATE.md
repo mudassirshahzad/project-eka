@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.8.2 (Complete) — **Phase 7 / WP-3 — Operational Resilience: Weaviate Timeout & Reconciliation** (ADR OR01–OR04). WP-2 (Session Security, ADR RT01–RT05) shipped at v0.8.1. WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
+v0.8.3 (Complete) — **Phase 7 / WP-4 — Retrieval Quality: Re-ranking, HyDE & Evaluation Harness** (ADR RQ01–RQ07). **Phase 7's retrieval-quality success criterion remains OPEN** (ADR RQ07) — mechanism delivered, no measured improvement and no real evaluation set. WP-3 (Operational Resilience, ADR OR01–OR04) shipped at v0.8.2. WP-2 (Session Security, ADR RT01–RT05) shipped at v0.8.1. WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -230,7 +230,7 @@ Phase 7 was planned in its own session, as ADR GOV03/`CLAUDE.md` require. That p
 | WP-1 | v0.8.0 | CI/CD & Release Governance Hardening — dependency/vulnerability scanning, CI-verified Docker build (branch protection: owner-applied, ADR GOV08) | — | ✅ Complete |
 | WP-2 | v0.8.1 | Session Security — refresh tokens with revocation (session-bound access tokens, rotation, reuse detection) | +34 | ✅ Complete |
 | WP-3 | v0.8.2 | Operational Resilience — Weaviate client timeout (closes ADR HD03) + Postgres↔Weaviate reconciliation job | +15 | ✅ Complete |
-| WP-4 | v0.8.3 | Retrieval Quality — cross-encoder re-ranking, HyDE evaluation, evaluation harness | — | ○ Not started |
+| WP-4 | v0.8.3 | Retrieval Quality — re-ranking (`RerankPort` + LLM adapter), HyDE, evaluation harness + synthetic dataset | +27 | ✅ Complete (quality criterion open — ADR RQ07) |
 | WP-5 | v0.8.4 | Indirect Prompt-Injection Risk Review + **Phase 7 Complete gate** (verifies branch protection is actually applied — ADR GOV08) | — | ○ Not started |
 
 Sequencing rationale (from the approved plan): WP-1 first so every subsequent package's PRs land behind a real CI gate; WP-3 before WP-4 so cross-encoder re-ranking does not add a second external call into a retrieval path whose Weaviate client can still hang unbounded; WP-5 last so the prompt-injection review assesses the pipeline as Phase 7 actually leaves it, not a moving target.
@@ -384,6 +384,13 @@ Security layer (Authorization Filter) is planned but not implemented.
 | OR02 | Reconciliation detects Postgres→Weaviate drift via null `vector_id` and repairs by re-running the real ingestion path; Weaviate-side orphans deliberately out of scope |
 | OR03 | Reconciliation alerting is a staleness gauge (`seconds_since_last_success`), not only counters — a job that stops running otherwise looks identical to a healthy one |
 | OR04 | `ChunkRepositoryAdapter.saveAll` updates an existing chunk row instead of mapping to a fresh detached entity — fixes a real ingestion-path `createdAt` NPE found by the first real-database re-save test |
+| RQ01 | Re-ranking is a new `RerankPort`, applied after RRF fusion and after the Authorization Filter; off by default |
+| RQ02 | First adapter scores via the existing `LlmPort`, not a cross-encoder — recorded deviation from the frozen wording; a cross-encoder remains a drop-in second adapter |
+| RQ03 | HyDE is a second `QueryRewritePort` implementation (not a new port), `@Primary` only when enabled; off by default |
+| RQ04 | Metric definitions live in `application.evaluation`, not test code, so a future real benchmark stays comparable |
+| RQ05 | Evaluation dataset is explicitly synthetic — an engineering baseline and CI regression guard, never a production-quality claim |
+| RQ06 | Measured result is **negative** (no improvement; baseline nDCG@4 = 0.431) and recorded as such; an oracle positive control proves the harness detects improvement |
+| RQ07 | **Phase 7's retrieval-quality success criterion remains OPEN** — verify at the v0.8.4 gate alongside branch protection (GOV08) |
 
 ---
 

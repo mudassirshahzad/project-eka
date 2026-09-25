@@ -5,6 +5,37 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+## [0.8.3] — 2026-09-25 — Phase 7 / WP-4 — Retrieval Quality: Re-ranking, HyDE & Evaluation Harness
+
+### Added (Phase 7, work package 4 of 5 — ADR GOV07)
+
+Phase 7 asks for a re-ranking stage beyond RRF, a HyDE evaluation, and a *measurable relevance improvement on an internal evaluation set*. The last had no input: nothing in this repository was labelled for relevance — a gap the approved plan flagged in advance rather than discovering here.
+
+- **`RerankPort` — a new retrieval stage (ADR RQ01)** — re-orders already-fused candidates by judged relevance, applied strictly after RRF fusion and strictly after the Authorization Filter, so a chunk the caller may not see never reaches a model prompt. A separate port from `RankingPort` because the two answer different questions: fusion uses rank position alone and never reads content (which is why RRF works across engines with incomparable scores), while re-ranking reads query and passage together. **Off by default** — one model call per candidate is a real latency change to every query
+- **`LlmRerankAdapter` (ADR RQ02)** — pointwise scoring through the existing `LlmPort`, deterministic (temperature 0), bounded by `max-candidates`. A **deliberate, recorded deviation** from the frozen deliverable's "cross-encoder" wording: a true cross-encoder means an ONNX/DJL runtime plus model weights, on a platform defined by on-premises operation with Ollama as the only model runtime. Because the behaviour sits behind the port, a real cross-encoder can arrive later as a second adapter with nothing above it changing (ADR G15's reasoning applied to re-ranking). Degrades on every failure path — unreachable model, non-numeric reply, out-of-range score — to each candidate's incoming position, never an exception
+- **HyDE as a second `QueryRewritePort` (ADR RQ03)** — generates a hypothetical answer and retrieves with it, keeping the original question appended so BM25 retains the user's own terms. Not a new port: HyDE occupies exactly the existing seam, and being a second implementation makes the two strategies mutually exclusive by construction and switchable by config — what an A/B comparison needs. Off by default
+- **Evaluation harness (ADR RQ04/RQ05)** — Recall@k, Reciprocal Rank@k and nDCG@k as pure functions in `application.evaluation`, deliberately **not** in test code so a future benchmark against real labelled data uses the same definitions and stays comparable. Fed by `SyntheticEvaluationDataset`: four queries, sixteen passages, clearly marked synthetic in its first paragraph
+
+### Measured result — negative, and recorded as such (ADR RQ06)
+
+On the synthetic set the stub re-ranker produces **no improvement**: mean nDCG@4 stays **0.431**, MRR@4 **0.250**, Recall@4 **1.000**.
+
+That is the honest outcome and it is informative. Every relevant passage here is phrased as an *answer* while its query is phrased as a *question*, so the correct passage shares few terms with the query — and the stub scorer, being lexical, has exactly the same blind spot as the lexical baseline. A better count of words cannot repair a failure of meaning. Tuning the stub until it won was available and rejected: it would have turned a measurement into a foregone conclusion.
+
+A **positive control** keeps that conclusion trustworthy — an oracle re-ranker drives nDCG@4 to 1.000 on the same data, proving the instrument moves when ordering genuinely improves. Without it, "no improvement" and "broken measurement" would be indistinguishable.
+
+The dataset itself was also fixed before any re-ranker was measured against it: its first draft left the naive baseline at a perfect 1.000 on every query, unable to distinguish any re-ranker from any other. Distractors were rewritten to out-match the correct passage on raw term overlap, dropping the baseline to a discriminative 0.431.
+
+**The useful output is the baseline.** nDCG@4 = 0.431 is the bar a real semantic re-ranker must clear, measured with an instrument already proven to detect improvement.
+
+### Known open item (ADR RQ07)
+
+Phase 7's success criterion *"measurable relevance improvement on an internal evaluation set"* is **NOT met** and is explicitly left open — no improvement was measured, and no real evaluation set exists. The mechanism is delivered and tested; what is absent is a live model measured over human-labelled data, neither of which this work package could manufacture honestly. **Phase 7 must not be declared complete at v0.8.4 on the assumption WP-4 closed this.** Like ADR GOV08's branch protection, it is deferred in execution, not descoped.
+
+- ADRs RQ01–RQ07 frozen (see `.claude/DECISIONS.md`)
+- **802 total tests, 0 failures** (net +27): `RetrievalMetricsTest` (new, 7) — metrics checked against hand-computed values, not a library; `LlmRerankAdapterTest` (new, 10) — reordering, rank rewriting, topN bounding, call bounding, tie stability, and every degradation path; `HydeQueryRewriteAdapterTest` (new, 5) — enabled/disabled, blank output, model failure fallback; `RerankEvaluationBenchmarkTest` (new, 3) — the recorded benchmark, the oracle positive control, and proof that a wholly unavailable model leaves ordering untouched; `RetrievalServiceTest` (+2) — new collaborator guards. ArchUnit: 8/8, no new layering violations
+
+
 ## [0.8.2] — 2026-09-25 — Phase 7 / WP-3 — Operational Resilience: Weaviate Timeout & Reconciliation
 
 ### Added (Phase 7, work package 3 of 5 — ADR GOV07)

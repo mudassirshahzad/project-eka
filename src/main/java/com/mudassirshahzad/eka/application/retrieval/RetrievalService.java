@@ -11,11 +11,13 @@ import com.mudassirshahzad.eka.domain.retrieval.model.RetrievedChunk;
 import com.mudassirshahzad.eka.domain.retrieval.model.SearchMetadata;
 import com.mudassirshahzad.eka.domain.retrieval.port.QueryRewritePort;
 import com.mudassirshahzad.eka.domain.retrieval.port.RankingPort;
+import com.mudassirshahzad.eka.domain.retrieval.port.RerankPort;
 import com.mudassirshahzad.eka.domain.retrieval.port.RetrievalPort;
 import com.mudassirshahzad.eka.domain.user.UserRole;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -63,6 +65,8 @@ public class RetrievalService {
     private final DocumentRepository       documentRepository;
     private final ClassificationPolicyPort classificationPolicyPort;
     private final ObservationRegistry      observationRegistry;
+    private final RerankPort               rerankPort;
+    private final boolean                  rerankEnabled;
 
     public RetrievalService(
             RetrievalPort            retrievalPort,
@@ -70,13 +74,17 @@ public class RetrievalService {
             QueryRewritePort         queryRewritePort,
             DocumentRepository       documentRepository,
             ClassificationPolicyPort classificationPolicyPort,
-            ObservationRegistry      observationRegistry) {
+            ObservationRegistry      observationRegistry,
+            RerankPort               rerankPort,
+            @Value("${app.retrieval.rerank.enabled:false}") boolean rerankEnabled) {
         this.retrievalPort            = Objects.requireNonNull(retrievalPort,            "retrievalPort must not be null");
         this.rankingPort              = Objects.requireNonNull(rankingPort,              "rankingPort must not be null");
         this.queryRewritePort         = Objects.requireNonNull(queryRewritePort,         "queryRewritePort must not be null");
         this.documentRepository       = Objects.requireNonNull(documentRepository,       "documentRepository must not be null");
         this.classificationPolicyPort = Objects.requireNonNull(classificationPolicyPort, "classificationPolicyPort must not be null");
         this.observationRegistry      = Objects.requireNonNull(observationRegistry,      "observationRegistry must not be null");
+        this.rerankPort               = Objects.requireNonNull(rerankPort,               "rerankPort must not be null");
+        this.rerankEnabled            = rerankEnabled;
     }
 
     public RetrievalResult retrieve(RetrievalRequest request) {
@@ -103,7 +111,7 @@ public class RetrievalService {
             List<RetrievedChunk> authorized = applyClassificationFilter(raw.items(), request.roles());
 
             RetrievalResult result = !authorized.isEmpty()
-                    ? new RetrievalResult(rankingPort.rank(authorized, effectiveQuery),
+                    ? new RetrievalResult(rankThenRerank(authorized, effectiveQuery, options),
                             authorizedMetadata(raw.metadata(), authorized.size()), effectiveQuery)
                     : RetrievalResult.empty(raw.metadata().strategy(), raw.metadata().latencyMs(), effectiveQuery);
 
@@ -116,6 +124,31 @@ public class RetrievalService {
         } catch (RuntimeException ex) {
             throw new RetrievalException("Retrieval failed: " + ex.getMessage(), ex);
         }
+    }
+
+    /**
+     * Fuses engine results (RRF), then optionally re-ranks the fused list by judged relevance
+     * (WP-4, ADR RQ01).
+     *
+     * <p>Order matters and is not interchangeable: fusion reconciles several engines' incompatible
+     * scores using rank position alone, and re-ranking then judges the surviving candidates on
+     * content. Re-ranking first would mean scoring candidates that fusion was about to discard, and
+     * paying for a model call per discarded candidate.
+     *
+     * <p>Re-ranking runs strictly after the Authorization Filter, never before: a chunk the caller
+     * may not see must not reach a model prompt at all, let alone influence ordering.
+     *
+     * <p>Off by default. It costs one model call per candidate, which is a real latency change to
+     * every query — an operator opts into that, rather than inheriting it from an upgrade.
+     */
+    private List<RetrievedChunk> rankThenRerank(
+            List<RetrievedChunk> authorized, String effectiveQuery, RetrievalOptions options) {
+
+        List<RetrievedChunk> fused = rankingPort.rank(authorized, effectiveQuery);
+        if (!rerankEnabled) {
+            return fused;
+        }
+        return rerankPort.rerank(effectiveQuery, fused, options.topK());
     }
 
     /**
