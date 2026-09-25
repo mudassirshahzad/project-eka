@@ -7,11 +7,6 @@
       <stop offset="0%"   stop-color="#1f8b3d"/>
       <stop offset="100%" stop-color="#16702f"/>
     </linearGradient>
-    <!-- Current phase accent: draws the eye to the one stage Phase 7 changed -->
-    <linearGradient id="g-accent" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#1f6feb"/>
-      <stop offset="100%" stop-color="#0860ca"/>
-    </linearGradient>
     <!-- Roadmap card: subtle blue tint -->
     <linearGradient id="g-future" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"   stop-color="#eaf5ff"/>
@@ -44,7 +39,7 @@
   <!-- ═══════════════════════════════════════════════════════ -->
   <text x="390" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#1f2328" letter-spacing="0.2">Retrieval &amp; RAG Pipeline</text>
   <rect x="366" y="42" width="48" height="3" rx="1.5" fill="#0969da"/>
-  <text x="390" y="62" text-anchor="middle" font-size="11" fill="#59636e">Implemented end-to-end · current release v0.8.4</text>
+  <text x="390" y="62" text-anchor="middle" font-size="11" fill="#59636e">Implemented end-to-end · v0.8.4 · Phase 7 in progress</text>
 
   <!-- ═══════════════════════════════════════════════════════ -->
   <!-- MAIN PIPELINE                                           -->
@@ -95,14 +90,12 @@
   <path d="M134,352 C134,365 240,367 240,378" fill="none" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
   <path d="M346,352 C346,365 240,367 240,378" fill="none" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
 
-  <!-- ── 5. Fusion / Re-ranking ── CURRENT PHASE ACCENT (Phase 7 · v0.8.3) -->
-  <rect x="68" y="380" width="344" height="58" rx="8" fill="url(#g-accent)" stroke="#0a4fa3" stroke-width="1.5" filter="url(#elev)"/>
-  <circle cx="94" cy="409" r="11" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.42" stroke-width="1"/>
+  <!-- ── 5. Fusion / Re-ranking ── -->
+  <rect x="68" y="380" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
+  <circle cx="94" cy="409" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
   <text x="94" y="413" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">5</text>
-  <rect x="332" y="390" width="62" height="15" rx="7.5" fill="#ffffff" fill-opacity="0.2"/>
-  <text x="363" y="401" text-anchor="middle" font-size="8" font-weight="700" fill="#ffffff" letter-spacing="0.7">PHASE 7</text>
   <text x="248" y="404" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">Fusion / Re-ranking</text>
-  <text x="248" y="423" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.86">RRF · classification-filtered · re-rank opt-in</text>
+  <text x="248" y="423" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">RRF · classification-filtered · re-rank opt-in</text>
   <line x1="240" y1="438" x2="240" y2="454" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
 
   <!-- ── 6. Context Assembly ── -->
@@ -184,16 +177,13 @@
   <rect x="68" y="848" width="480" height="52" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
   <text x="308" y="867" text-anchor="middle" font-size="9.5" font-weight="700" fill="#57606a" letter-spacing="1">LEGEND</text>
 
-  <rect x="84" y="876" width="18" height="12" rx="3" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1"/>
-  <text x="108" y="886" font-size="10" fill="#1f2328">Implemented</text>
+  <rect x="130" y="876" width="18" height="12" rx="3" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1"/>
+  <text x="154" y="886" font-size="10" fill="#1f2328">Implemented</text>
 
-  <rect x="196" y="876" width="18" height="12" rx="3" fill="url(#g-accent)" stroke="#0a4fa3" stroke-width="1"/>
-  <text x="220" y="886" font-size="10" fill="#1f2328">Phase 7 · opt-in</text>
+  <rect x="262" y="876" width="18" height="12" rx="3" fill="url(#g-future)" stroke="#54aeff" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="286" y="886" font-size="10" fill="#1f2328">Future integration</text>
 
-  <rect x="330" y="876" width="18" height="12" rx="3" fill="url(#g-future)" stroke="#54aeff" stroke-width="1" stroke-dasharray="3,2"/>
-  <text x="354" y="886" font-size="10" fill="#1f2328">Future integration</text>
-
-  <line x1="462" y1="882" x2="486" y2="882" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
-  <text x="494" y="886" font-size="10" fill="#1f2328">Flow</text>
+  <line x1="420" y1="882" x2="444" y2="882" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
+  <text x="452" y="886" font-size="10" fill="#1f2328">Flow</text>
 
 </svg>

@@ -113,9 +113,9 @@
   <text x="283" y="693" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Batch upsert · idempotent re-index · vectorId persisted</text>
   <line x1="275" y1="710" x2="275" y2="726" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
 
-  <!-- ── STEP 9: INDEXED terminal (thicker border marks the terminal state) ── -->
+  <!-- ── STEP 9: INDEXED terminal (marked by the check icon, not by a heavier border) ── -->
   <text x="34" y="762" font-size="9" fill="#1a7f37" font-weight="700">INDEXED</text>
-  <rect x="110" y="728" width="330" height="66" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="2.5" filter="url(#elev)"/>
+  <rect x="110" y="728" width="330" height="66" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
 
   <!-- Check icon (offset left, clear of text) -->
   <circle cx="148" cy="761" r="12" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-width="2"/>
@@ -124,6 +124,6 @@
 
   <!-- Text shifted right to clear the check icon -->
   <text x="300" y="757" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">Document Indexed</text>
-  <text x="300" y="776" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.86">Status: INDEXED · vectorIds persisted to PostgreSQL</text>
+  <text x="300" y="776" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Status: INDEXED · vectorIds persisted to PostgreSQL</text>
 
 </svg>

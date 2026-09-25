@@ -44,7 +44,7 @@
   <!-- 1. CLIENT (external actor — neutral surface)            -->
   <!-- ═══════════════════════════════════════════════════════ -->
   <rect x="330" y="56" width="240" height="50" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.25" filter="url(#elev-sm)"/>
-  <text x="450" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2328" letter-spacing="0.5">CLIENT</text>
+  <text x="450" y="76" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f2328" letter-spacing="0.5">CLIENT</text>
   <text x="450" y="95" text-anchor="middle" font-size="10" fill="#59636e">Browser · API Consumer · CLI</text>
 
   <line x1="450" y1="106" x2="450" y2="127" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
@@ -53,7 +53,7 @@
   <!-- 2. REST API LAYER (implemented since v0.6.0 / P05.1)    -->
   <!-- ═══════════════════════════════════════════════════════ -->
   <rect x="295" y="128" width="310" height="50" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <text x="450" y="148" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.5">REST API LAYER</text>
+  <text x="450" y="148" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.5">REST API LAYER</text>
   <text x="450" y="167" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Controllers · DTOs · OpenAPI</text>
 
   <line x1="450" y1="178" x2="450" y2="199" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
@@ -62,7 +62,7 @@
   <!-- 3. APPLICATION LAYER                                    -->
   <!-- ═══════════════════════════════════════════════════════ -->
   <rect x="255" y="200" width="390" height="54" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <text x="450" y="222" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.5">APPLICATION LAYER</text>
+  <text x="450" y="222" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.5">APPLICATION LAYER</text>
   <text x="450" y="241" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Use Cases · Commands · Domain Events</text>
 
   <line x1="450" y1="254" x2="450" y2="274" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
@@ -71,8 +71,8 @@
   <!-- 4. DOMAIN LAYER (the core everything depends on)        -->
   <!-- ═══════════════════════════════════════════════════════ -->
   <rect x="290" y="275" width="320" height="54" rx="8" fill="url(#g-accent)" stroke="#0a4fa3" stroke-width="1.5" filter="url(#elev)"/>
-  <text x="450" y="297" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.5">DOMAIN LAYER</text>
-  <text x="450" y="316" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.86">Aggregates · Value Objects · Port Interfaces</text>
+  <text x="450" y="297" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.5">DOMAIN LAYER</text>
+  <text x="450" y="316" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Aggregates · Value Objects · Port Interfaces</text>
 
   <!-- Dependency direction annotation. Moved to the free left margin: at its original
        x=625 it now collided with the FUTURE EXTENSIONS panel and the connectors. -->
@@ -86,7 +86,7 @@
   <!-- 5. INFRASTRUCTURE ADAPTERS                              -->
   <!-- ═══════════════════════════════════════════════════════ -->
   <rect x="200" y="350" width="500" height="54" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <text x="450" y="372" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.5">INFRASTRUCTURE ADAPTERS</text>
+  <text x="450" y="372" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.5">INFRASTRUCTURE ADAPTERS</text>
   <text x="450" y="391" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Implements Domain Ports · Zero domain coupling</text>
 
   <!-- Fan-out: 5 adapters, w=92 each, gap=10: x=200,302,404,506,608  centers=246,348,450,552,654 -->

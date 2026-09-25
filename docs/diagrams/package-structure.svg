@@ -39,7 +39,7 @@
   <!-- Sits ABOVE the concentric rings — primary/driving side  -->
   <!-- ═══════════════════════════════════════════════════════ -->
   <rect x="290" y="64" width="200" height="50" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <text x="390" y="85" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.5">API LAYER</text>
+  <text x="390" y="85" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.5">API LAYER</text>
   <text x="390" y="102" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">REST Controllers · DTOs</text>
 
   <!-- Label: inbound adapter -->
@@ -74,7 +74,7 @@
   <!-- ═══════════════════════════════════════════════════════ -->
   <rect x="228" y="248" width="304" height="282" rx="10" fill="url(#g-accent)" stroke="#0a4fa3" stroke-width="1.5" filter="url(#elev)"/>
   <text x="380" y="272" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff" letter-spacing="0.5">DOMAIN</text>
-  <text x="380" y="289" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.86">Pure Java · Zero framework dependencies</text>
+  <text x="380" y="289" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Pure Java · Zero framework dependencies</text>
 
   <!-- Domain sub-packages (2 rows of 2) -->
   <rect x="244" y="302" width="118" height="36" rx="5" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.42" stroke-width="1"/>
@@ -96,8 +96,8 @@
   <!-- Port Interfaces box (dashed = boundary between domain and infra) -->
   <rect x="244" y="402" width="272" height="48" rx="5" fill="#ffffff" fill-opacity="0.10" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1.2" stroke-dasharray="4,2"/>
   <text x="380" y="418" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">« Port Interfaces »</text>
-  <text x="380" y="431" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.84">FileStorage · DocumentParser</text>
-  <text x="380" y="444" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.84">VectorStore · EmbeddingProvider</text>
+  <text x="380" y="431" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.82">FileStorage · DocumentParser</text>
+  <text x="380" y="444" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.82">VectorStore · EmbeddingProvider</text>
 
   <!-- ═══════════════════════════════════════════════════════ -->
   <!-- INFRASTRUCTURE ADAPTERS (left side — 3 adapters)        -->
