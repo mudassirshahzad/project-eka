@@ -1,156 +1,166 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" width="900" height="700"
-     font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+     font-family="'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif">
 
-  <!-- Marker defs FIRST so all references resolve -->
+  <!-- Shared design tokens — identical to docs/diagrams/retrieval-pipeline.svg -->
   <defs>
-    <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/>
+    <linearGradient id="g-impl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1f8b3d"/>
+      <stop offset="100%" stop-color="#16702f"/>
+    </linearGradient>
+    <linearGradient id="g-accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1f6feb"/>
+      <stop offset="100%" stop-color="#0860ca"/>
+    </linearGradient>
+    <linearGradient id="g-future" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#eaf5ff"/>
+      <stop offset="100%" stop-color="#ddf0ff"/>
+    </linearGradient>
+
+    <filter id="elev" x="-20%" y="-25%" width="140%" height="165%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#0b1b2b" flood-opacity="0.16"/>
+    </filter>
+    <filter id="elev-sm" x="-20%" y="-25%" width="140%" height="165%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#0b1b2b" flood-opacity="0.13"/>
+    </filter>
+
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#57606a"/>
     </marker>
-    <marker id="arr-gray" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+    <marker id="arr-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#8c959f"/>
     </marker>
   </defs>
 
+  <!-- Opaque light canvas: keeps contrast identical in GitHub light and dark mode -->
   <rect width="900" height="700" fill="#ffffff"/>
 
   <!-- ═══════════════════════════════════════════════════════ -->
   <!-- TITLE                                                   -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <text x="450" y="36" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Project EKA — High-Level Architecture</text>
+  <text x="450" y="36" text-anchor="middle" font-size="18" font-weight="700" fill="#1f2328" letter-spacing="0.2">Project EKA — High-Level Architecture</text>
+  <rect x="426" y="43" width="48" height="3" rx="1.5" fill="#0969da"/>
 
   <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- 1. CLIENT                                               -->
+  <!-- 1. CLIENT (external actor — neutral surface)            -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="330" y="56" width="240" height="50" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
-  <text x="450" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#64748b" letter-spacing="0.5">CLIENT</text>
-  <text x="450" y="95" text-anchor="middle" font-size="11" fill="#94a3b8">Browser · API Consumer · CLI</text>
+  <rect x="330" y="56" width="240" height="50" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.25" filter="url(#elev-sm)"/>
+  <text x="450" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2328" letter-spacing="0.5">CLIENT</text>
+  <text x="450" y="95" text-anchor="middle" font-size="10" fill="#59636e">Browser · API Consumer · CLI</text>
 
-  <!-- Arrow: Client → REST API (dashed — API is future) -->
-  <line x1="450" y1="106" x2="450" y2="127" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-gray)"/>
+  <line x1="450" y1="106" x2="450" y2="127" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
 
   <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- 2. REST API (future)                                    -->
+  <!-- 2. REST API LAYER (implemented since v0.6.0 / P05.1)    -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="295" y="128" width="310" height="50" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,3"/>
-  <text x="450" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="#94a3b8" letter-spacing="0.5">REST API LAYER</text>
-  <text x="450" y="167" text-anchor="middle" font-size="11" fill="#cbd5e1">Controllers · DTOs · OpenAPI  (v0.6.0)</text>
+  <rect x="295" y="128" width="310" height="50" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
+  <text x="450" y="148" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.5">REST API LAYER</text>
+  <text x="450" y="167" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Controllers · DTOs · OpenAPI</text>
 
-  <!-- Arrow: REST API → Application (dashed) -->
-  <line x1="450" y1="178" x2="450" y2="199" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-gray)"/>
+  <line x1="450" y1="178" x2="450" y2="199" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
 
   <!-- ═══════════════════════════════════════════════════════ -->
   <!-- 3. APPLICATION LAYER                                    -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="255" y="200" width="390" height="54" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="450" y="222" text-anchor="middle" font-size="12" font-weight="700" fill="#2563eb" letter-spacing="0.5">APPLICATION LAYER</text>
-  <text x="450" y="241" text-anchor="middle" font-size="11" fill="#3b82f6">Use Cases · Commands · Domain Events</text>
+  <rect x="255" y="200" width="390" height="54" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
+  <text x="450" y="222" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.5">APPLICATION LAYER</text>
+  <text x="450" y="241" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Use Cases · Commands · Domain Events</text>
 
-  <!-- Arrow: Application → Domain (solid — implemented dependency) -->
-  <line x1="450" y1="254" x2="450" y2="274" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+  <line x1="450" y1="254" x2="450" y2="274" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
 
   <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- 4. DOMAIN LAYER                                         -->
+  <!-- 4. DOMAIN LAYER (the core everything depends on)        -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="290" y="275" width="320" height="54" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
-  <text x="450" y="297" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8" letter-spacing="0.5">DOMAIN LAYER</text>
-  <text x="450" y="316" text-anchor="middle" font-size="11" fill="#2563eb">Aggregates · Value Objects · Port Interfaces</text>
+  <rect x="290" y="275" width="320" height="54" rx="8" fill="url(#g-accent)" stroke="#0a4fa3" stroke-width="1.5" filter="url(#elev)"/>
+  <text x="450" y="297" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.5">DOMAIN LAYER</text>
+  <text x="450" y="316" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.86">Aggregates · Value Objects · Port Interfaces</text>
 
-  <!-- Dependency direction annotation (right of domain) -->
-  <text x="625" y="282" font-size="9" fill="#94a3b8" font-weight="600">DEPENDENCY RULE</text>
-  <text x="625" y="296" font-size="9" fill="#94a3b8">outer layers depend on inner</text>
-  <text x="625" y="309" font-size="9" fill="#94a3b8">Infra implements Domain ports</text>
-  <line x1="619" y1="287" x2="613" y2="302" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="2,2"/>
+  <!-- Dependency direction annotation. Moved to the free left margin: at its original
+       x=625 it now collided with the FUTURE EXTENSIONS panel and the connectors. -->
+  <text x="40" y="282" font-size="9" fill="#57606a" font-weight="700" letter-spacing="0.5">DEPENDENCY RULE</text>
+  <text x="40" y="296" font-size="9" fill="#8c959f">outer layers depend on inner</text>
+  <text x="40" y="309" font-size="9" fill="#8c959f">Infra implements Domain ports</text>
 
-  <!-- Two-headed note: Domain defines ports, Infra implements -->
-  <line x1="450" y1="329" x2="450" y2="349" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+  <line x1="450" y1="329" x2="450" y2="349" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
 
   <!-- ═══════════════════════════════════════════════════════ -->
   <!-- 5. INFRASTRUCTURE ADAPTERS                              -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="200" y="350" width="500" height="54" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="450" y="372" text-anchor="middle" font-size="12" font-weight="700" fill="#2563eb" letter-spacing="0.5">INFRASTRUCTURE ADAPTERS</text>
-  <text x="450" y="391" text-anchor="middle" font-size="11" fill="#3b82f6">Implements Domain Ports · Zero domain coupling</text>
+  <rect x="200" y="350" width="500" height="54" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
+  <text x="450" y="372" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.5">INFRASTRUCTURE ADAPTERS</text>
+  <text x="450" y="391" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Implements Domain Ports · Zero domain coupling</text>
 
-  <!-- Fan-out lines: equally spaced across Infrastructure width (200–700)       -->
-  <!-- 5 adapters, w=92 each, gap=10: x=200,302,404,506,608  centers=246,348,450,552,654 -->
-  <line x1="246" y1="404" x2="246" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <line x1="348" y1="404" x2="348" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <line x1="450" y1="404" x2="450" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <line x1="552" y1="404" x2="552" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <line x1="654" y1="404" x2="654" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+  <!-- Fan-out: 5 adapters, w=92 each, gap=10: x=200,302,404,506,608  centers=246,348,450,552,654 -->
+  <line x1="246" y1="404" x2="246" y2="424" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
+  <line x1="348" y1="404" x2="348" y2="424" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
+  <line x1="450" y1="404" x2="450" y2="424" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
+  <line x1="552" y1="404" x2="552" y2="424" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
+  <line x1="654" y1="404" x2="654" y2="424" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
 
   <!-- Adapter boxes: x=200,302,404,506,608  w=92  h=56 -->
-  <!-- PostgreSQL -->
-  <rect x="200" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="246" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">PostgreSQL</text>
-  <text x="246" y="464" text-anchor="middle" font-size="10" fill="#64748b">Metadata · FTS</text>
+  <rect x="200" y="424" width="92" height="56" rx="6" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.1" filter="url(#elev-sm)"/>
+  <text x="246" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">PostgreSQL</text>
+  <text x="246" y="463" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.82">Metadata · FTS</text>
 
-  <!-- Weaviate -->
-  <rect x="302" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="348" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">Weaviate</text>
-  <text x="348" y="464" text-anchor="middle" font-size="10" fill="#64748b">Vector Search</text>
+  <rect x="302" y="424" width="92" height="56" rx="6" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.1" filter="url(#elev-sm)"/>
+  <text x="348" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Weaviate</text>
+  <text x="348" y="463" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.82">Vector Search</text>
 
-  <!-- Ollama -->
-  <rect x="404" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="450" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">Ollama</text>
-  <text x="450" y="464" text-anchor="middle" font-size="10" fill="#64748b">Embed · Generate</text>
+  <rect x="404" y="424" width="92" height="56" rx="6" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.1" filter="url(#elev-sm)"/>
+  <text x="450" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Ollama</text>
+  <text x="450" y="463" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.82">Embed · Generate</text>
 
-  <!-- Apache Tika -->
-  <rect x="506" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="552" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">Apache Tika</text>
-  <text x="552" y="464" text-anchor="middle" font-size="10" fill="#64748b">Doc Parsing</text>
+  <rect x="506" y="424" width="92" height="56" rx="6" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.1" filter="url(#elev-sm)"/>
+  <text x="552" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Apache Tika</text>
+  <text x="552" y="463" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.82">Doc Parsing</text>
 
-  <!-- File Storage -->
-  <rect x="608" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="654" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">File Storage</text>
-  <text x="654" y="464" text-anchor="middle" font-size="10" fill="#64748b">Local FS</text>
+  <rect x="608" y="424" width="92" height="56" rx="6" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.1" filter="url(#elev-sm)"/>
+  <text x="654" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">File Storage</text>
+  <text x="654" y="463" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.82">Local FS</text>
 
   <!-- ═══════════════════════════════════════════════════════ -->
   <!-- FUTURE EXTENSIONS (right panel)                         -->
+  <!-- Versions per the frozen roadmap (ADR GOV03)             -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <text x="809" y="218" text-anchor="middle" font-size="10" fill="#94a3b8" font-weight="700" letter-spacing="0.8">FUTURE EXTENSIONS</text>
-  <line x1="750" y1="222" x2="868" y2="222" stroke="#e2e8f0" stroke-width="1"/>
+  <rect x="726" y="200" width="166" height="212" rx="10" fill="#f9fbfd" stroke="#e1e7ee" stroke-width="1"/>
+  <text x="809" y="219" text-anchor="middle" font-size="9.5" fill="#57606a" font-weight="700" letter-spacing="1.1">FUTURE EXTENSIONS</text>
+  <line x1="742" y1="226" x2="876" y2="226" stroke="#e1e7ee" stroke-width="1"/>
 
-  <!-- MCP Server -->
-  <rect x="738" y="232" width="142" height="46" rx="6" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="809" y="251" text-anchor="middle" font-size="11" font-weight="600" fill="#94a3b8">MCP Server</text>
-  <text x="809" y="268" text-anchor="middle" font-size="10" fill="#cbd5e1">v0.8.0</text>
+  <rect x="738" y="238" width="142" height="46" rx="7" fill="url(#g-future)" stroke="#54aeff" stroke-width="1.25" stroke-dasharray="5,3" filter="url(#elev-sm)"/>
+  <text x="809" y="257" text-anchor="middle" font-size="11" font-weight="600" fill="#0a3069">MCP Server</text>
+  <text x="809" y="273" text-anchor="middle" font-size="9" fill="#0550ae">Phase 8 — spike</text>
 
-  <!-- LangGraph -->
-  <rect x="738" y="292" width="142" height="46" rx="6" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="809" y="311" text-anchor="middle" font-size="11" font-weight="600" fill="#94a3b8">LangGraph</text>
-  <text x="809" y="328" text-anchor="middle" font-size="10" fill="#cbd5e1">v0.9.0</text>
+  <rect x="738" y="296" width="142" height="46" rx="7" fill="url(#g-future)" stroke="#54aeff" stroke-width="1.25" stroke-dasharray="5,3" filter="url(#elev-sm)"/>
+  <text x="809" y="315" text-anchor="middle" font-size="11" font-weight="600" fill="#0a3069">LangGraph</text>
+  <text x="809" y="331" text-anchor="middle" font-size="9" fill="#0550ae">Post-v1.0</text>
 
-  <!-- Agent-to-Agent -->
-  <rect x="738" y="352" width="142" height="46" rx="6" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="809" y="371" text-anchor="middle" font-size="11" font-weight="600" fill="#94a3b8">Agent-to-Agent</text>
-  <text x="809" y="388" text-anchor="middle" font-size="10" fill="#cbd5e1">v0.9.0</text>
+  <rect x="738" y="354" width="142" height="46" rx="7" fill="url(#g-future)" stroke="#54aeff" stroke-width="1.25" stroke-dasharray="5,3" filter="url(#elev-sm)"/>
+  <text x="809" y="373" text-anchor="middle" font-size="11" font-weight="600" fill="#0a3069">Agent-to-Agent</text>
+  <text x="809" y="389" text-anchor="middle" font-size="9" fill="#0550ae">Post-v1.0</text>
 
-  <!-- Connectors: APPLICATION right edge (645,227) → future boxes left edge (736) -->
-  <line x1="645" y1="227" x2="736" y2="255" stroke="#e2e8f0" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
-  <line x1="645" y1="227" x2="736" y2="315" stroke="#e2e8f0" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
-  <line x1="645" y1="227" x2="736" y2="375" stroke="#e2e8f0" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
+  <!-- Connectors: APPLICATION right edge → future panel -->
+  <line x1="645" y1="227" x2="724" y2="255" stroke="#8c959f" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
+  <line x1="645" y1="227" x2="724" y2="313" stroke="#8c959f" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
+  <line x1="645" y1="227" x2="724" y2="371" stroke="#8c959f" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
 
   <!-- ═══════════════════════════════════════════════════════ -->
   <!-- LEGEND                                                  -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="26" y="536" width="224" height="136" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-  <text x="138" y="557" text-anchor="middle" font-size="11" font-weight="700" fill="#0f172a">Legend</text>
+  <rect x="26" y="536" width="224" height="136" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+  <text x="138" y="556" text-anchor="middle" font-size="9.5" font-weight="700" fill="#57606a" letter-spacing="1">LEGEND</text>
 
-  <!-- Implemented component -->
-  <rect x="42" y="568" width="26" height="14" rx="3" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="78" y="579" font-size="10" fill="#0f172a">Implemented component</text>
+  <rect x="42" y="568" width="18" height="12" rx="3" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1"/>
+  <text x="68" y="578" font-size="10" fill="#1f2328">Implemented</text>
 
-  <!-- Implemented flow -->
-  <line x1="42" y1="598" x2="68" y2="598" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <text x="78" y="602" font-size="10" fill="#0f172a">Implemented flow</text>
+  <rect x="42" y="590" width="18" height="12" rx="3" fill="url(#g-accent)" stroke="#0a4fa3" stroke-width="1"/>
+  <text x="68" y="600" font-size="10" fill="#1f2328">Domain core</text>
 
-  <!-- Future component -->
-  <rect x="42" y="614" width="26" height="14" rx="3" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <text x="78" y="625" font-size="10" fill="#0f172a">Future component</text>
+  <rect x="42" y="612" width="18" height="12" rx="3" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+  <text x="68" y="622" font-size="10" fill="#1f2328">External actor</text>
 
-  <!-- Future flow -->
-  <line x1="42" y1="644" x2="68" y2="644" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
-  <text x="78" y="648" font-size="10" fill="#0f172a">Future flow</text>
+  <rect x="42" y="634" width="18" height="12" rx="3" fill="url(#g-future)" stroke="#54aeff" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="68" y="644" font-size="10" fill="#1f2328">Future extension</text>
+
+  <line x1="42" y1="662" x2="60" y2="662" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
+  <text x="68" y="666" font-size="10" fill="#1f2328">Flow</text>
 
 </svg>
