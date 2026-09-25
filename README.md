@@ -12,7 +12,7 @@
 [![Weaviate](https://img.shields.io/badge/Weaviate-1.25-FF6D00?style=flat-square)](https://weaviate.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Apache Tika](https://img.shields.io/badge/Apache_Tika-2.9.2-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
-[![Tests](https://img.shields.io/badge/tests-726_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
+[![Tests](https://img.shields.io/badge/tests-760_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b?style=flat-square)](LICENSE)
 
 </div>
@@ -31,7 +31,7 @@
 - Hybrid Search *(v0.5.0)*
 - Authorization Filter *(v0.7.1)* — role-based document-classification clearance
 - MCP & LangGraph Ready — architecturally (port interfaces align with both), not yet on the release roadmap; see [Roadmap](#release-roadmap)
-- 726 Automated Tests, 0 failures
+- 760 Automated Tests, 0 failures
 
 ---
 
@@ -62,14 +62,14 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.8.0 — Phase 7 / WP-1: CI/CD & Release Governance Hardening |
+| **Current Release** | v0.8.1 — Phase 7 / WP-2: Session Security (refresh tokens + revocation) |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 726 passing, 0 failures · 73 test classes |
+| **Automated Tests** | 760 passing, 0 failures · 75 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
 | **CI** | GitHub Actions — build + full test suite + ArchUnit, dependency-review SCA gate, and a verified `docker build`, on every PR and push to `main` |
-| **Schema Migrations** | Flyway V001–V018 (18 migrations) |
+| **Schema Migrations** | Flyway V001–V019 (19 migrations) |
 | **Current Focus** | Phase 7 (Retrieval Quality & Operational Integrity) — planned and in progress across five work packages (v0.8.0–v0.8.4) |
-| **Next Milestone** | Phase 7 / WP-2 — Session Security: refresh tokens with revocation (v0.8.1) |
+| **Next Milestone** | Phase 7 / WP-3 — Operational Resilience: Weaviate timeout + Postgres↔Weaviate reconciliation (v0.8.2) |
 
 ---
 
@@ -137,9 +137,16 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Dependency/vulnerability scanning in CI — a `dependency-review` gate fails any pull request introducing a dependency with a known high-or-worse advisory; a `dependency-submission` job keeps GitHub's dependency graph accurate for this Gradle project; Dependabot opens weekly grouped upgrade pull requests
 - ✅ Docker image build-verified in CI — a real `docker build` runs on every pull request and push, asserting the boot jar is present and the runtime user is non-root; closes the gap ADR EX10 disclosed (the `Dockerfile` had never once been empirically built, only read)
 
+**Implemented — v0.8.1 / Phase 7 WP-2 (Session Security)**
+
+- ✅ Refresh tokens with rotation — `POST /api/v1/auth/refresh` returns a new access/refresh pair and makes the presented refresh secret single-use; `POST /api/v1/auth/logout` revokes the caller's session
+- ✅ **A leaked access token is killable before it expires** — an access token is bound to a persisted session (`sid` claim) that is re-checked on every request, so logging out (or detecting a stolen refresh token) invalidates already-issued access tokens immediately instead of leaving them valid until expiry
+- ✅ Refresh-token reuse detection — replaying an already-rotated secret revokes every session that user holds
+- ✅ Refresh secrets are stored only as a SHA-256 hash; the raw value is returned exactly once and is never recoverable
+
 **Planned — rest of Phase 7 and beyond** (see [Release Roadmap](#release-roadmap))
 
-- ⏳ Phase 7 remaining work packages — WP-2 refresh tokens with revocation (v0.8.1); WP-3 Weaviate client timeout (no configuration surface exists in Spring AI 1.0.0 today — see `.claude/DECISIONS.md`, ADR HD03) + Postgres↔Weaviate reconciliation (v0.8.2); WP-4 re-ranking and HyDE evaluation (v0.8.3); WP-5 indirect prompt-injection review + Phase 7 completion gate (v0.8.4). Branch protection remains an exit criterion applied by the repository owner (ADR GOV08)
+- ⏳ Phase 7 remaining work packages — WP-3 Weaviate client timeout (no configuration surface exists in Spring AI 1.0.0 today — see `.claude/DECISIONS.md`, ADR HD03) + Postgres↔Weaviate reconciliation (v0.8.2); WP-4 re-ranking and HyDE evaluation (v0.8.3); WP-5 indirect prompt-injection review + Phase 7 completion gate (v0.8.4). Branch protection remains an exit criterion applied by the repository owner (ADR GOV08)
 - ⏳ Phase 8 (v0.9.x) — Prometheus/Grafana dashboards, Server-Sent Events streaming responses with source citations, an MCP go/no-go spike (not full delivery)
 - ⏳ Post-v1.0, not yet on the release roadmap — MCP server (full delivery), LangGraph agentic pipeline, multi-agent platform
 
@@ -284,10 +291,31 @@ Then log in as usual:
 POST /api/v1/auth/login
 {"tenantId": "<uuid>", "email": "admin@example.com", "password": "at-least-8-chars"}
 
-→ {"accessToken": "...", "tokenType": "Bearer", "expiresInMs": 900000}
+→ {"accessToken": "...", "tokenType": "Bearer", "expiresInMs": 900000,
+   "refreshToken": "...", "refreshExpiresInMs": 604800000}
 ```
 
 Send the returned token as `Authorization: Bearer <accessToken>` on every subsequent request.
+
+**Session lifecycle (v0.8.1).** The access token is short-lived; renew it without re-entering
+credentials, and end the session when you're done:
+
+```
+POST /api/v1/auth/refresh          (public — your access token has usually expired by now)
+{"refreshToken": "<refreshToken>"}
+
+→ a new accessToken *and* a new refreshToken — the one you sent is now dead (single-use)
+
+POST /api/v1/auth/logout           (requires Authorization: Bearer <accessToken>)
+
+→ 204, and every access token issued under that session stops working immediately
+```
+
+Logout revokes the session, not just the refresh token — an access token that was leaked is
+rejected from that moment on rather than staying valid until it expires. Replaying a refresh
+token that has already been rotated is treated as theft and revokes *every* session that user
+holds. Refresh secrets are stored only as a SHA-256 hash and returned exactly once; if a client
+loses one, it must log in again.
 As of v0.5.3, role also matters: creating a conversation, sending a message, uploading or
 deleting a document, or deleting a conversation all require `USER` or `ADMIN` — a
 `VIEWER`/`AUDITOR` token gets `403` on those. Reading/listing conversations and documents is
@@ -305,6 +333,8 @@ Override via environment variables or `application.yml`:
 | `DB_PASSWORD` | — required |
 | `JWT_SECRET_KEY` | — required (no default outside `dev`/`test` profiles); must be ≥32 bytes (HS256) or the application refuses to start (v0.6.1, ADR EX04) |
 | `JWT_ACCESS_EXPIRY_MS` | `900000` (15 min) |
+| `JWT_REFRESH_EXPIRY_MS` | `604800000` (7 days) — must exceed the access-token expiry, validated at startup (v0.8.1) |
+| `SESSION_PURGE_INTERVAL_MS` | `3600000` (1 h) — how often expired sessions are deleted; housekeeping only (v0.8.1) |
 | `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` — max `POST /api/v1/auth/login` attempts per source IP per minute (v0.6.1, ADR EX05) |
 | `MAX_REQUEST_BODY_BYTES` | `1048576` (1 MiB) — requests with a larger `Content-Length` are rejected with `413` before parsing (v0.6.1, ADR EX06) |
 | `OLLAMA_URL` | `http://localhost:11434` |
@@ -391,7 +421,7 @@ graph TD
 | v0.7.1 | Phase 6 / P06.2 — Authorization Filter & Phase 6 Completion | ✅ Complete |
 | v0.7.2 | Post-Phase-6 Independent Audit Remediation (maintenance release) | ✅ Complete |
 | v0.8.0 | Phase 7 / WP-1 — CI/CD & Release Governance Hardening | ✅ Complete |
-| v0.8.1 | Phase 7 / WP-2 — Session Security (refresh tokens + revocation) | ⏳ Planned |
+| v0.8.1 | Phase 7 / WP-2 — Session Security (refresh tokens + revocation) | ✅ Complete |
 | v0.8.2 | Phase 7 / WP-3 — Operational Resilience (Weaviate timeout + reconciliation) | ⏳ Planned |
 | v0.8.3 | Phase 7 / WP-4 — Retrieval Quality (re-ranking + HyDE) | ⏳ Planned |
 | v0.8.4 | Phase 7 / WP-5 — Prompt-Injection Review & Phase 7 Complete | ⏳ Planned |

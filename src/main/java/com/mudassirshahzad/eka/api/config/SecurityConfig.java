@@ -46,6 +46,12 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/auth/login",
+            // Public for the same reason as /login: the caller's access token has usually already
+            // expired by the time they refresh. The refresh token itself is the credential, and it
+            // is verified against the database by SessionApplicationService (WP-2, ADR RT02).
+            // /api/v1/auth/logout is deliberately absent — it acts on the caller's own validated
+            // session, so it must be authenticated.
+            "/api/v1/auth/refresh",
             "/api/v1/admin/bootstrap",
             "/actuator/health",
             "/actuator/health/**",

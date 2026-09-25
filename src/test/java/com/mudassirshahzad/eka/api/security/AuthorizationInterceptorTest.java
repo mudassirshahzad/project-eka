@@ -1,5 +1,6 @@
 package com.mudassirshahzad.eka.api.security;
 
+import com.mudassirshahzad.eka.domain.auth.SessionId;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
 import com.mudassirshahzad.eka.domain.user.UserRole;
@@ -73,7 +74,7 @@ class AuthorizationInterceptorTest {
     void preHandle_matchingRole_isPermitted() throws Exception {
         HandlerMethod handlerMethod = handlerMethodFor("adminOnly");
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(
-                UserId.generate(), TenantId.generate(), List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+                UserId.generate(), TenantId.generate(), List.of(new SimpleGrantedAuthority("ROLE_ADMIN")), SessionId.generate()));
 
         assertThat(interceptor.preHandle(request, response, handlerMethod)).isTrue();
     }
@@ -82,7 +83,7 @@ class AuthorizationInterceptorTest {
     void preHandle_nonMatchingRole_throwsAccessDenied() throws Exception {
         HandlerMethod handlerMethod = handlerMethodFor("adminOnly");
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(
-                UserId.generate(), TenantId.generate(), List.of(new SimpleGrantedAuthority("ROLE_VIEWER"))));
+                UserId.generate(), TenantId.generate(), List.of(new SimpleGrantedAuthority("ROLE_VIEWER")), SessionId.generate()));
 
         assertThatThrownBy(() -> interceptor.preHandle(request, response, handlerMethod))
                 .isInstanceOf(AccessDeniedException.class);
@@ -92,7 +93,7 @@ class AuthorizationInterceptorTest {
     void preHandle_nonMatchingRole_incrementsAuthzFailureCounter() throws Exception {
         HandlerMethod handlerMethod = handlerMethodFor("adminOnly");
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(
-                UserId.generate(), TenantId.generate(), List.of(new SimpleGrantedAuthority("ROLE_VIEWER"))));
+                UserId.generate(), TenantId.generate(), List.of(new SimpleGrantedAuthority("ROLE_VIEWER")), SessionId.generate()));
 
         assertThatThrownBy(() -> interceptor.preHandle(request, response, handlerMethod))
                 .isInstanceOf(AccessDeniedException.class);
@@ -105,7 +106,7 @@ class AuthorizationInterceptorTest {
     void preHandle_multipleAllowedRoles_permitsAnyOfThem() throws Exception {
         HandlerMethod handlerMethod = handlerMethodFor("userOrAdmin");
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(
-                UserId.generate(), TenantId.generate(), List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+                UserId.generate(), TenantId.generate(), List.of(new SimpleGrantedAuthority("ROLE_USER")), SessionId.generate()));
 
         assertThat(interceptor.preHandle(request, response, handlerMethod)).isTrue();
     }

@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.8.0 (Complete) — **Phase 7 / WP-1 — CI/CD & Release Governance Hardening** (ADR GOV07/GOV08, CG01/CG02). Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
+v0.8.1 (Complete) — **Phase 7 / WP-2 — Session Security: Refresh Tokens & Revocation** (ADR RT01–RT05). WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -228,7 +228,7 @@ Phase 7 was planned in its own session, as ADR GOV03/`CLAUDE.md` require. That p
 | Work package | Version | Description | New Tests | Status |
 |---|---|---|---|---|
 | WP-1 | v0.8.0 | CI/CD & Release Governance Hardening — dependency/vulnerability scanning, CI-verified Docker build (branch protection: owner-applied, ADR GOV08) | — | ✅ Complete |
-| WP-2 | v0.8.1 | Session Security — refresh tokens with revocation | — | ○ Not started |
+| WP-2 | v0.8.1 | Session Security — refresh tokens with revocation (session-bound access tokens, rotation, reuse detection) | +34 | ✅ Complete |
 | WP-3 | v0.8.2 | Operational Resilience — Weaviate client timeout (closes ADR HD03) + Postgres↔Weaviate reconciliation job | — | ○ Not started |
 | WP-4 | v0.8.3 | Retrieval Quality — cross-encoder re-ranking, HyDE evaluation, evaluation harness | — | ○ Not started |
 | WP-5 | v0.8.4 | Indirect Prompt-Injection Risk Review + **Phase 7 Complete gate** (verifies branch protection is actually applied — ADR GOV08) | — | ○ Not started |
@@ -319,7 +319,7 @@ Security layer (Authorization Filter) is planned but not implemented.
 | O04  | `RetrievalResult` carries `effectiveQueryText`; `RetrievalPort` interface itself unchanged         |
 | O05  | Temporary permissive `SecurityFilterChain` (ADR-approved) — replaced outright in P05.2, not layered |
 | A01  | JWT access tokens are signed/verified with HS256 (symmetric key); RS256 deferred                  |
-| A02  | Login issues an access token only; no refresh/logout endpoint yet                                 |
+| A02  | Login issues an access token only; no refresh/logout endpoint yet — **superseded by ADR RT01/RT02 (v0.8.1)** |
 | A03  | `AuthenticateUserUseCase` (application) verifies identity; only `JwtTokenProvider` (api) mints a JWT |
 | A04  | `JwtAuthenticationFilter` never rejects a request; only `RestAuthenticationEntryPoint` returns 401 |
 | A05  | `tenantId`/`userId` removed from request DTOs; both now come from the validated JWT               |
@@ -375,6 +375,11 @@ Security layer (Authorization Filter) is planned but not implemented.
 | GOV08 | Applying branch protection stays a repository-owner action outside the implementation session; it remains a Phase 7 exit criterion, verified at the `v0.8.4` gate |
 | CG01 | SCA in CI = GitHub dependency-graph submission + `dependency-review` PR gate (`fail-on-severity: high`) + Dependabot; OWASP Dependency-Check rejected (NVD-feed flakiness in a required status check) |
 | CG02 | Docker image build-verified in CI with narrow deterministic assertions (boot jar present, non-root runtime user), not a container boot — closes ADR EX10's disclosed gap |
+| RT01 | Access tokens carry a `sid` claim bound to a persisted session, re-validated every request — this is what makes a leaked access token killable before expiry; a `jti` denylist was rejected |
+| RT02 | Refresh rotates on every use (single-use secrets); `/auth/refresh` public, `/auth/logout` authenticated and scoped to the caller's own session; user re-read on rotation |
+| RT03 | Replaying a rotated refresh token revokes every session the user holds; `noRollbackFor` is load-bearing — the signalling exception otherwise rolled the revocation back |
+| RT04 | Only the SHA-256 hash of a refresh secret is stored; SHA-256 rather than BCrypt is correct for a 256-bit random secret on a hot path |
+| RT05 | `refresh_tokens` existed unused since V009 (scaffolded ahead of its consumer, cf. HD09) — V019 extends it rather than creating a parallel table |
 
 ---
 

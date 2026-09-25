@@ -14,7 +14,7 @@ class JwtPropertiesTest {
 
     @Test
     void construct_secretKeyBelow32Bytes_throwsImmediately() {
-        assertThatThrownBy(() -> new JwtProperties("too-short-key", 900_000))
+        assertThatThrownBy(() -> new JwtProperties("too-short-key", 900_000, 604_800_000))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("at least 32 bytes");
     }
@@ -22,21 +22,21 @@ class JwtPropertiesTest {
     @Test
     void construct_secretKeyExactly32Bytes_succeeds() {
         String exactly32Bytes = "a".repeat(32);
-        JwtProperties properties = new JwtProperties(exactly32Bytes, 900_000);
+        JwtProperties properties = new JwtProperties(exactly32Bytes, 900_000, 604_800_000);
 
         assertThat(properties.secretKey()).isEqualTo(exactly32Bytes);
     }
 
     @Test
     void construct_nullSecretKey_throwsImmediately() {
-        assertThatThrownBy(() -> new JwtProperties(null, 900_000))
+        assertThatThrownBy(() -> new JwtProperties(null, 900_000, 604_800_000))
                 .isInstanceOf(NullPointerException.class);
     }
 
     @Test
     void construct_zeroExpiry_throwsImmediately() {
         String validKey = "a".repeat(32);
-        assertThatThrownBy(() -> new JwtProperties(validKey, 0))
+        assertThatThrownBy(() -> new JwtProperties(validKey, 0, 604_800_000))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("must be positive");
     }
@@ -44,7 +44,7 @@ class JwtPropertiesTest {
     @Test
     void construct_negativeExpiry_throwsImmediately() {
         String validKey = "a".repeat(32);
-        assertThatThrownBy(() -> new JwtProperties(validKey, -1))
+        assertThatThrownBy(() -> new JwtProperties(validKey, -1, 604_800_000))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("must be positive");
     }

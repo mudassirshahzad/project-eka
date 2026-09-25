@@ -5,6 +5,31 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-09-25 — Phase 7 / WP-2 — Session Security: Refresh Tokens & Revocation
+
+### Added (Phase 7, work package 2 of 5 — ADR GOV07)
+
+Closes ADR A02's deferral ("login issues an access token only; refresh tokens are deferred") and the Phase 7 security expectation that **a leaked access token must be killable**. The success criterion is the demanding part — "a compromised access token can be revoked *without waiting out its expiry*" — which a stateless JWT cannot satisfy on its own.
+
+- **Sessions, not just tokens (ADR RT01)** — an access token now carries a `sid` claim identifying a persisted session, and every authenticated request re-checks that the session is still active. Revoking a session invalidates its refresh token *and* every access token issued under it, immediately. `JwtAuthenticationFilter` keeps ADR A04's contract exactly: a revoked session leaves the `SecurityContext` empty and the 401 still comes from `RestAuthenticationEntryPoint`, never from the filter. A separate `jti` denylist was evaluated and rejected — identical per-request cost, but a second table, a second concept, and a second cleanup job for the same guarantee
+- **`POST /api/v1/auth/refresh` with rotation (ADR RT02)** — each refresh revokes the presented session and issues a new pair, making a refresh secret single-use. Public like `/login`, because the caller's access token has normally already expired by the time they refresh. The user's active flag and roles are re-read from the database on every rotation, so a deactivated user cannot keep renewing access for the remainder of the refresh lifetime
+- **`POST /api/v1/auth/logout` (ADR RT02)** — authenticated, and acts only on the session in the caller's own validated token, never one named in the request body, so no caller can log another out
+- **Refresh-token reuse detection (ADR RT03)** — presenting an already-rotated secret means it exists in two places, so every session the owning user holds is revoked, `eka.auth.refresh.reuse` is incremented, and the caller gets the same opaque failure as every other credential error
+- **Secrets are stored hashed (ADR RT04)** — 256 bits of `SecureRandom`, persisted only as a SHA-256 hash; the raw value exists exactly once, in the response. SHA-256 rather than BCrypt is deliberate: a high-entropy random secret has no guessable keyspace for BCrypt's slowness to defend, and that slowness would be a denial-of-service lever on the refresh path
+- **`security.jwt.refresh-token-expiry-ms` is finally load-bearing** — scaffolded in `application.yml` since P05.2 but bound to nothing, it is now bound and validated at startup (including a check that it exceeds the access-token lifetime, since a refresh token that expires first can never renew anything), extending the ADR EX04 fail-fast pattern
+- **Scheduled purge of expired sessions** — housekeeping only; an expired session is already rejected by its own expiry check, so this bounds table growth rather than enforcing anything
+
+### Fixed
+
+- **Reuse detection revoked nothing (found by this work package's own end-to-end test)** — `rotate` is `@Transactional` and signals a detected replay by throwing, so under default rollback rules the exception rolled back the very "revoke all of this user's sessions" update it had just performed. Detection appeared to work while doing nothing. Fixed with `@Transactional(noRollbackFor = InvalidCredentialsException.class)` and recorded in ADR RT03. A unit test with a mocked repository could not have caught this — the transaction boundary is exactly what such a test stubs out
+
+### Changed
+
+- **Access tokens minted before this release are rejected as malformed (ADR RT01)** — they carry no `sid` and so could never be revoked; honouring them would have left a window of provably unrevocable tokens, which is the precise property this work package removes. Affected callers re-login once
+- **The refresh-token scaffolding was already there (ADR RT05)** — the first draft created the table and the migration failed against a real database with `relation "refresh_tokens" already exists`. The table, `RefreshTokenEntity`, and `RefreshTokenJpaRepository` have all existed unused since `V009`, built during the Phase 1/2 foundation work with no domain port, adapter, or call site — the same pattern ADR HD09 recorded for `audit_logs`. The foundation's own comment already anticipated this design ("Never store the raw token — only its SHA-256 hash"), and its method set (`findByTokenHash`, `revokeAllForUser`, `deleteExpiredBefore`) corresponds almost exactly to rotation, reuse revocation, and expiry purge. All three were therefore extended in place rather than duplicated: `V019__extend_refresh_tokens_for_sessions.sql` adds only `tenant_id` and `issued_at` (widen → backfill → constrain) plus an `expires_at` index. The entity's `@ManyToOne UserEntity` association was the one part that had to change — `UserEntity` carries `@SQLRestriction("active = TRUE")`, which would make it unresolvable for precisely the sessions most in need of revocation: a deactivated user's
+- ADRs RT01–RT05 frozen (see `.claude/DECISIONS.md`)
+- **760 total tests, 0 failures** (net +34): `RefreshTokenTest` (new, 9) — hash-not-raw storage, expiry/revocation semantics, idempotent revoke, identity; `SessionApplicationServiceTest` (new, 14) — issue/rotate/revoke/isSessionActive, reuse detection revoking every session, deactivated-user rejection, opaque failures, fail-closed unknown session; `JwtTokenProviderTest` (+2) — `sid` round-trip and rejection of a pre-WP-2 token; `JwtAuthenticationFilterTest` (+1) — a cryptographically valid token with a revoked session leaves the context empty; `AuthControllerTest` (+6) — refresh success/invalid/blank, `/refresh` genuinely public, logout unauthenticated → 401 and authenticated → revokes the caller's own session; `RagEndToEndIT` (+3) against real Postgres — **logout kills an unexpired access token**, login → refresh rotates and the old secret stops working, and a replayed secret revokes every session including the legitimate client's. ArchUnit: 8/8, no new layering violations
+
 ## [0.8.0] — 2026-09-25 — Phase 7 / WP-1 — CI/CD & Release Governance Hardening
 
 ### Added (Phase 7, work package 1 of 5 — ADR GOV07)

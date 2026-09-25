@@ -115,6 +115,11 @@ app:
     token-budget: 4096
   conversation:
     memory-window-size: 10
+  session:
+    # Housekeeping only — an expired session is already rejected by its own expiry check, so this
+    # bounds table growth rather than enforcing anything (WP-2, ADR RT01).
+    purge-initial-delay-ms: ${SESSION_PURGE_INITIAL_DELAY_MS:3600000}
+    purge-interval-ms: ${SESSION_PURGE_INTERVAL_MS:3600000}
   guardrails:
     max-response-length: 8192
   storage:

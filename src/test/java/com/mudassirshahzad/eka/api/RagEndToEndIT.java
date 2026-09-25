@@ -1,5 +1,9 @@
 package com.mudassirshahzad.eka.api;
 
+import java.time.Instant;
+import com.mudassirshahzad.eka.domain.auth.RefreshTokenRepository;
+import com.mudassirshahzad.eka.domain.auth.RefreshToken;
+import com.mudassirshahzad.eka.domain.auth.SessionId;
 import com.mudassirshahzad.eka.api.security.JwtTokenProvider;
 import com.mudassirshahzad.eka.application.generation.GenerationService;
 import com.mudassirshahzad.eka.application.retrieval.RetrievalService;
@@ -78,6 +82,7 @@ class RagEndToEndIT {
     @Autowired private UserJpaRepository     userJpaRepository;
     @Autowired private DocumentJpaRepository documentJpaRepository;
     @Autowired private ChunkJpaRepository    chunkJpaRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
 
     @MockitoBean private RetrievalService  retrievalService;
     @MockitoBean private GenerationService generationService;
@@ -87,8 +92,7 @@ class RagEndToEndIT {
         TenantEntity tenant = persistTenant();
         UserEntity   user   = persistUser(tenant);
         ChunkEntity  chunk  = persistChunk(tenant, user);
-        String       bearerToken = jwtTokenProvider.generateAccessToken(
-                UserId.of(user.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
+        String       bearerToken = tokenFor(user.getId(), tenant.getId(), Set.of(UserRole.USER));
 
         Citation citation = Citation.of(ChunkId.of(chunk.getId()), 0.88);
         when(retrievalService.retrieve(any())).thenReturn(
@@ -192,8 +196,7 @@ class RagEndToEndIT {
         // tenant check against a real ConversationRepository/Postgres round trip, not a mock.
         TenantEntity tenantA = persistTenant();
         UserEntity   userA   = persistUser(tenantA);
-        String       tokenA  = jwtTokenProvider.generateAccessToken(
-                UserId.of(userA.getId()), TenantId.of(tenantA.getId()), Set.of(UserRole.USER));
+        String       tokenA  = tokenFor(userA.getId(), tenantA.getId(), Set.of(UserRole.USER));
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/conversations")
                         .header("Authorization", "Bearer " + tokenA)
@@ -208,8 +211,7 @@ class RagEndToEndIT {
 
         TenantEntity tenantB = persistTenant();
         UserEntity   userB   = persistUser(tenantB);
-        String       tokenB  = jwtTokenProvider.generateAccessToken(
-                UserId.of(userB.getId()), TenantId.of(tenantB.getId()), Set.of(UserRole.USER));
+        String       tokenB  = tokenFor(userB.getId(), tenantB.getId(), Set.of(UserRole.USER));
 
         mockMvc.perform(get("/api/v1/conversations/{id}", conversationId)
                         .header("Authorization", "Bearer " + tokenB))
@@ -223,10 +225,8 @@ class RagEndToEndIT {
         TenantEntity tenant = persistTenant();
         UserEntity   owner  = persistUser(tenant);
         UserEntity   other  = persistUser(tenant);
-        String       ownerToken = jwtTokenProvider.generateAccessToken(
-                UserId.of(owner.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
-        String       otherToken = jwtTokenProvider.generateAccessToken(
-                UserId.of(other.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
+        String       ownerToken = tokenFor(owner.getId(), tenant.getId(), Set.of(UserRole.USER));
+        String       otherToken = tokenFor(other.getId(), tenant.getId(), Set.of(UserRole.USER));
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/conversations")
                         .header("Authorization", "Bearer " + ownerToken)
@@ -246,11 +246,14 @@ class RagEndToEndIT {
 
     @Test
     void viewerRole_cannotCreateConversation_realFilterChain() throws Exception {
-        // The role check happens purely off the token's embedded claims (ADR AZ02) — no
-        // persisted user is needed to prove AuthorizationInterceptor rejects this before the
-        // controller (and therefore the database) is ever reached.
-        String viewerToken = jwtTokenProvider.generateAccessToken(
-                UserId.generate(), TenantId.generate(), Set.of(UserRole.VIEWER));
+        // The role check itself still happens purely off the token's embedded claims (ADR AZ02),
+        // before the controller or the database is reached. A real tenant/user is persisted only
+        // because WP-2 made a live session a precondition of authentication at all (ADR RT01) —
+        // without one the request would be rejected as unauthenticated (401) and never reach the
+        // role check this test exists to prove.
+        TenantEntity tenant = persistTenant();
+        UserEntity   viewer = persistUser(tenant);
+        String viewerToken = tokenFor(viewer.getId(), tenant.getId(), Set.of(UserRole.VIEWER));
 
         mockMvc.perform(post("/api/v1/conversations")
                         .header("Authorization", "Bearer " + viewerToken)
@@ -319,8 +322,7 @@ class RagEndToEndIT {
 
         TenantEntity tenantB = persistTenant();
         UserEntity   userB   = persistUser(tenantB);
-        String       tokenB  = jwtTokenProvider.generateAccessToken(
-                UserId.of(userB.getId()), TenantId.of(tenantB.getId()), Set.of(UserRole.USER));
+        String       tokenB  = tokenFor(userB.getId(), tenantB.getId(), Set.of(UserRole.USER));
 
         mockMvc.perform(get("/api/v1/documents/{id}", document.getId())
                         .header("Authorization", "Bearer " + tokenB))
@@ -336,8 +338,7 @@ class RagEndToEndIT {
         UserEntity   owner  = persistUser(tenant);
         UserEntity   reader = persistUser(tenant);
         DocumentEntity document = persistDocument(tenant, owner);
-        String readerToken = jwtTokenProvider.generateAccessToken(
-                UserId.of(reader.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.VIEWER));
+        String readerToken = tokenFor(reader.getId(), tenant.getId(), Set.of(UserRole.VIEWER));
 
         mockMvc.perform(get("/api/v1/documents/{id}", document.getId())
                         .header("Authorization", "Bearer " + readerToken))
@@ -357,8 +358,7 @@ class RagEndToEndIT {
         UserEntity   owner  = persistUser(tenant);
         UserEntity   reader = persistUser(tenant);
         DocumentEntity restrictedDocument = persistDocument(tenant, owner, "RESTRICTED");
-        String readerToken = jwtTokenProvider.generateAccessToken(
-                UserId.of(reader.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.VIEWER));
+        String readerToken = tokenFor(reader.getId(), tenant.getId(), Set.of(UserRole.VIEWER));
 
         mockMvc.perform(get("/api/v1/documents/{id}", restrictedDocument.getId())
                         .header("Authorization", "Bearer " + readerToken))
@@ -373,8 +373,7 @@ class RagEndToEndIT {
         UserEntity   owner  = persistUser(tenant);
         UserEntity   admin  = persistUser(tenant);
         DocumentEntity restrictedDocument = persistDocument(tenant, owner, "RESTRICTED");
-        String adminToken = jwtTokenProvider.generateAccessToken(
-                UserId.of(admin.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.ADMIN));
+        String adminToken = tokenFor(admin.getId(), tenant.getId(), Set.of(UserRole.ADMIN));
 
         mockMvc.perform(get("/api/v1/documents/{id}", restrictedDocument.getId())
                         .header("Authorization", "Bearer " + adminToken))
@@ -392,8 +391,7 @@ class RagEndToEndIT {
         persistDocument(tenant, owner, "PUBLIC");
         persistDocument(tenant, owner, "RESTRICTED");
         UserEntity   viewer = persistUser(tenant);
-        String viewerToken = jwtTokenProvider.generateAccessToken(
-                UserId.of(viewer.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.VIEWER));
+        String viewerToken = tokenFor(viewer.getId(), tenant.getId(), Set.of(UserRole.VIEWER));
 
         mockMvc.perform(get("/api/v1/documents").header("Authorization", "Bearer " + viewerToken))
                 .andExpect(status().isOk())
@@ -408,8 +406,7 @@ class RagEndToEndIT {
         // itself returned 204.
         TenantEntity tenant = persistTenant();
         UserEntity   user   = persistUser(tenant);
-        String       token  = jwtTokenProvider.generateAccessToken(
-                UserId.of(user.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
+        String       token  = tokenFor(user.getId(), tenant.getId(), Set.of(UserRole.USER));
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/conversations")
                         .header("Authorization", "Bearer " + token)
@@ -436,10 +433,8 @@ class RagEndToEndIT {
         TenantEntity tenant = persistTenant();
         UserEntity   userA  = persistUser(tenant);
         UserEntity   userB  = persistUser(tenant);
-        String       tokenA = jwtTokenProvider.generateAccessToken(
-                UserId.of(userA.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
-        String       tokenB = jwtTokenProvider.generateAccessToken(
-                UserId.of(userB.getId()), TenantId.of(tenant.getId()), Set.of(UserRole.USER));
+        String       tokenA = tokenFor(userA.getId(), tenant.getId(), Set.of(UserRole.USER));
+        String       tokenB = tokenFor(userB.getId(), tenant.getId(), Set.of(UserRole.USER));
 
         mockMvc.perform(post("/api/v1/conversations")
                         .header("Authorization", "Bearer " + tokenA)
@@ -459,6 +454,24 @@ class RagEndToEndIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", org.hamcrest.Matchers.hasSize(1)))
                 .andExpect(jsonPath("$.content[0].title").value("A's chat"));
+    }
+
+    /**
+     * Mints an access token backed by a real session row.
+     *
+     * <p>As of WP-2 a signed token is no longer sufficient on its own — {@code JwtAuthenticationFilter}
+     * re-checks that the session behind the {@code sid} claim is still active, so a token minted
+     * without a persisted session is correctly rejected. Roles stay an explicit parameter rather
+     * than being read back from the user row, so each test keeps controlling the role under test.
+     */
+    private String tokenFor(java.util.UUID userId, java.util.UUID tenantId, Set<UserRole> roles) {
+        SessionId sessionId = SessionId.generate();
+        Instant   now       = Instant.now();
+        refreshTokenRepository.save(RefreshToken.issue(
+                sessionId, UserId.of(userId), TenantId.of(tenantId),
+                "raw-refresh-" + sessionId, now, now.plusSeconds(3_600)));
+        return jwtTokenProvider.generateAccessToken(
+                UserId.of(userId), TenantId.of(tenantId), roles, sessionId);
     }
 
     private TenantEntity persistTenant() {
@@ -512,5 +525,122 @@ class RagEndToEndIT {
                 .build();
         chunk.setId(UUID.randomUUID());
         return chunkJpaRepository.save(chunk);
+    }
+
+    @Test
+    void logout_killsAnAccessTokenBeforeItExpires_realDatabaseProof() throws Exception {
+        // The headline Phase 7 guarantee: "a compromised access token can be revoked without
+        // waiting out its expiry." The token below stays cryptographically valid and unexpired
+        // for the whole test — only the session behind it changes.
+        TenantEntity tenant = persistTenant();
+        UserEntity   user   = persistUser(tenant);
+        String       token  = tokenFor(user.getId(), tenant.getId(), Set.of(UserRole.USER));
+
+        mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/auth/logout").header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginThenRefresh_rotatesTheSecretAndKeepsTheCallerAuthenticated_realDatabaseProof() throws Exception {
+        TenantEntity tenant = persistTenant();
+        String email = "refresh-user@example.com";
+
+        mockMvc.perform(post("/api/v1/admin/bootstrap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenantId":"%s","email":"%s","password":"bootstrap-pass"}
+                                """.formatted(tenant.getId(), email)))
+                .andExpect(status().isCreated());
+
+        String loginBody = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenantId":"%s","email":"%s","password":"bootstrap-pass"}
+                                """.formatted(tenant.getId(), email)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String firstRefresh = objectMapper.readTree(loginBody).get("refreshToken").asText();
+        assertThat(firstRefresh).isNotBlank();
+
+        String refreshBody = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"refreshToken":"%s"}
+                                """.formatted(firstRefresh)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String secondRefresh = objectMapper.readTree(refreshBody).get("refreshToken").asText();
+        String newAccess     = objectMapper.readTree(refreshBody).get("accessToken").asText();
+
+        assertThat(secondRefresh).isNotBlank().isNotEqualTo(firstRefresh);
+
+        mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + newAccess))
+                .andExpect(status().isOk());
+
+        // The rotated-away secret is single-use and must not work a second time.
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"refreshToken":"%s"}
+                                """.formatted(firstRefresh)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void replayingARotatedRefreshToken_revokesEverySessionTheUserHolds_realDatabaseProof() throws Exception {
+        TenantEntity tenant = persistTenant();
+        String email = "reuse-user@example.com";
+
+        mockMvc.perform(post("/api/v1/admin/bootstrap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenantId":"%s","email":"%s","password":"bootstrap-pass"}
+                                """.formatted(tenant.getId(), email)))
+                .andExpect(status().isCreated());
+
+        String loginBody = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenantId":"%s","email":"%s","password":"bootstrap-pass"}
+                                """.formatted(tenant.getId(), email)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String stolenRefresh = objectMapper.readTree(loginBody).get("refreshToken").asText();
+
+        String rotatedBody = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"refreshToken":"%s"}
+                                """.formatted(stolenRefresh)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String legitimateAccess = objectMapper.readTree(rotatedBody).get("accessToken").asText();
+
+        mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + legitimateAccess))
+                .andExpect(status().isOk());
+
+        // An attacker replays the secret the legitimate client already rotated away.
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"refreshToken":"%s"}
+                                """.formatted(stolenRefresh)))
+                .andExpect(status().isUnauthorized());
+
+        // Reuse detection ends every session for that user, including the legitimate client's —
+        // deliberately disruptive, because at this point one of the two holders is an attacker and
+        // the system cannot tell which.
+        mockMvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + legitimateAccess))
+                .andExpect(status().isUnauthorized());
     }
 }

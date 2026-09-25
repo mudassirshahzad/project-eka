@@ -1,5 +1,6 @@
 package com.mudassirshahzad.eka.api.security;
 
+import com.mudassirshahzad.eka.domain.auth.SessionId;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
 import com.mudassirshahzad.eka.domain.user.UserRole;
@@ -22,12 +23,15 @@ public final class JwtAuthenticationToken extends AbstractAuthenticationToken {
 
     private final UserId userId;
     private final TenantId tenantId;
+    private final SessionId sessionId;
 
     public JwtAuthenticationToken(UserId userId, TenantId tenantId,
-                                   Collection<? extends GrantedAuthority> authorities) {
+                                   Collection<? extends GrantedAuthority> authorities,
+                                   SessionId sessionId) {
         super(authorities);
         this.userId = Objects.requireNonNull(userId, "userId");
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
+        this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         setAuthenticated(true);
     }
 
@@ -37,6 +41,14 @@ public final class JwtAuthenticationToken extends AbstractAuthenticationToken {
 
     public TenantId tenantId() {
         return tenantId;
+    }
+
+    /**
+     * The session this token was issued under (WP-2, ADR RT01) — the handle {@code /auth/logout}
+     * revokes, and the value {@link JwtAuthenticationFilter} re-validates on every request.
+     */
+    public SessionId sessionId() {
+        return sessionId;
     }
 
     /**

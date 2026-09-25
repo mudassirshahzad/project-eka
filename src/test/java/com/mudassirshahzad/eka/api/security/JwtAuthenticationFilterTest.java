@@ -1,5 +1,7 @@
 package com.mudassirshahzad.eka.api.security;
 
+import com.mudassirshahzad.eka.application.auth.SessionApplicationService;
+import com.mudassirshahzad.eka.domain.auth.SessionId;
 import com.mudassirshahzad.eka.domain.shared.TenantId;
 import com.mudassirshahzad.eka.domain.user.UserId;
 import io.jsonwebtoken.JwtException;
@@ -26,8 +28,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
 
-    @Mock private JwtTokenProvider jwtTokenProvider;
-    @Mock private FilterChain      filterChain;
+    @Mock private JwtTokenProvider          jwtTokenProvider;
+    @Mock private FilterChain               filterChain;
+    @Mock private SessionApplicationService sessionApplicationService;
 
     private SimpleMeterRegistry     meterRegistry;
     private JwtAuthenticationFilter filter;
@@ -35,7 +38,7 @@ class JwtAuthenticationFilterTest {
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
-        filter = new JwtAuthenticationFilter(jwtTokenProvider, meterRegistry);
+        filter = new JwtAuthenticationFilter(jwtTokenProvider, meterRegistry, sessionApplicationService);
         SecurityContextHolder.clearContext();
     }
 
@@ -46,8 +49,9 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void validBearerToken_populatesSecurityContext() throws Exception {
-        JwtAuthenticationToken token = new JwtAuthenticationToken(UserId.generate(), TenantId.generate(), List.of());
+        JwtAuthenticationToken token = new JwtAuthenticationToken(UserId.generate(), TenantId.generate(), List.of(), SessionId.generate());
         when(jwtTokenProvider.parseToken("valid-token")).thenReturn(token);
+        when(sessionApplicationService.isSessionActive(token.sessionId())).thenReturn(true);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer valid-token");
@@ -97,5 +101,26 @@ class JwtAuthenticationFilterTest {
         verify(filterChain).doFilter(any(), any());
         assertThat(meterRegistry.get("eka.auth.failures").tag("type", "token").counter().count())
                 .isEqualTo(1.0);
+    }
+
+    @Test
+    void validSignatureButRevokedSession_leavesContextEmptyAndCountsASessionFailure() throws Exception {
+        JwtAuthenticationToken token = new JwtAuthenticationToken(
+                UserId.generate(), TenantId.generate(), List.of(), SessionId.generate());
+        when(jwtTokenProvider.parseToken("revoked-session-token")).thenReturn(token);
+        when(sessionApplicationService.isSessionActive(token.sessionId())).thenReturn(false);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer revoked-session-token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        // This is the guarantee WP-2 exists for: the signature is still perfectly valid, but the
+        // token is no longer accepted because its session was revoked before it expired.
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        assertThat(meterRegistry.get("eka.auth.failures").tag("type", "session").counter().count())
+                .isEqualTo(1.0);
+        verify(filterChain).doFilter(eq(request), eq(response));
     }
 }

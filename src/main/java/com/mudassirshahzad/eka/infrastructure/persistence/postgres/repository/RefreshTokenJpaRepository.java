@@ -1,7 +1,6 @@
 package com.mudassirshahzad.eka.infrastructure.persistence.postgres.repository;
 
 import com.mudassirshahzad.eka.infrastructure.persistence.postgres.entity.RefreshTokenEntity;
-import com.mudassirshahzad.eka.infrastructure.persistence.postgres.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -9,7 +8,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,18 +16,21 @@ public interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenEnt
 
     Optional<RefreshTokenEntity> findByTokenHash(String tokenHash);
 
-    List<RefreshTokenEntity> findByUser(UserEntity user);
-
-    @Modifying
+    /**
+     * Revokes every still-active session for one user in a single statement (ADR RT03). Done as a
+     * bulk update rather than load-mutate-save because reuse detection is a security response:
+     * fewer round trips means a smaller window in which a stolen token can still be used.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-            UPDATE RefreshTokenEntity t
-            SET t.revokedAt = :now
-            WHERE t.user.id = :userId
-              AND t.revokedAt IS NULL
-            """)
-    void revokeAllForUser(@Param("userId") UUID userId, @Param("now") Instant now);
+           UPDATE RefreshTokenEntity r
+              SET r.revokedAt = :when
+            WHERE r.userId = :userId
+              AND r.revokedAt IS NULL
+           """)
+    int revokeAllForUser(@Param("userId") UUID userId, @Param("when") Instant when);
 
-    @Modifying
-    @Query("DELETE FROM RefreshTokenEntity t WHERE t.expiresAt < :cutoff")
-    void deleteExpiredBefore(@Param("cutoff") Instant cutoff);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM RefreshTokenEntity r WHERE r.expiresAt < :cutoff")
+    int deleteExpiredBefore(@Param("cutoff") Instant cutoff);
 }

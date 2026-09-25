@@ -1,5 +1,7 @@
 package com.mudassirshahzad.eka.api.controller;
 
+import com.mudassirshahzad.eka.application.auth.SessionApplicationService;
+import com.mudassirshahzad.eka.domain.auth.SessionId;
 import com.mudassirshahzad.eka.api.config.SecurityConfig;
 import com.mudassirshahzad.eka.api.config.WebMvcConfig;
 import com.mudassirshahzad.eka.api.observability.CorrelationIdFilter;
@@ -67,6 +69,7 @@ class DocumentControllerTest {
     @MockitoBean private ListDocumentsUseCase  listDocumentsUseCase;
     @MockitoBean private DeleteDocumentUseCase deleteDocumentUseCase;
     @MockitoBean private JwtTokenProvider      jwtTokenProvider;
+    @MockitoBean private SessionApplicationService sessionApplicationService;
 
     @TestConfiguration
     static class MeterRegistryTestConfig {
@@ -86,7 +89,7 @@ class DocumentControllerTest {
     private RequestPostProcessor authenticatedAs(String... authorities) {
         List<SimpleGrantedAuthority> granted = Arrays.stream(authorities)
                 .map(SimpleGrantedAuthority::new).toList();
-        return authentication(new JwtAuthenticationToken(UserId.of(userId), TenantId.of(tenantId), granted));
+        return authentication(new JwtAuthenticationToken(UserId.of(userId), TenantId.of(tenantId), granted, SessionId.generate()));
     }
 
     private Document sampleDocument() {

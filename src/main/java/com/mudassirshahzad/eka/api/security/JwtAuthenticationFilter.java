@@ -1,5 +1,6 @@
 package com.mudassirshahzad.eka.api.security;
 
+import com.mudassirshahzad.eka.application.auth.SessionApplicationService;
 import io.jsonwebtoken.JwtException;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
@@ -38,8 +39,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX         = "Bearer ";
 
-    private final JwtTokenProvider jwtTokenProvider;
-    private final MeterRegistry    meterRegistry;
+    private final JwtTokenProvider          jwtTokenProvider;
+    private final MeterRegistry             meterRegistry;
+    private final SessionApplicationService sessionApplicationService;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -50,7 +52,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             String token = header.substring(BEARER_PREFIX.length());
             try {
-                SecurityContextHolder.getContext().setAuthentication(jwtTokenProvider.parseToken(token));
+                JwtAuthenticationToken authentication = jwtTokenProvider.parseToken(token);
+
+                // A valid signature is necessary but no longer sufficient (WP-2, ADR RT01). The
+                // session behind this token must still be active, which is what lets a leaked
+                // access token be killed before it expires on its own. A revoked session is
+                // treated exactly like an invalid token — context stays empty, and Spring
+                // Security's authorization stage produces the 401 (ADR A04 unchanged).
+                if (!sessionApplicationService.isSessionActive(authentication.sessionId())) {
+                    log.debug("Rejected bearer token for a revoked or expired session");
+                    meterRegistry.counter("eka.auth.failures", "type", "session").increment();
+                    SecurityContextHolder.clearContext();
+                } else {
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             } catch (JwtException | IllegalArgumentException ex) {
                 log.debug("Rejected invalid bearer token: {}", ex.getClass().getSimpleName());
                 meterRegistry.counter("eka.auth.failures", "type", "token").increment();
