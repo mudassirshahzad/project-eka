@@ -5,6 +5,12 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+### Fixed (documentation accuracy — no code change)
+
+- **Retrieval & RAG pipeline diagram refreshed and re-synchronised** (`docs/diagrams/retrieval-pipeline.svg`). The diagram had drifted into contradicting the frozen roadmap (ADR GOV03) in a document every visitor reads: it was titled "**Future** Retrieval & RAG Pipeline" with "all steps shown as future" long after the pipeline shipped, labelled **MCP Server as v0.8.0** and **LangGraph / Multi-Agent as v0.9.0** (all three are Phase 8 spike or post-v1.0), presented **"streaming SSE"** as part of an implemented stage when SSE is unshipped Phase 8 work, dated Conversation Memory v0.7.0 instead of v0.5.0, and used `[SOURCE-N]` rather than the actual `[SOURCE:N]` markers (ADR G03). Same layout, dimensions, stage order and panel structure retained; palette, contrast and typography modernised, and the stage Phase 7 changed (Fusion / Re-ranking) is now visually distinguished. Same class of correction as ADRs HD08–HD10
+- **README internal inconsistencies corrected** — WP-4/WP-5 were still listed as "remaining" after shipping as v0.8.3/v0.8.4; the Technology Stack said `V001–V018` while Current Status said `V001–V019`; the Planned table still carried the Weaviate client timeout that shipped in v0.8.2 (ADR OR01); and the Mermaid roadmap marked v0.8.1–v0.8.4 as planned while the table directly beneath marked all four complete
+
+
 ## [0.8.4] — 2026-09-25 — Phase 7 / WP-5 — Indirect Prompt-Injection Review
 
 ### Added (Phase 7, work package 5 of 5 — ADR GOV07)

@@ -150,9 +150,22 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Postgres↔Weaviate reconciliation — a scheduled job detects chunks that were committed to Postgres but never indexed (the residue of a partial write) and repairs them by re-running the real ingestion path
 - ✅ Alerting, not passive logging — a `seconds_since_last_success` gauge makes a *stopped* reconciliation job visible, which counters alone cannot express
 
-**Planned — rest of Phase 7 and beyond** (see [Release Roadmap](#release-roadmap))
+**Implemented — v0.8.3 / Phase 7 WP-4 (Retrieval Quality)**
 
-- ⏳ Phase 7 remaining work packages — WP-4 re-ranking and HyDE evaluation (v0.8.3); WP-5 indirect prompt-injection review + Phase 7 completion gate (v0.8.4). Branch protection remains an exit criterion applied by the repository owner (ADR GOV08)
+- ✅ Re-ranking stage (`RerankPort`) applied after RRF fusion and after authorization filtering — opt-in, since it costs one model call per candidate
+- ✅ HyDE query expansion as an alternative `QueryRewritePort` — opt-in, A/B-switchable against the plain rewriter
+- ✅ Retrieval evaluation harness — Recall@k, MRR@k and nDCG@k with a **clearly synthetic** dataset, running deterministically in CI as a regression guard
+- ⚠️ **Honest result:** the synthetic benchmark measured **no improvement** from the stub re-ranker (baseline nDCG@4 = 0.431, unchanged). Phase 7's *"measurable relevance improvement"* criterion is therefore **still open** — the mechanism ships, the quality claim does not. See ADR RQ06/RQ07
+
+**Implemented — v0.8.4 / Phase 7 WP-5 (Indirect Prompt-Injection Review)**
+
+- ✅ Untrusted retrieved content is fenced and labelled as data in the system prompt, with the rules restated after it, and fence markers stripped from document content so a document cannot close its own fence
+- ✅ The re-ranking scoring prompt gets identical treatment — a surface WP-4 itself created, and the higher-value target of the two
+- ✅ [Full review published](docs/security/prompt-injection-review.md) with residual risk **explicitly accepted**, not implied away: the mitigations are defence in depth, and no prompt-level technique closes indirect injection
+
+**Planned — beyond Phase 7** (see [Release Roadmap](#release-roadmap))
+
+- ⚠️ **Phase 7 is not closed** (ADR GOV09) — two exit criteria remain open: branch protection is not applied (owner-executed, ADR GOV08) and the retrieval-quality criterion is unmet (ADR RQ07)
 - ⏳ Phase 8 (v0.9.x) — Prometheus/Grafana dashboards, Server-Sent Events streaming responses with source citations, an MCP go/no-go spike (not full delivery)
 - ⏳ Post-v1.0, not yet on the release roadmap — MCP server (full delivery), LangGraph agentic pipeline, multi-agent platform
 
@@ -206,7 +219,7 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 | Vector Store | Weaviate | 1.25 | ANN search, tenant-isolated via a mandatory query-time filter |
 | Relational DB | PostgreSQL | 16 | Metadata, BM25 full-text search |
 | ORM | Hibernate 6 / Spring Data JPA | Bundled | JPA persistence with custom domain mappers |
-| Migrations | Flyway | 10+ | Versioned schema migrations (V001–V018) |
+| Migrations | Flyway | 10+ | Versioned schema migrations (V001–V019) |
 | Document Parsing | Apache Tika | 2.9.2 | Multi-format extraction, magic-byte detection |
 | Generation | Qwen3 via Ollama | Latest | Local LLM for query rewriting and chat generation |
 | Security | Spring Security + JJWT 0.12+ | — | JWT (HS256) authentication (v0.5.2); role + tenant/ownership authorization (v0.5.3, extended to every ownership-scoped method in v0.6.0) |
@@ -218,7 +231,6 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 
 | Category | Technology | Phase | Role |
 |---|---|---|---|
-| Weaviate client timeout | Custom `WeaviateClient` bean override | Phase 7 (v0.8.x) | No configuration surface exists in Spring AI 1.0.0 today — deferred, see `.claude/DECISIONS.md` ADR HD03 |
 | Observability Deployment | Prometheus + Grafana | Phase 8 (v0.9.x) | Scrape `/actuator/prometheus`, dashboards (metrics themselves already exist as of v0.5.4; separate management port available as of v0.6.0) |
 | AI Protocol | MCP (go/no-go spike only) | Phase 8 (v0.9.x) | Spike evaluates whether exposing the knowledge base as MCP tools belongs in the product — full delivery is explicitly post-v1.0, not yet on the release roadmap |
 | Graph Orchestration | LangGraph4j | Post-v1.0 | Agentic retrieval with self-correction — architecturally ready (see Highlights), not yet on the release roadmap |
@@ -414,8 +426,8 @@ graph TD
     classDef done fill:#22c55e,stroke:#16a34a,color:#ffffff
     classDef planned fill:#e5e7eb,stroke:#9ca3af,color:#374151,stroke-dasharray: 5 5
 
-    class A,B,C,D,E,F,G,H,I,I2,J1 done
-    class J2,K,L planned
+    class A,B,C,D,E,F,G,H,I,I2,J1,J2 done
+    class K,L planned
 ```
 
 | Version | Scope | Status |
