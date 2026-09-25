@@ -19,6 +19,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -163,10 +164,15 @@ class ChunkReconciliationQueryIT {
         Chunk secondSave = chunkRepository.saveAll(List.of(chunk)).getFirst();
 
         assertThat(secondSave.getVectorId()).isEqualTo("vector-abc");
+        // Compared at microsecond precision: @PrePersist assigns an Instant with nanosecond
+        // precision in memory, while Postgres TIMESTAMPTZ stores microseconds, so the reloaded
+        // value legitimately differs in sub-microsecond digits. Asserting raw equality passes or
+        // fails depending on the host clock's resolution — it held on macOS and failed on CI.
         assertThat(secondSave.getCreatedAt())
                 .as("createdAt must survive the indexing re-save")
                 .isNotNull()
-                .isEqualTo(firstSave.getCreatedAt());
+                .satisfies(actual -> assertThat(actual.truncatedTo(ChronoUnit.MICROS))
+                        .isEqualTo(firstSave.getCreatedAt().truncatedTo(ChronoUnit.MICROS)));
         assertThat(chunkRepository.findUnindexed(500))
                 .extracting(c -> c.getId().value())
                 .doesNotContain(chunk.getId().value());
