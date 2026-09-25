@@ -115,6 +115,16 @@ app:
     token-budget: 4096
   conversation:
     memory-window-size: 10
+  weaviate:
+    # Seconds, not milliseconds, deliberately — io.weaviate.client.Config takes seconds and a
+    # ms→s conversion could silently round a sub-second timeout to 0 (WP-3, ADR OR01).
+    connect-timeout-seconds: ${WEAVIATE_CONNECT_TIMEOUT_SECONDS:5}
+    connection-request-timeout-seconds: ${WEAVIATE_CONNECTION_REQUEST_TIMEOUT_SECONDS:5}
+    read-timeout-seconds: ${WEAVIATE_READ_TIMEOUT_SECONDS:20}
+  reconciliation:
+    batch-size: ${RECONCILIATION_BATCH_SIZE:100}
+    initial-delay-ms: ${RECONCILIATION_INITIAL_DELAY_MS:300000}
+    interval-ms: ${RECONCILIATION_INTERVAL_MS:900000}
   session:
     # Housekeeping only — an expired session is already rejected by its own expiry check, so this
     # bounds table growth rather than enforcing anything (WP-2, ADR RT01).

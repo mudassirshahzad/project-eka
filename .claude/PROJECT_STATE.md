@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.8.1 (Complete) — **Phase 7 / WP-2 — Session Security: Refresh Tokens & Revocation** (ADR RT01–RT05). WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
+v0.8.2 (Complete) — **Phase 7 / WP-3 — Operational Resilience: Weaviate Timeout & Reconciliation** (ADR OR01–OR04). WP-2 (Session Security, ADR RT01–RT05) shipped at v0.8.1. WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -229,7 +229,7 @@ Phase 7 was planned in its own session, as ADR GOV03/`CLAUDE.md` require. That p
 |---|---|---|---|---|
 | WP-1 | v0.8.0 | CI/CD & Release Governance Hardening — dependency/vulnerability scanning, CI-verified Docker build (branch protection: owner-applied, ADR GOV08) | — | ✅ Complete |
 | WP-2 | v0.8.1 | Session Security — refresh tokens with revocation (session-bound access tokens, rotation, reuse detection) | +34 | ✅ Complete |
-| WP-3 | v0.8.2 | Operational Resilience — Weaviate client timeout (closes ADR HD03) + Postgres↔Weaviate reconciliation job | — | ○ Not started |
+| WP-3 | v0.8.2 | Operational Resilience — Weaviate client timeout (closes ADR HD03) + Postgres↔Weaviate reconciliation job | +15 | ✅ Complete |
 | WP-4 | v0.8.3 | Retrieval Quality — cross-encoder re-ranking, HyDE evaluation, evaluation harness | — | ○ Not started |
 | WP-5 | v0.8.4 | Indirect Prompt-Injection Risk Review + **Phase 7 Complete gate** (verifies branch protection is actually applied — ADR GOV08) | — | ○ Not started |
 
@@ -380,6 +380,10 @@ Security layer (Authorization Filter) is planned but not implemented.
 | RT03 | Replaying a rotated refresh token revokes every session the user holds; `noRollbackFor` is load-bearing — the signalling exception otherwise rolled the revocation back |
 | RT04 | Only the SHA-256 hash of a refresh secret is stored; SHA-256 rather than BCrypt is correct for a 256-bit random secret on a hot path |
 | RT05 | `refresh_tokens` existed unused since V009 (scaffolded ahead of its consumer, cf. HD09) — V019 extends it rather than creating a parallel table |
+| OR01 | Hand-constructed `WeaviateClient` bean bounds connect/connection-request/read timeouts — closes ADR HD03; properties in seconds to match the client API and avoid a ms→s rounding to 0 |
+| OR02 | Reconciliation detects Postgres→Weaviate drift via null `vector_id` and repairs by re-running the real ingestion path; Weaviate-side orphans deliberately out of scope |
+| OR03 | Reconciliation alerting is a staleness gauge (`seconds_since_last_success`), not only counters — a job that stops running otherwise looks identical to a healthy one |
+| OR04 | `ChunkRepositoryAdapter.saveAll` updates an existing chunk row instead of mapping to a fresh detached entity — fixes a real ingestion-path `createdAt` NPE found by the first real-database re-save test |
 
 ---
 
@@ -771,7 +775,7 @@ Reviewed without implementing — each classified so none of these become a futu
 | `ConversationApplicationService.renameConversation`/`.deleteConversation` lack the P05.3 tenant check (ADR TN01) | **CLOSED (P05.5, ADR HD02)** | Both methods now call `requireTenantMatch`, identically to the three previously-checked methods. Still unreached by any REST endpoint — closed ahead of exposure, not in response to it. |
 | No registration/admin endpoint for `application.user` | **Partially CLOSED (P06.1)** | `POST /api/v1/admin/bootstrap` (first-user, public) and `POST /api/v1/admin/users` (ADMIN-only) now exist. Still no self-service registration, no list-users, no role-assignment/password-change REST — deliberately minimal (ADR PC05), not oversight. |
 | `/actuator/metrics`/`/actuator/prometheus` require a JWT rather than being scraped anonymously | Partially addressed (P05.5, ADR HD05) | `management.server.port` now exists as an opt-in escape hatch — setting it moves actuator onto a separate embedded connector outside this app's JWT-based `SecurityFilterChain`, the standard production pattern. Not enabled by default (deployment-topology decision, left to the operator); `/actuator/metrics`/`/actuator/prometheus` remain JWT-gated when `MANAGEMENT_PORT` is unset. |
-| Weaviate HTTP client has no configurable connect/read timeout | Deferred technical debt (P05.5, ADR HD03) | Verified via bytecode inspection of `spring-ai-autoconfigure-vector-store-weaviate-1.0.0.jar`: `WeaviateVectorStoreProperties` exposes no timeout property, and the auto-configured `WeaviateClient` bean has no `RestClientCustomizer`-equivalent hook. A fix would require overriding the auto-configured client and hand-constructing `io.weaviate.client.Config` — genuine architectural expansion, out of this milestone's "document, don't expand" scope. Revisit as a Phase 6 candidate. |
+| Weaviate HTTP client has no configurable connect/read timeout | **CLOSED (v0.8.2 / WP-3, ADR OR01)** | ADR HD03's P05.5 analysis held up exactly: `WeaviateVectorStoreProperties` exposes no timeout property and the auto-configured client has no `RestClientCustomizer`-equivalent hook, so the fix required overriding the bean and hand-constructing `io.weaviate.client.Config` — which WP-3 did. `infrastructure.config.WeaviateClientConfig` now bounds connect/connection-request/read timeouts (defaults 5/5/20 **seconds**, matching the client API's own unit), with non-positive values failing at startup. The two enabling facts were re-verified against the jars, not assumed: the auto-configured bean carries `@ConditionalOnMissingBean`, and `Config`'s two-argument constructor passes `60, 60, 60`. |
 | No REST endpoint for document ingestion (`POST /api/v1/documents` does not exist) | **CLOSED (P06.1)** | `DocumentController` now exposes upload (multipart), get, list, and delete, all reusing `UploadDocumentUseCase`/`GetDocumentUseCase`/`ListDocumentsUseCase`/`DeleteDocumentUseCase` unchanged. Closes audit finding H2. |
 | `DeleteConversationUseCase` has no REST route | **CLOSED (P06.1)** | `DELETE /api/v1/conversations/{id}` now calls it — its active-chat-session guard is exercised by a real caller for the first time. |
 | Docker image (new `Dockerfile`, v0.6.1 ADR EX10) not empirically build-verified | **CLOSED (v0.8.0 / WP-1, ADR CG02)** | The `Dockerfile` was built for real for the first time during WP-1 (exit 0; 149 MB boot jar; runtime uid 999, non-root — both assertions run locally before being wired up). A `docker-build` CI job now runs the same build and the same two assertions on every PR and push, so the gap cannot silently reopen. |

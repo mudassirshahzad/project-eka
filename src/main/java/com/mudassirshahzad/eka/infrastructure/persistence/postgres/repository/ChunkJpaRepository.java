@@ -2,6 +2,7 @@ package com.mudassirshahzad.eka.infrastructure.persistence.postgres.repository;
 
 import com.mudassirshahzad.eka.infrastructure.persistence.postgres.entity.ChunkEntity;
 import com.mudassirshahzad.eka.infrastructure.persistence.postgres.entity.DocumentEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +21,10 @@ public interface ChunkJpaRepository extends JpaRepository<ChunkEntity, UUID> {
     List<ChunkEntity> findByDocument(DocumentEntity document);
 
     List<ChunkEntity> findByIdIn(List<UUID> ids);
+
+    /** Oldest-first so a persistent failure on one batch cannot starve newer chunks forever. */
+    @Query("SELECT c FROM ChunkEntity c WHERE c.vectorId IS NULL ORDER BY c.createdAt ASC")
+    List<ChunkEntity> findUnindexed(Pageable pageable);
 
     @Modifying
     @Query("DELETE FROM ChunkEntity c WHERE c.document.id = :documentId")
