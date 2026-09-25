@@ -24,7 +24,7 @@ jobs:
           java-version: '21'
 
       - name: Set up Gradle 8.12
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.12'
 
@@ -67,7 +67,7 @@ jobs:
           java-version: '21'
 
       - name: Submit Gradle dependency graph
-        uses: gradle/actions/dependency-submission@v4
+        uses: gradle/actions/dependency-submission@v6
         with:
           gradle-version: '8.12'
 
