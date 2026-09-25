@@ -1,189 +1,133 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 940" width="780" height="940"
-     font-family="'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 916" width="720" height="916"
+     font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
 
   <defs>
-    <!-- Implemented stage: restrained vertical gradient for depth, not decoration -->
-    <linearGradient id="g-impl" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#1f8b3d"/>
-      <stop offset="100%" stop-color="#16702f"/>
-    </linearGradient>
-    <!-- Roadmap card: subtle blue tint -->
-    <linearGradient id="g-future" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#eaf5ff"/>
-      <stop offset="100%" stop-color="#ddf0ff"/>
-    </linearGradient>
-
-    <!-- Soft elevation. Low opacity on purpose: depth, never gloss -->
-    <filter id="elev" x="-20%" y="-25%" width="140%" height="165%">
-      <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#0b1b2b" flood-opacity="0.16"/>
-    </filter>
-    <filter id="elev-sm" x="-20%" y="-25%" width="140%" height="165%">
-      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#0b1b2b" flood-opacity="0.13"/>
-    </filter>
-
-    <!-- Implemented flow: solid, high-contrast slate -->
+    <!-- Implemented flow — same blue marker as ingestion-pipeline.svg / architecture.svg -->
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#57606a"/>
+      <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/>
     </marker>
-    <!-- Roadmap connector: muted, used only for work that is not built -->
-    <marker id="arr-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#8c959f"/>
+    <!-- Roadmap connector — muted, for work that is not built -->
+    <marker id="arr-gray" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
     </marker>
   </defs>
 
-  <!-- Opaque light canvas: keeps contrast identical in GitHub light and dark mode -->
-  <rect width="780" height="940" fill="#ffffff"/>
+  <rect width="720" height="916" fill="#ffffff"/>
 
   <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- TITLE (centered on full canvas width 780)              -->
+  <!-- TITLE                                                   -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <text x="390" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#1f2328" letter-spacing="0.2">Retrieval &amp; RAG Pipeline</text>
-  <rect x="366" y="42" width="48" height="3" rx="1.5" fill="#0969da"/>
-  <text x="390" y="62" text-anchor="middle" font-size="11" fill="#59636e">Implemented end-to-end · v0.8.4 · Phase 7 in progress</text>
-
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- MAIN PIPELINE                                           -->
-  <!-- Box: x=68 w=344 h=58  centered at x=240               -->
-  <!-- Stride: 76 (58+18)                                     -->
-  <!-- y positions: 72,148,224,(fork 300-356),380,456,532,608,684,760 -->
-  <!-- Step badge: circle cx=94, cy = y+29                    -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-
-  <!-- ── 1. User Question ── -->
-  <rect x="68" y="72" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <circle cx="94" cy="101" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
-  <text x="94" y="105" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">1</text>
-  <text x="248" y="96" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">User Question</text>
-  <text x="248" y="115" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Natural language query · conversation context</text>
-  <line x1="240" y1="130" x2="240" y2="146" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
-
-  <!-- ── 2. Query Rewrite ── -->
-  <rect x="68" y="148" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <circle cx="94" cy="177" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
-  <text x="94" y="181" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">2</text>
-  <text x="248" y="172" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">Query Rewrite</text>
-  <text x="248" y="191" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Ollama LLM · HyDE variant opt-in (v0.8.3)</text>
-  <line x1="240" y1="206" x2="240" y2="222" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
-
-  <!-- ── 3. Hybrid Retrieval (fork) ── -->
-  <rect x="68" y="224" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <circle cx="94" cy="253" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
-  <text x="94" y="257" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">3</text>
-  <text x="248" y="248" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">Hybrid Retrieval</text>
-  <text x="248" y="267" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Parallel semantic + keyword search</text>
-
-  <!-- Fork: smooth curves from bottom center of Hybrid (240,282) into 4a / 4b -->
-  <path d="M240,282 C240,293 134,287 134,298" fill="none" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
-  <path d="M240,282 C240,293 346,287 346,298" fill="none" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
-
-  <!-- ── 4a. Weaviate Search  x=68 w=132 center=134 ── -->
-  <rect x="68" y="300" width="132" height="52" rx="6" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.1" filter="url(#elev-sm)"/>
-  <text x="134" y="322" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">Weaviate Search</text>
-  <text x="134" y="338" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.82">ANN vector search</text>
-
-  <!-- ── 4b. PostgreSQL BM25  x=280 w=132 center=346 ── -->
-  <rect x="280" y="300" width="132" height="52" rx="6" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.1" filter="url(#elev-sm)"/>
-  <text x="346" y="322" text-anchor="middle" font-size="11" font-weight="600" fill="#ffffff">PostgreSQL BM25</text>
-  <text x="346" y="338" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.82">Full-text keyword search</text>
-
-  <!-- Join: smooth curves from 4a / 4b into Fusion (240,378) -->
-  <path d="M134,352 C134,365 240,367 240,378" fill="none" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
-  <path d="M346,352 C346,365 240,367 240,378" fill="none" stroke="#57606a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arr)"/>
-
-  <!-- ── 5. Fusion / Re-ranking ── -->
-  <rect x="68" y="380" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <circle cx="94" cy="409" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
-  <text x="94" y="413" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">5</text>
-  <text x="248" y="404" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">Fusion / Re-ranking</text>
-  <text x="248" y="423" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">RRF · classification-filtered · re-rank opt-in</text>
-  <line x1="240" y1="438" x2="240" y2="454" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
-
-  <!-- ── 6. Context Assembly ── -->
-  <rect x="68" y="456" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <circle cx="94" cy="485" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
-  <text x="94" y="489" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">6</text>
-  <text x="248" y="480" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">Context Assembly</text>
-  <text x="248" y="499" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Token-budget guard · markers [SOURCE:N]</text>
-  <line x1="240" y1="514" x2="240" y2="530" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
-
-  <!-- ── 7. Prompt Builder ── -->
-  <rect x="68" y="532" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <circle cx="94" cy="561" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
-  <text x="94" y="565" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">7</text>
-  <text x="248" y="556" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">Prompt Builder</text>
-  <text x="248" y="575" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">System prompt · untrusted context fenced (v0.8.4)</text>
-  <line x1="240" y1="590" x2="240" y2="606" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
-
-  <!-- ── 8. LLM Generation ── -->
-  <rect x="68" y="608" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <circle cx="94" cy="637" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
-  <text x="94" y="641" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">8</text>
-  <text x="248" y="632" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">LLM Generation</text>
-  <text x="248" y="651" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Qwen3 via Ollama · output guardrails</text>
-  <line x1="240" y1="666" x2="240" y2="682" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
-
-  <!-- ── 9. Grounded Response ── -->
-  <rect x="68" y="684" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <circle cx="94" cy="713" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
-  <text x="94" y="717" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">9</text>
-  <text x="248" y="708" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">Grounded Response</text>
-  <text x="248" y="727" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Citations resolved · [SOURCE:N] markers</text>
-  <line x1="240" y1="742" x2="240" y2="758" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
-
-  <!-- ── 10. Conversation Memory ── -->
-  <rect x="68" y="760" width="344" height="58" rx="8" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1.25" filter="url(#elev)"/>
-  <circle cx="94" cy="789" r="11" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1"/>
-  <text x="94" y="793" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">10</text>
-  <text x="248" y="784" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff" letter-spacing="0.15">Conversation Memory</text>
-  <text x="248" y="803" text-anchor="middle" font-size="10" fill="#ffffff" fill-opacity="0.84">Sliding window · multi-turn context (v0.5.0)</text>
+  <text x="225" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Retrieval &amp; RAG Pipeline</text>
+  <text x="225" y="54" text-anchor="middle" font-size="11" fill="#64748b">v0.8.4 — Implemented end-to-end</text>
 
   <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- FUTURE INTEGRATIONS (right panel, x=460+)              -->
-  <!-- Versions per the frozen roadmap (ADR GOV03)            -->
+  <!-- Layout mirrors ingestion-pipeline.svg exactly:          -->
+  <!-- box x=60 w=330 h=62 gap=18 stride=80                    -->
+  <!-- Boxes: y=88,168,248,(fork 328),408,488,568,648,728,808  -->
+  <!-- Arrows: bottom-of-box to bottom-of-box + 16             -->
   <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="460" y="196" width="300" height="348" rx="10" fill="#f9fbfd" stroke="#e1e7ee" stroke-width="1"/>
-  <text x="618" y="221" text-anchor="middle" font-size="9.5" fill="#57606a" font-weight="700" letter-spacing="1.1">FUTURE INTEGRATIONS</text>
-  <line x1="480" y1="230" x2="756" y2="230" stroke="#e1e7ee" stroke-width="1"/>
-  <text x="618" y="247" text-anchor="middle" font-size="9" fill="#8c959f">Not implemented · frozen roadmap (ADR GOV03)</text>
+
+  <!-- ── STEP 1: User Question ── -->
+  <rect x="60" y="88" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="225" y="112" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">1 · User Question</text>
+  <text x="225" y="131" text-anchor="middle" font-size="10" fill="#3b82f6">Natural language query · conversation context</text>
+  <line x1="225" y1="150" x2="225" y2="166" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 2: Query Rewrite ── -->
+  <rect x="60" y="168" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="225" y="192" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">2 · Query Rewrite</text>
+  <text x="225" y="211" text-anchor="middle" font-size="10" fill="#3b82f6">Ollama LLM · HyDE variant opt-in (v0.8.3)</text>
+  <line x1="225" y1="230" x2="225" y2="246" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 3: Hybrid Retrieval (forks into 4a / 4b) ── -->
+  <rect x="60" y="248" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="225" y="272" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">3 · Hybrid Retrieval</text>
+  <text x="225" y="291" text-anchor="middle" font-size="10" fill="#3b82f6">Parallel semantic + keyword search</text>
+
+  <!-- Fork: straight verticals dropped onto each child, as architecture.svg does -->
+  <line x1="138" y1="310" x2="138" y2="326" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="312" y1="310" x2="312" y2="326" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 4: parallel engines (styled as architecture.svg's adapter boxes) ── -->
+  <rect x="60" y="328" width="156" height="62" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="138" y="354" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">Weaviate Search</text>
+  <text x="138" y="371" text-anchor="middle" font-size="10" fill="#64748b">ANN vector search</text>
+
+  <rect x="234" y="328" width="156" height="62" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="312" y="354" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">PostgreSQL BM25</text>
+  <text x="312" y="371" text-anchor="middle" font-size="10" fill="#64748b">Full-text keyword search</text>
+
+  <!-- Join: both engines drop onto the fusion step below -->
+  <line x1="138" y1="390" x2="138" y2="406" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="312" y1="390" x2="312" y2="406" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 5: Fusion / Re-ranking ── -->
+  <rect x="60" y="408" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="225" y="432" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">5 · Fusion / Re-ranking</text>
+  <text x="225" y="451" text-anchor="middle" font-size="10" fill="#3b82f6">RRF · classification-filtered · re-rank opt-in</text>
+  <line x1="225" y1="470" x2="225" y2="486" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 6: Context Assembly ── -->
+  <rect x="60" y="488" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="225" y="512" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">6 · Context Assembly</text>
+  <text x="225" y="531" text-anchor="middle" font-size="10" fill="#3b82f6">Token-budget guard · markers [SOURCE:N]</text>
+  <line x1="225" y1="550" x2="225" y2="566" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 7: Prompt Builder ── -->
+  <rect x="60" y="568" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="225" y="592" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">7 · Prompt Builder</text>
+  <text x="225" y="611" text-anchor="middle" font-size="10" fill="#3b82f6">System prompt · untrusted context fenced (v0.8.4)</text>
+  <line x1="225" y1="630" x2="225" y2="646" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 8: LLM Generation ── -->
+  <rect x="60" y="648" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="225" y="672" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">8 · LLM Generation</text>
+  <text x="225" y="691" text-anchor="middle" font-size="10" fill="#3b82f6">Qwen3 via Ollama · output guardrails</text>
+  <line x1="225" y1="710" x2="225" y2="726" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 9: Grounded Response ── -->
+  <rect x="60" y="728" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="225" y="752" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">9 · Grounded Response</text>
+  <text x="225" y="771" text-anchor="middle" font-size="10" fill="#3b82f6">Citations resolved · [SOURCE:N] markers</text>
+  <line x1="225" y1="790" x2="225" y2="806" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── STEP 10: Conversation Memory ── -->
+  <rect x="60" y="808" width="330" height="62" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="225" y="832" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">10 · Conversation Memory</text>
+  <text x="225" y="851" text-anchor="middle" font-size="10" fill="#3b82f6">Sliding window · multi-turn context (v0.5.0)</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- FUTURE INTEGRATIONS (right panel)                       -->
+  <!-- Same header + hairline + dashed-card treatment as the   -->
+  <!-- FUTURE EXTENSIONS panel in architecture.svg             -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <text x="550" y="360" text-anchor="middle" font-size="10" fill="#64748b" font-weight="700" letter-spacing="0.8">FUTURE INTEGRATIONS</text>
+  <line x1="450" y1="365" x2="660" y2="365" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="550" y="380" text-anchor="middle" font-size="9" fill="#94a3b8">Not implemented · frozen roadmap (ADR GOV03)</text>
 
   <!-- MCP Server — Phase 8 spike only; full delivery post-v1.0 -->
-  <rect x="472" y="262" width="278" height="52" rx="7" fill="url(#g-future)" stroke="#54aeff" stroke-width="1.25" stroke-dasharray="5,3" filter="url(#elev-sm)"/>
-  <text x="611" y="283" text-anchor="middle" font-size="11" font-weight="600" fill="#0a3069">MCP Server</text>
-  <text x="611" y="300" text-anchor="middle" font-size="9" fill="#0550ae">Phase 8 — go/no-go spike only</text>
+  <rect x="440" y="392" width="220" height="46" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="550" y="411" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">MCP Server</text>
+  <text x="550" y="428" text-anchor="middle" font-size="10" fill="#64748b">Phase 8 — go/no-go spike only</text>
 
   <!-- LangGraph — post-v1.0 -->
-  <rect x="472" y="332" width="278" height="52" rx="7" fill="url(#g-future)" stroke="#54aeff" stroke-width="1.25" stroke-dasharray="5,3" filter="url(#elev-sm)"/>
-  <text x="611" y="353" text-anchor="middle" font-size="11" font-weight="600" fill="#0a3069">LangGraph</text>
-  <text x="611" y="370" text-anchor="middle" font-size="9" fill="#0550ae">Post-v1.0 — graph orchestration</text>
+  <rect x="440" y="452" width="220" height="46" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="550" y="471" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">LangGraph</text>
+  <text x="550" y="488" text-anchor="middle" font-size="10" fill="#64748b">Post-v1.0 — graph orchestration</text>
 
   <!-- Multi-Agent — post-v1.0 -->
-  <rect x="472" y="402" width="278" height="52" rx="7" fill="url(#g-future)" stroke="#54aeff" stroke-width="1.25" stroke-dasharray="5,3" filter="url(#elev-sm)"/>
-  <text x="611" y="423" text-anchor="middle" font-size="11" font-weight="600" fill="#0a3069">Multi-Agent Coordination</text>
-  <text x="611" y="440" text-anchor="middle" font-size="9" fill="#0550ae">Post-v1.0 — agent-to-agent protocol</text>
+  <rect x="440" y="512" width="220" height="46" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="550" y="531" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">Multi-Agent Coordination</text>
+  <text x="550" y="548" text-anchor="middle" font-size="10" fill="#64748b">Post-v1.0 — agent-to-agent protocol</text>
 
-  <!-- Streaming responses — Phase 8 (the claim removed from stage 8) -->
-  <rect x="472" y="472" width="278" height="52" rx="7" fill="url(#g-future)" stroke="#54aeff" stroke-width="1.25" stroke-dasharray="5,3" filter="url(#elev-sm)"/>
-  <text x="611" y="493" text-anchor="middle" font-size="11" font-weight="600" fill="#0a3069">Streaming Responses</text>
-  <text x="611" y="510" text-anchor="middle" font-size="9" fill="#0550ae">Phase 8 — SSE on the chat endpoint</text>
+  <!-- Streaming responses — Phase 8 -->
+  <rect x="440" y="572" width="220" height="46" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="550" y="591" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">Streaming Responses</text>
+  <text x="550" y="608" text-anchor="middle" font-size="10" fill="#64748b">Phase 8 — SSE on the chat endpoint</text>
 
-  <!-- Connector lines: pipeline → roadmap cards -->
-  <path d="M412,288 C436,288 448,288 468,288" fill="none" stroke="#8c959f" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
-  <path d="M412,358 C436,358 448,358 468,358" fill="none" stroke="#8c959f" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
-  <path d="M412,428 C436,428 448,428 468,428" fill="none" stroke="#8c959f" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
-
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- LEGEND                                                  -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="68" y="848" width="480" height="52" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
-  <text x="308" y="867" text-anchor="middle" font-size="9.5" font-weight="700" fill="#57606a" letter-spacing="1">LEGEND</text>
-
-  <rect x="130" y="876" width="18" height="12" rx="3" fill="url(#g-impl)" stroke="#0f5c27" stroke-width="1"/>
-  <text x="154" y="886" font-size="10" fill="#1f2328">Implemented</text>
-
-  <rect x="262" y="876" width="18" height="12" rx="3" fill="url(#g-future)" stroke="#54aeff" stroke-width="1" stroke-dasharray="3,2"/>
-  <text x="286" y="886" font-size="10" fill="#1f2328">Future integration</text>
-
-  <line x1="420" y1="882" x2="444" y2="882" stroke="#57606a" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
-  <text x="452" y="886" font-size="10" fill="#1f2328">Flow</text>
+  <!-- Connectors: fusion step right edge (390,439) → roadmap cards -->
+  <line x1="390" y1="439" x2="438" y2="415" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
+  <line x1="390" y1="439" x2="438" y2="475" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
+  <line x1="390" y1="439" x2="438" y2="535" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
 
 </svg>
