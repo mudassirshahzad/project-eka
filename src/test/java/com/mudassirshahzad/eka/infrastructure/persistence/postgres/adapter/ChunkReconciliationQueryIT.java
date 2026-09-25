@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 /**
  * Proves the drift-detection query behind the reconciliation job against a real Postgres
@@ -164,15 +165,16 @@ class ChunkReconciliationQueryIT {
         Chunk secondSave = chunkRepository.saveAll(List.of(chunk)).getFirst();
 
         assertThat(secondSave.getVectorId()).isEqualTo("vector-abc");
-        // Compared at microsecond precision: @PrePersist assigns an Instant with nanosecond
-        // precision in memory, while Postgres TIMESTAMPTZ stores microseconds, so the reloaded
-        // value legitimately differs in sub-microsecond digits. Asserting raw equality passes or
-        // fails depending on the host clock's resolution — it held on macOS and failed on CI.
+        // Compared with a tolerance rather than for equality. @PrePersist assigns a nanosecond
+        // Instant in memory; Postgres TIMESTAMPTZ keeps microseconds and *rounds* where Java
+        // truncates, so the reloaded value can legitimately differ by up to a microsecond. The
+        // property worth guarding is that createdAt survived the re-save at all — the bug being
+        // regressed against produced null, and a reset would differ by seconds, so a millisecond
+        // window separates "preserved" from either failure without depending on clock resolution.
         assertThat(secondSave.getCreatedAt())
                 .as("createdAt must survive the indexing re-save")
                 .isNotNull()
-                .satisfies(actual -> assertThat(actual.truncatedTo(ChronoUnit.MICROS))
-                        .isEqualTo(firstSave.getCreatedAt().truncatedTo(ChronoUnit.MICROS)));
+                .isCloseTo(firstSave.getCreatedAt(), within(1, ChronoUnit.MILLIS));
         assertThat(chunkRepository.findUnindexed(500))
                 .extracting(c -> c.getId().value())
                 .doesNotContain(chunk.getId().value());
