@@ -1,0 +1,37 @@
+# Dependabot configuration — Phase 7 / WP-1 (ADR CG01).
+#
+# Complements, and does not replace, the dependency-review gate in
+# .github/workflows/build.yml: dependency-review blocks a pull request that would
+# *introduce* a known-vulnerable dependency, while Dependabot opens pull requests to
+# upgrade dependencies that became vulnerable (or simply went stale) after they were
+# already merged. Neither mechanism covers the other's case.
+
+version: 2
+
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build(deps)"
+    groups:
+      # Spring Boot and Spring AI release their modules in lockstep; upgrading them
+      # one pull request at a time produces a series of individually-broken builds.
+      spring:
+        patterns:
+          - "org.springframework*"
+          - "io.spring*"
+      test:
+        patterns:
+          - "org.testcontainers:*"
+          - "com.tngtech.archunit:*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"

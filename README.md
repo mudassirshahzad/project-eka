@@ -62,14 +62,14 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.7.2 — Post-Phase-6 Independent Audit Remediation (maintenance release, not a Phase 7 milestone) |
+| **Current Release** | v0.8.0 — Phase 7 / WP-1: CI/CD & Release Governance Hardening |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
 | **Automated Tests** | 726 passing, 0 failures · 73 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
-| **CI** | GitHub Actions — build + full test suite + ArchUnit on every PR and push to `main` |
+| **CI** | GitHub Actions — build + full test suite + ArchUnit, dependency-review SCA gate, and a verified `docker build`, on every PR and push to `main` |
 | **Schema Migrations** | Flyway V001–V018 (18 migrations) |
-| **Current Focus** | Repository hardening complete (v0.7.2) — Phase 6 (v0.7.1) remains the last feature milestone |
-| **Next Milestone** | Phase 7 (Retrieval Quality & Operational Integrity) awaits its own planning session before implementation begins |
+| **Current Focus** | Phase 7 (Retrieval Quality & Operational Integrity) — planned and in progress across five work packages (v0.8.0–v0.8.4) |
+| **Next Milestone** | Phase 7 / WP-2 — Session Security: refresh tokens with revocation (v0.8.1) |
 
 ---
 
@@ -132,9 +132,14 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Fail-closed by design — an unknown, unparseable, or null classification is never granted to any role, including `ADMIN`; a one-time migration classified every pre-existing document `INTERNAL`, with a startup check logging a warning if any document is still unclassified
 - ✅ Closes the item this project's target architecture has named since before Phase 4 ("Authorization Filter (planned)... do not assume it already exists")
 
-**Planned — Phase 7 and beyond** (Phase 6 is complete; see [Release Roadmap](#release-roadmap))
+**Implemented — v0.8.0 / Phase 7 WP-1 (CI/CD & Release Governance Hardening)**
 
-- ⏳ Phase 7 (v0.8.x) — re-ranking, HyDE evaluation, Postgres↔Weaviate reconciliation, refresh tokens with revocation, configurable Weaviate client timeout (no configuration surface exists in Spring AI 1.0.0 today — see `.claude/DECISIONS.md`, ADR HD03), indirect prompt-injection review, CI dependency scanning, applied branch protection
+- ✅ Dependency/vulnerability scanning in CI — a `dependency-review` gate fails any pull request introducing a dependency with a known high-or-worse advisory; a `dependency-submission` job keeps GitHub's dependency graph accurate for this Gradle project; Dependabot opens weekly grouped upgrade pull requests
+- ✅ Docker image build-verified in CI — a real `docker build` runs on every pull request and push, asserting the boot jar is present and the runtime user is non-root; closes the gap ADR EX10 disclosed (the `Dockerfile` had never once been empirically built, only read)
+
+**Planned — rest of Phase 7 and beyond** (see [Release Roadmap](#release-roadmap))
+
+- ⏳ Phase 7 remaining work packages — WP-2 refresh tokens with revocation (v0.8.1); WP-3 Weaviate client timeout (no configuration surface exists in Spring AI 1.0.0 today — see `.claude/DECISIONS.md`, ADR HD03) + Postgres↔Weaviate reconciliation (v0.8.2); WP-4 re-ranking and HyDE evaluation (v0.8.3); WP-5 indirect prompt-injection review + Phase 7 completion gate (v0.8.4). Branch protection remains an exit criterion applied by the repository owner (ADR GOV08)
 - ⏳ Phase 8 (v0.9.x) — Prometheus/Grafana dashboards, Server-Sent Events streaming responses with source citations, an MCP go/no-go spike (not full delivery)
 - ⏳ Post-v1.0, not yet on the release roadmap — MCP server (full delivery), LangGraph agentic pipeline, multi-agent platform
 
@@ -181,7 +186,7 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 
 | Category | Technology | Version | Role |
 |---|---|---|---|
-| Runtime | Java | 21 (LTS) | Virtual threads, records, pattern matching (`--enable-preview`) |
+| Runtime | Java | 21 (LTS) | Records, pattern matching, sealed types — all final in 21; no preview features are used (`--enable-preview` removed in v0.5.0, ADR R05) |
 | Framework | Spring Boot | 3.5.0 | Application container and auto-configuration |
 | AI Orchestration | Spring AI | 1.0.0 | Unified embedding and vector store abstraction |
 | Embedding | nomic-embed-text via Ollama | Latest | Local 768-dim dense embeddings |
@@ -345,7 +350,7 @@ Override via environment variables or `application.yml`:
 ## Release Roadmap
 
 Frozen from v0.6.1 to v1.0.0 (v1.0 Roadmap Freeze, ADR GOV03; Phase 6 versioning further refined by
-ADR GOV04, closed out by ADR GOV05). This is the one authoritative roadmap story for the project —
+ADR GOV04, closed out by ADR GOV05; Phase 7 versioning refined the same way by ADR GOV07). This is the one authoritative roadmap story for the project —
 `.claude/ROADMAP.md` and `.claude/PROJECT_STATE.md` carry the same sequence with full milestone-level
 detail; [docs/roadmap.md](docs/roadmap.md) is pre-implementation historical content only, not current
 scope.
@@ -361,15 +366,16 @@ graph TD
     G --> H["v0.7.0 — Phase 6 / P06.1<br/>REST Surface Foundation"]
     H --> I["v0.7.1 — Phase 6 / P06.2<br/>Authorization Filter &amp;<br/>Phase 6 Completion"]
     I --> I2["v0.7.2<br/>Post-Phase-6 Audit<br/>Remediation (maintenance)"]
-    I2 --> J["Phase 7 → v0.8.x<br/>Retrieval Quality &amp;<br/>Operational Integrity"]
-    J --> K["Phase 8 → v0.9.x<br/>Scale &amp;<br/>Ecosystem Readiness"]
+    I2 --> J1["v0.8.0 — Phase 7 / WP-1<br/>CI/CD &amp; Release<br/>Governance Hardening"]
+    J1 --> J2["v0.8.1–v0.8.4 — Phase 7<br/>WP-2…WP-5: Retrieval Quality &amp;<br/>Operational Integrity"]
+    J2 --> K["Phase 8 → v0.9.x<br/>Scale &amp;<br/>Ecosystem Readiness"]
     K --> L["v1.0.0<br/>Stable Enterprise Release"]
 
     classDef done fill:#22c55e,stroke:#16a34a,color:#ffffff
     classDef planned fill:#e5e7eb,stroke:#9ca3af,color:#374151,stroke-dasharray: 5 5
 
-    class A,B,C,D,E,F,G,H,I,I2 done
-    class J,K,L planned
+    class A,B,C,D,E,F,G,H,I,I2,J1 done
+    class J2,K,L planned
 ```
 
 | Version | Scope | Status |
@@ -384,7 +390,11 @@ graph TD
 | v0.7.0 | Phase 6 / P06.1 — REST Surface Foundation | ✅ Complete |
 | v0.7.1 | Phase 6 / P06.2 — Authorization Filter & Phase 6 Completion | ✅ Complete |
 | v0.7.2 | Post-Phase-6 Independent Audit Remediation (maintenance release) | ✅ Complete |
-| Phase 7 → v0.8.x | Retrieval Quality & Operational Integrity | ⏳ Planned |
+| v0.8.0 | Phase 7 / WP-1 — CI/CD & Release Governance Hardening | ✅ Complete |
+| v0.8.1 | Phase 7 / WP-2 — Session Security (refresh tokens + revocation) | ⏳ Planned |
+| v0.8.2 | Phase 7 / WP-3 — Operational Resilience (Weaviate timeout + reconciliation) | ⏳ Planned |
+| v0.8.3 | Phase 7 / WP-4 — Retrieval Quality (re-ranking + HyDE) | ⏳ Planned |
+| v0.8.4 | Phase 7 / WP-5 — Prompt-Injection Review & Phase 7 Complete | ⏳ Planned |
 | Phase 8 → v0.9.x | Scale & Ecosystem Readiness | ⏳ Planned |
 | v1.0.0 | Stable Enterprise Release | ⏳ Planned |
 
@@ -393,6 +403,10 @@ formally not opened (ADR GOV05). v0.7.2 is a small maintenance release (four doc
 and transaction-boundary fixes from a second independent audit, ADR GOV06/HD07–HD10) — not a
 reopening of P06.3 and not Phase 7; the milestone-level detail behind each row above (P05.x/P06.x,
 per-phase objective/scope/exit criteria) lives in `.claude/PROJECT_STATE.md`, not duplicated here.
+Phase 7 is planned and underway: its frozen scope (ADR GOV03) is unchanged, grouped into five work
+packages by engineering boundary, each shipping its own point release (ADR GOV07). Applying branch
+protection remains a Phase 7 exit criterion executed by the repository owner rather than from inside
+the repository, verified at the v0.8.4 gate (ADR GOV08).
 MCP (full delivery), LangGraph orchestration, and a multi-agent platform remain explicitly out of
 scope before v1.0.0 — see `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section for the
 complete v1.0.0 product definition and out-of-scope list.

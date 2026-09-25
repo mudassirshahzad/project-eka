@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.7.2 (Complete) — Post-Phase-6 Independent Audit Remediation (maintenance release; ADR GOV06) — **Phase 6 remains complete** (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged). Phase 7 has not started.
+v0.8.0 (Complete) — **Phase 7 / WP-1 — CI/CD & Release Governance Hardening** (ADR GOV07/GOV08, CG01/CG02). Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -221,6 +221,22 @@ Not a Phase 7 milestone, and not a reopening of P06.3 (ADR GOV05's "not opened" 
 - **Deliverables:** Re-ranking adapter (cross-encoder); HyDE evaluation results; scheduled reconciliation job; refresh-token issuance/revocation; `RestClientCustomizer`-equivalent (or custom `WeaviateClient` bean) for Weaviate timeouts; prompt-injection review write-up; CI dependency scanning; applied branch protection; CI-verified Docker build.
 - **Dependencies:** Phase 6's ingestion REST surface — re-ranking can't be meaningfully evaluated, and prompt-injection risk can't be meaningfully reviewed, against a corpus that only ever enters the system through test fixtures.
 
+**Phase 7 work-package tracking (ADR GOV07):**
+
+Phase 7 was planned in its own session, as ADR GOV03/`CLAUDE.md` require. That plan groups the frozen deliverable list above into five work packages defined by natural engineering boundary — each independently buildable, testable, reviewable, and releasable — rather than one milestone per deliverable. The frozen Phase 7 *scope* is unchanged by this grouping; only its delivery structure is defined here.
+
+| Work package | Version | Description | New Tests | Status |
+|---|---|---|---|---|
+| WP-1 | v0.8.0 | CI/CD & Release Governance Hardening — dependency/vulnerability scanning, CI-verified Docker build (branch protection: owner-applied, ADR GOV08) | — | ✅ Complete |
+| WP-2 | v0.8.1 | Session Security — refresh tokens with revocation | — | ○ Not started |
+| WP-3 | v0.8.2 | Operational Resilience — Weaviate client timeout (closes ADR HD03) + Postgres↔Weaviate reconciliation job | — | ○ Not started |
+| WP-4 | v0.8.3 | Retrieval Quality — cross-encoder re-ranking, HyDE evaluation, evaluation harness | — | ○ Not started |
+| WP-5 | v0.8.4 | Indirect Prompt-Injection Risk Review + **Phase 7 Complete gate** (verifies branch protection is actually applied — ADR GOV08) | — | ○ Not started |
+
+Sequencing rationale (from the approved plan): WP-1 first so every subsequent package's PRs land behind a real CI gate; WP-3 before WP-4 so cross-encoder re-ranking does not add a second external call into a retrieval path whose Weaviate client can still hang unbounded; WP-5 last so the prompt-injection review assesses the pipeline as Phase 7 actually leaves it, not a moving target.
+
+**Open item carried into WP-4 (identified during planning, not yet decided):** the Phase 7 success criterion "measurable relevance improvement on an internal evaluation set" has no existing evaluation dataset, harness, or labelling process anywhere in this repository. Building one is real, un-named work inside WP-4's boundary — not a documentation gap.
+
 ### Phase 8 — Scale & Ecosystem Readiness
 
 - **Objective:** Prepare for more than one instance and for external consumption — without committing to an ecosystem before there's a real reason to.
@@ -240,11 +256,15 @@ Not a Phase 7 milestone, and not a reopening of P06.3 (ADR GOV05's "not opened" 
 | v0.7.2 | P06.3 not opened (ADR GOV05, unchanged); version reused for Post-Phase-6 Independent Audit Remediation | Shipped — maintenance release only, see ADR GOV06 |
 | v0.7.3 | P06.4 | Not opened — reserved slot never triggered |
 | v0.7.4 | P06.5 — Phase 6 Complete | **Satisfied directly by v0.7.1** — every Phase 6 exit criterion met without a separate gate release |
-| v0.8.0 | Phase 7 complete | Re-ranking shipped, reconciliation job live, branch protection applied |
+| v0.8.0 | Phase 7 / WP-1 — CI/CD & Release Governance Hardening | Dependency/vulnerability scanning live in CI; Docker image build-verified in CI |
+| v0.8.1 | Phase 7 / WP-2 — Session Security | Refresh-token issuance and revocation shipped; a leaked access token is killable |
+| v0.8.2 | Phase 7 / WP-3 — Operational Resilience | Weaviate connect/read timeout configured (ADR HD03 closed); reconciliation job scheduled with alerting |
+| v0.8.3 | Phase 7 / WP-4 — Retrieval Quality | Re-ranking shipped; HyDE evaluated; benchmark result documented in an ADR |
+| v0.8.4 | Phase 7 / WP-5 — **Phase 7 Complete** | Prompt-injection review documented; **branch protection verified applied** (ADR GOV08); every Phase 7 exit criterion met |
 | v0.9.0 | Phase 8 complete | Metrics dashboarded, streaming shipped, MCP go/no-go decided |
 | v1.0.0 | Version 1.0.0 milestone | Every item in the official v1.0.0 definition above is met — reviewed as a gate, not assumed from phase completion alone |
 
-Follows the Release Workflow already codified above (ADR GOV02) — no new process, this is the existing model applied forward. Row split for v0.7.0–v0.7.4 reflects ADR GOV04's refinement of Phase 6 versioning to one point release per P06.x milestone; the Phase 7/8/v1.0.0 entry versions are unchanged from ADR GOV03.
+Follows the Release Workflow already codified above (ADR GOV02) — no new process, this is the existing model applied forward. Row split for v0.7.0–v0.7.4 reflects ADR GOV04's refinement of Phase 6 versioning to one point release per P06.x milestone; row split for v0.8.0–v0.8.4 reflects ADR GOV07 applying that same refinement to Phase 7's five work packages. Phase 8's entry version (`v0.9.0`) and `v1.0.0` are unchanged from ADR GOV03, as is the frozen Phase 6 → 7 → 8 → v1.0.0 sequence itself.
 
 ---
 
@@ -351,6 +371,10 @@ Security layer (Authorization Filter) is planned but not implemented.
 | HD08 | Dead `app.retrieval.hybrid-alpha` config removed (`RrfRankingAdapter` was always unweighted, fixed `k=60`); README corrected to match |
 | HD09 | README's "append-only audit log" claim corrected — schema/port/adapter exist, zero application call sites; infrastructure left in place, not implemented here |
 | HD10 | README's "native per-tenant Weaviate collections" claim corrected — isolation is a mandatory query-time `tenantId` filter, not Weaviate's native multi-tenancy API |
+| GOV07 | Phase 7 versioning — one point release per work package (v0.8.0–v0.8.4); ADR GOV03's single-`v0.8.0`-for-the-whole-phase row superseded, mirroring GOV04's Phase 6 refinement |
+| GOV08 | Applying branch protection stays a repository-owner action outside the implementation session; it remains a Phase 7 exit criterion, verified at the `v0.8.4` gate |
+| CG01 | SCA in CI = GitHub dependency-graph submission + `dependency-review` PR gate (`fail-on-severity: high`) + Dependabot; OWASP Dependency-Check rejected (NVD-feed flakiness in a required status check) |
+| CG02 | Docker image build-verified in CI with narrow deterministic assertions (boot jar present, non-root runtime user), not a container boot — closes ADR EX10's disclosed gap |
 
 ---
 
@@ -591,7 +615,7 @@ GeneratedResponse
 - `RequestSizeLimitFilter` (`api.security`), registered in `SecurityConfig` right after `CorrelationIdFilter`, rejects any request whose `Content-Length` exceeds `app.request.max-body-bytes` (default 1 MiB) before Spring MVC/Jackson ever process it (v0.6.1, ADR EX06); exempts only `POST /api/v1/documents` multipart requests, matched on method + path + content type together, not content type alone (P06.1, ADR PC01)
 - `ConversationController.createConversation` now calls `CreateConversationUseCase`, not `ConversationApplicationService` directly; the title invariant it used to duplicate now lives in `Conversation.create`/`.rename` (domain); `GetConversationUseCase`/`ListConversationsUseCase` were deleted (v0.6.1, ADR EX08)
 - `build.gradle`'s `version` (now `0.6.1`, previously a permanent `1.0.0-SNAPSHOT` placeholder) is the sole source of truth for the release number; `springBoot { buildInfo() }` surfaces it at `/actuator/info` as `info.build.version` (v0.6.1, ADR EX03)
-- `.github/workflows/build.yml` runs `gradle clean build` (full test suite + ArchUnit) on every PR and push to `main` — the repository's first CI gate (v0.6.1, ADR EX01)
+- `.github/workflows/build.yml` runs `gradle clean build` (full test suite + ArchUnit) on every PR and push to `main` — the repository's first CI gate (v0.6.1, ADR EX01). As of v0.8.0 (WP-1) it also runs three further jobs: `dependency-submission` (push only — submits the resolved Gradle dependency tree to GitHub's dependency graph), `dependency-review` (PR only — fails a PR introducing a dependency with a known high-or-worse advisory, ADR CG01), and `docker-build` (gated on `build`, runs a real `docker build` and asserts boot-jar presence + non-root runtime user, ADR CG02). `.github/dependabot.yml` (new, v0.8.0) opens weekly grouped `gradle`/`github-actions` upgrade PRs
 - `DocumentController` (`/api/v1/documents`) reuses `UploadDocumentUseCase`/`GetDocumentUseCase`/`ListDocumentsUseCase`/`DeleteDocumentUseCase` unchanged; reads/lists stay tenant-wide, not owner-scoped, matching `DocumentApplicationService`'s pre-existing semantics (P06.1, ADR PC05)
 - `AdminController` (`/api/v1/admin`) exposes exactly four endpoints — public `POST /bootstrap` (first-user-only, guarded by `UserApplicationService.tenantHasAnyUser`), `POST /users`, `GET /users/{id}`, `POST /users/{id}/deactivate`, all `ADMIN`-only except bootstrap (P06.1, ADR PC03/PC05)
 - `UserApplicationService.getUser`/`.activateUser`/`.deactivateUser` now call a `requireTenantMatch` helper identical in shape to `ConversationApplicationService`'s (P06.1, ADR PC02); `UserRepository` gained `existsByTenantId`
@@ -745,8 +769,8 @@ Reviewed without implementing — each classified so none of these become a futu
 | Weaviate HTTP client has no configurable connect/read timeout | Deferred technical debt (P05.5, ADR HD03) | Verified via bytecode inspection of `spring-ai-autoconfigure-vector-store-weaviate-1.0.0.jar`: `WeaviateVectorStoreProperties` exposes no timeout property, and the auto-configured `WeaviateClient` bean has no `RestClientCustomizer`-equivalent hook. A fix would require overriding the auto-configured client and hand-constructing `io.weaviate.client.Config` — genuine architectural expansion, out of this milestone's "document, don't expand" scope. Revisit as a Phase 6 candidate. |
 | No REST endpoint for document ingestion (`POST /api/v1/documents` does not exist) | **CLOSED (P06.1)** | `DocumentController` now exposes upload (multipart), get, list, and delete, all reusing `UploadDocumentUseCase`/`GetDocumentUseCase`/`ListDocumentsUseCase`/`DeleteDocumentUseCase` unchanged. Closes audit finding H2. |
 | `DeleteConversationUseCase` has no REST route | **CLOSED (P06.1)** | `DELETE /api/v1/conversations/{id}` now calls it — its active-chat-session guard is exercised by a real caller for the first time. |
-| Docker image (new `Dockerfile`, v0.6.1 ADR EX10) not empirically build-verified | Known gap, disclosed | No Docker daemon was available in the implementing environment; the Dockerfile was verified by careful reading against known-correct multi-stage Spring Boot patterns, not by an actual `docker build`. Whoever next has Docker available should confirm it builds and starts before relying on it in a real deployment. |
-| No dependency vulnerability scanning (SCA) in CI | Not addressed this milestone | `.github/workflows/build.yml` (v0.6.1, ADR EX01) runs build/test/ArchUnit only; adding Dependabot/OWASP Dependency-Check was not in this milestone's numbered scope. Reasonable next CI addition. |
+| Docker image (new `Dockerfile`, v0.6.1 ADR EX10) not empirically build-verified | **CLOSED (v0.8.0 / WP-1, ADR CG02)** | The `Dockerfile` was built for real for the first time during WP-1 (exit 0; 149 MB boot jar; runtime uid 999, non-root — both assertions run locally before being wired up). A `docker-build` CI job now runs the same build and the same two assertions on every PR and push, so the gap cannot silently reopen. |
+| No dependency vulnerability scanning (SCA) in CI | **CLOSED (v0.8.0 / WP-1, ADR CG01)** | Three complementary mechanisms: `dependency-submission` makes GitHub's dependency graph accurate for this Gradle project, `dependency-review` fails a PR introducing a known-vulnerable dependency (`fail-on-severity: high`), and Dependabot covers dependencies that become vulnerable after merge. OWASP Dependency-Check was evaluated and rejected — NVD-feed rate limiting would make a soon-to-be-required status check intermittently red. |
 | No rate limiting beyond login; no distributed rate-limit store | Accepted limitation (v0.6.1, ADR EX05) | `LoginRateLimiter` is deliberately per-instance/in-memory — correct for the current single-instance deployment (`docker-compose.yml` defines no load balancer or replica count). Revisit with a shared store only if a multi-instance deployment shape is actually adopted. |
 | No `Tenant` domain aggregate or repository port; tenant creation stays an ops/database concern | Deferred, intentionally (P06.1, ADR PC03) | `POST /api/v1/admin/bootstrap` operates against an already-provisioned, still-empty tenant — it does not create one. Building tenant provisioning would be new domain modeling, out of a "REST Surface Foundation" milestone's scope. A nonexistent tenant on bootstrap surfaces as a generic 400 (`DataIntegrityViolationException` handler), not a clean domain 404 — a known, accepted trade-off of not introducing a `TenantRepository` port for this alone. |
 | Authorization Filter still not built | **CLOSED (P06.2)** | `ClassificationPolicyPort`/`RoleBasedClassificationPolicyAdapter` now enforce role-based classification clearance in both `RetrievalService` (retrieval pipeline) and `DocumentApplicationService` (every REST document endpoint). Document reads/lists stay tenant-wide as their base scope (ADR PC05, unchanged), now further narrowed by classification clearance within that tenant. |

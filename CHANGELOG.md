@@ -5,6 +5,19 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-09-25 — Phase 7 / WP-1 — CI/CD & Release Governance Hardening
+
+### Added (Phase 7, work package 1 of 5 — ADR GOV07)
+
+First work package of Phase 7 (Retrieval Quality & Operational Integrity), whose scope stays exactly as frozen in ADR GOV03. Phase 7 was planned in its own session as required; that plan groups the frozen deliverable list into five work packages by natural engineering boundary, each independently buildable, testable, reviewable, and releasable, and each shipping its own point release (ADR GOV07, extending ADR GOV04's Phase 6 precedent). WP-1 deliberately carries no application-code change: it hardens the gate that every subsequent work package will land behind, before that work exists to land.
+
+- **Software composition analysis wired into CI** — a `dependency-review` job (`fail-on-severity: high`) now fails any pull request that would introduce a dependency carrying a known high-or-worse advisory, before it reaches `main`. A `dependency-submission` job resolves and submits this project's real Gradle dependency tree to GitHub's dependency graph on every push to `main` — without it the graph is effectively empty for a Gradle project and nothing downstream has accurate data to scan. New `.github/dependabot.yml` opens weekly upgrade pull requests for the `gradle` and `github-actions` ecosystems, with Spring Boot/Spring AI modules grouped into a single pull request (they release in lockstep; ungrouped, a minor Spring upgrade arrives as a series of individually-unbuildable pull requests). The OWASP Dependency-Check Gradle plugin was evaluated and deliberately rejected — it resolves advisories by downloading the NVD feed at build time, which without an API key is rate-limited enough to make a previously-deterministic CI gate intermittently red for reasons unrelated to the change under test, precisely when that gate is about to become a required status check (ADR CG01)
+- **Docker image build-verified in CI** — a `docker-build` job, gated on the test suite passing, runs a real `docker build` on every pull request and push, then asserts the two properties this `Dockerfile` actually claims: `/app/app.jar` is present and non-empty, and the runtime user is not uid 0. This closes the gap ADR EX10 disclosed honestly at v0.6.1 and carried for three releases — the `Dockerfile` had never once been empirically built, only read. It was additionally verified by a real local `docker build` during this work package (ADR CG02)
+- **Phase 7 delivery structure recorded** — ADR GOV07 supersedes ADR GOV03's single-`v0.8.0`-for-the-whole-phase Release Strategy row with one point release per work package (v0.8.0–v0.8.4), mirroring exactly how ADR GOV04 refined Phase 6. ADR GOV08 records that applying branch protection stays a repository-owner action executed outside the implementation session — it remains a Phase 7 exit criterion and a v1.0.0 production-readiness item, verified at the v0.8.4 gate, not descoped
+- ADRs GOV07, GOV08, CG01, CG02 frozen (see `.claude/DECISIONS.md`)
+- **Self-review fix:** the image-verification CI step was first drafted with `|| true` appended, which would have made it incapable of failing — verification theatre that implies coverage without providing it. Replaced with two real assertions before this work package was called complete
+- 726 total tests, 0 failures (unchanged — this work package changes CI configuration and documentation only, with no application-code surface for new tests; the same standard applied at v0.7.2). ArchUnit: 8/8, no new layering violations
+
 ## [0.7.2] — 2026-09-24 — Post-Phase-6 Independent Audit Remediation
 
 ### Fixed (maintenance release — not Phase 7, not a reopening of P06.3)
