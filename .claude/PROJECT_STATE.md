@@ -2,7 +2,7 @@
 
 Current Version
 
-v0.8.3 (Complete) — **Phase 7 / WP-4 — Retrieval Quality: Re-ranking, HyDE & Evaluation Harness** (ADR RQ01–RQ07). **Phase 7's retrieval-quality success criterion remains OPEN** (ADR RQ07) — mechanism delivered, no measured improvement and no real evaluation set. WP-3 (Operational Resilience, ADR OR01–OR04) shipped at v0.8.2. WP-2 (Session Security, ADR RT01–RT05) shipped at v0.8.1. WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
+v0.8.4 (Complete) — **Phase 7 / WP-5 — Indirect Prompt-Injection Review** (ADR PI01–PI04). **⚠️ Phase 7 itself is NOT complete** — all five work packages shipped, but two exit criteria remain open and the GitHub milestone stays open (ADR GOV09): branch protection is not applied (verified 404 at the gate; owner-executed, ADR GOV08) and the retrieval-quality success criterion is not met (ADR RQ07). WP-4 (Retrieval Quality, ADR RQ01–RQ07) shipped at v0.8.3. **Phase 7's retrieval-quality success criterion remains OPEN** (ADR RQ07) — mechanism delivered, no measured improvement and no real evaluation set. WP-3 (Operational Resilience, ADR OR01–OR04) shipped at v0.8.2. WP-2 (Session Security, ADR RT01–RT05) shipped at v0.8.1. WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
@@ -231,7 +231,9 @@ Phase 7 was planned in its own session, as ADR GOV03/`CLAUDE.md` require. That p
 | WP-2 | v0.8.1 | Session Security — refresh tokens with revocation (session-bound access tokens, rotation, reuse detection) | +34 | ✅ Complete |
 | WP-3 | v0.8.2 | Operational Resilience — Weaviate client timeout (closes ADR HD03) + Postgres↔Weaviate reconciliation job | +15 | ✅ Complete |
 | WP-4 | v0.8.3 | Retrieval Quality — re-ranking (`RerankPort` + LLM adapter), HyDE, evaluation harness + synthetic dataset | +27 | ✅ Complete (quality criterion open — ADR RQ07) |
-| WP-5 | v0.8.4 | Indirect Prompt-Injection Risk Review + **Phase 7 Complete gate** (verifies branch protection is actually applied — ADR GOV08) | — | ○ Not started |
+| WP-5 | v0.8.4 | Indirect Prompt-Injection Risk Review + **Phase 7 Complete gate** | +8 | ✅ Work package complete — **gate returned NOT COMPLETE** (ADR GOV09) |
+
+**Phase 7 gate result (ADR GOV09): NOT COMPLETE.** All five work packages shipped as v0.8.0–v0.8.4, but two of Phase 7's own exit criteria are verified outstanding — branch protection (`GET /branches/main/protection` → 404 at the gate; owner-executed per ADR GOV08) and the "measurable relevance improvement" success criterion (ADR RQ07: mechanism delivered, no improvement measured, no real evaluation set). Neither requires new engineering; neither can honestly be closed by an implementation session. The GitHub milestone "Phase 7" remains **open**, and Phase 8 must not be started on the assumption Phase 7 closed.
 
 Sequencing rationale (from the approved plan): WP-1 first so every subsequent package's PRs land behind a real CI gate; WP-3 before WP-4 so cross-encoder re-ranking does not add a second external call into a retrieval path whose Weaviate client can still hang unbounded; WP-5 last so the prompt-injection review assesses the pipeline as Phase 7 actually leaves it, not a moving target.
 
@@ -391,6 +393,11 @@ Security layer (Authorization Filter) is planned but not implemented.
 | RQ05 | Evaluation dataset is explicitly synthetic — an engineering baseline and CI regression guard, never a production-quality claim |
 | RQ06 | Measured result is **negative** (no improvement; baseline nDCG@4 = 0.431) and recorded as such; an oracle positive control proves the harness detects improvement |
 | RQ07 | **Phase 7's retrieval-quality success criterion remains OPEN** — verify at the v0.8.4 gate alongside branch protection (GOV08) |
+| PI01 | Untrusted context fenced and labelled as data; fence markers stripped from chunk content so a document cannot close its own fence; rules restated after the block |
+| PI02 | The re-ranking prompt gets identical fencing — WP-4 created a second, higher-value injection surface; the `[0,1]` score clamp bounds manipulation |
+| PI03 | No content sanitisation, no injection blocklist, no second classifier model — each evaluated and rejected on its merits |
+| PI04 | Residual risk explicitly accepted; the review is structural (prompts are *built* correctly), not empirical (models are not proven to obey) |
+| GOV09 | **Phase 7 is NOT complete at v0.8.4** — branch protection unapplied (verified 404) and the retrieval-quality criterion unmet; milestone stays open |
 
 ---
 

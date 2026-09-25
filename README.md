@@ -12,7 +12,7 @@
 [![Weaviate](https://img.shields.io/badge/Weaviate-1.25-FF6D00?style=flat-square)](https://weaviate.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Apache Tika](https://img.shields.io/badge/Apache_Tika-2.9.2-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
-[![Tests](https://img.shields.io/badge/tests-802_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
+[![Tests](https://img.shields.io/badge/tests-810_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b?style=flat-square)](LICENSE)
 
 </div>
@@ -31,7 +31,7 @@
 - Hybrid Search *(v0.5.0)*
 - Authorization Filter *(v0.7.1)* — role-based document-classification clearance
 - MCP & LangGraph Ready — architecturally (port interfaces align with both), not yet on the release roadmap; see [Roadmap](#release-roadmap)
-- 802 Automated Tests, 0 failures
+- 810 Automated Tests, 0 failures
 
 ---
 
@@ -62,14 +62,14 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.8.3 — Phase 7 / WP-4: Retrieval Quality (re-ranking, HyDE, evaluation harness) |
+| **Current Release** | v0.8.4 — Phase 7 / WP-5: Indirect Prompt-Injection Review |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 802 passing, 0 failures · 82 test classes |
+| **Automated Tests** | 810 passing, 0 failures · 83 test classes |
 | **ArchUnit Rules** | 8 enforced at build time |
 | **CI** | GitHub Actions — build + full test suite + ArchUnit, dependency-review SCA gate, and a verified `docker build`, on every PR and push to `main` |
 | **Schema Migrations** | Flyway V001–V019 (19 migrations) |
-| **Current Focus** | Phase 7 (Retrieval Quality & Operational Integrity) — planned and in progress across five work packages (v0.8.0–v0.8.4) |
-| **Next Milestone** | Phase 7 / WP-5 — Prompt-Injection Review + Phase 7 completion gate (v0.8.4) |
+| **Current Focus** | Phase 7 — all five work packages shipped (v0.8.0–v0.8.4); **phase not yet closed**, two exit criteria open (ADR GOV09) |
+| **Next Milestone** | Close Phase 7's two open criteria — apply branch protection, and benchmark retrieval quality against a real evaluation set |
 
 ---
 
@@ -434,7 +434,7 @@ graph TD
 | v0.8.1 | Phase 7 / WP-2 — Session Security (refresh tokens + revocation) | ✅ Complete |
 | v0.8.2 | Phase 7 / WP-3 — Operational Resilience (Weaviate timeout + reconciliation) | ✅ Complete |
 | v0.8.3 | Phase 7 / WP-4 — Retrieval Quality (re-ranking + HyDE) | ✅ Complete |
-| v0.8.4 | Phase 7 / WP-5 — Prompt-Injection Review & Phase 7 Complete | ⏳ Planned |
+| v0.8.4 | Phase 7 / WP-5 — Prompt-Injection Review (phase gate: **not complete**) | ✅ Complete |
 | Phase 8 → v0.9.x | Scale & Ecosystem Readiness | ⏳ Planned |
 | v1.0.0 | Stable Enterprise Release | ⏳ Planned |
 

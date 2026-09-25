@@ -5,6 +5,42 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+## [0.8.4] — 2026-09-25 — Phase 7 / WP-5 — Indirect Prompt-Injection Review
+
+### Added (Phase 7, work package 5 of 5 — ADR GOV07)
+
+Phase 6 opened ingestion to real users, which turned indirect prompt injection from theoretical into live — the specific reasoning that put this review into Phase 7's frozen scope. Sequenced last so it assesses the pipeline as Phase 7 actually leaves it. Full review: [`docs/security/prompt-injection-review.md`](docs/security/prompt-injection-review.md).
+
+- **Injection sinks traced through the code, not assumed** — two paths by which content the platform did not author reaches a model prompt: retrieved chunks in the **system prompt** (since v0.5.0), and — **newly created by WP-4 three weeks earlier** — the passage in the **re-ranking scoring prompt**. HyDE was checked and ruled out: it sends only the user's own query. The re-ranking sink is the more attractive target of the two, since manipulating an answer affects one reply while manipulating the re-ranker promotes a document into the context of *every subsequent query* that retrieves it
+- **Untrusted context is fenced and labelled as data (ADR PI01)** — the system prompt now declares the block untrusted, names the manipulations to disregard, and restates the rules *after* the closing fence, so the last thing the model reads before the user's question is the instruction hierarchy rather than whatever a document happened to end with
+- **A document cannot close its own fence (ADR PI01)** — fence markers are stripped from chunk content before rendering. Without this, fencing would be an injection vector rather than a defence: a document emitting the closing marker would have everything after it land in the region the template describes as trusted
+- **The re-ranking prompt gets identical treatment (ADR PI02)** — fenced passage, forged markers stripped, and the existing `[0,1]` score clamp documented as a real bound: a fully manipulated model cannot lift a passage *above* a legitimately perfect one, only up to it
+
+### Deliberately not done (ADR PI03)
+
+No content sanitisation (it would corrupt the evidence answers cite), no injection-phrase blocklist (trivially evaded *and* wrong on legitimate content — a security policy discussing prompt injection would be flagged by its own subject matter), and no second classifier model (doubles cost and latency while relocating the same trust problem into a model with the same weakness).
+
+### Residual risk — explicitly accepted (ADR PI04)
+
+**The mitigations are defence in depth, not a guarantee.** A sufficiently well-crafted document can still influence model behaviour; no prompt-level technique closes this, because instructions and data share one channel in a language model. Accepted because tenant isolation makes the realistic attacker an authenticated insider who already has read access to that tenant's knowledge base and a legitimate channel to distribute text to colleagues.
+
+The review is **structural, not empirical**: `PromptInjectionResistanceTest` proves the prompts are *built* with these properties; whether a given model *obeys* them was not measured, and that boundary is stated rather than implied.
+
+### ⚠️ Phase 7 is NOT complete (ADR GOV09)
+
+All five work packages shipped, but **two Phase 7 exit criteria remain open and the milestone stays open**:
+
+| Exit criterion | Status |
+|---|---|
+| Branch protection live | ❌ **Not applied** — verified at the gate: `GET /branches/main/protection` → 404 "Branch not protected" (ADR GOV08, owner-executed) |
+| Measurable relevance improvement on an evaluation set | ❌ **Not met** — no improvement measured, no real evaluation set exists (ADR RQ07) |
+
+Everything else is verified met. Both gaps were disclosed in advance rather than discovered here, and the status was re-verified by live API call at the gate rather than recalled — closing the phase now would contradict two ADRs written specifically to prevent it.
+
+- ADRs PI01–PI04 and GOV09 frozen (see `.claude/DECISIONS.md`)
+- **810 total tests, 0 failures** (net +8): `PromptInjectionResistanceTest` (new, 8) — context fenced and labelled, instructions restated after the block, both fence-forgery attempts neutralised, chunk content otherwise verbatim, template placeholder not re-expanded, re-ranking prompt fenced, and a self-promoting passage unable to exceed the score ceiling. ArchUnit: 8/8, no new layering violations
+
+
 ## [0.8.3] — 2026-09-25 — Phase 7 / WP-4 — Retrieval Quality: Re-ranking, HyDE & Evaluation Harness
 
 ### Added (Phase 7, work package 4 of 5 — ADR GOV07)

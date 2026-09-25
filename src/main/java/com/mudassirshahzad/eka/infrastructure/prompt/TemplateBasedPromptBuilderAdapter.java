@@ -55,6 +55,15 @@ public class TemplateBasedPromptBuilderAdapter implements PromptBuilderPort {
     static final String EMPTY_CONTEXT_FALLBACK  =
             "No relevant context was found for this query.";
 
+    /**
+     * Fence markers that delimit untrusted document content in the system prompt (WP-5, ADR PI01).
+     * A document that contained these verbatim could otherwise "close" the fence early and have the
+     * text after it read as trusted instruction, so {@link #neutralizeFenceMarkers(String)} strips
+     * them from chunk content before rendering.
+     */
+    static final String CONTEXT_FENCE_BEGIN = "<<<BEGIN UNTRUSTED CONTEXT>>>";
+    static final String CONTEXT_FENCE_END   = "<<<END UNTRUSTED CONTEXT>>>";
+
     private final String systemTemplate;
 
     public TemplateBasedPromptBuilderAdapter(
@@ -94,9 +103,31 @@ public class TemplateBasedPromptBuilderAdapter implements PromptBuilderPort {
                 sb.append("\n\n");
             }
             sb.append("[SOURCE:").append(chunk.position() + 1).append("]\n");
-            sb.append(chunk.content());
+            sb.append(neutralizeFenceMarkers(chunk.content()));
         }
         return sb.toString();
+    }
+
+    /**
+     * Removes the fence markers from untrusted chunk content (WP-5, ADR PI01).
+     *
+     * <p>Without this, a document containing the literal end-fence could terminate the untrusted
+     * block early, so everything it wrote afterwards would sit in the region the template describes
+     * as trusted instruction — turning a delimiter into an injection vector rather than a defence.
+     * The markers are replaced rather than escaped: they carry no meaning inside a document, so
+     * nothing legitimate is lost, and there is no escape sequence left for a second-order attempt
+     * to unescape.
+     *
+     * <p>Note this is the only transformation applied. Chunk content is otherwise passed through
+     * verbatim, because the retrieved text is the answer's evidence and silently rewriting it would
+     * corrupt citations. Fencing is defence in depth, not a guarantee — see
+     * {@code docs/security/prompt-injection-review.md} for the residual risk this leaves.
+     */
+    static String neutralizeFenceMarkers(String content) {
+        if (content == null || content.isEmpty()) {
+            return content;
+        }
+        return content.replace(CONTEXT_FENCE_BEGIN, "").replace(CONTEXT_FENCE_END, "");
     }
 
     private static String loadTemplate(Resource resource) {
