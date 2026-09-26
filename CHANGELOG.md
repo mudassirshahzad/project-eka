@@ -5,6 +5,27 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+### Changed (repository governance)
+
+- **Branch protection applied on `main`** (ADR GOV10) — closing the first of ADR GOV09's two open
+  Phase 7 exit criteria. It was verified `404 Branch not protected` at the v0.8.4 gate; it is now
+  live and verified. Configuration: pull requests required, three required status checks
+  (`Build, test, ArchUnit`, `Docker image build`, `Dependency review (SCA)`) with `strict`
+  up-to-date enforcement, administrators included, linear history and conversation resolution
+  required, force pushes and branch deletion blocked. Repository merge settings moved to squash-only
+  with merge commits and rebase merging disabled, auto-merge and automatic head-branch deletion
+  enabled. Full configuration, reproduction commands and rationale:
+  [`docs/governance/branch-protection.md`](docs/governance/branch-protection.md)
+
+  Two choices recorded because they read as errors otherwise: required approvals is **0** (with
+  `enforce_admins` on, any non-zero value permanently locks out a sole maintainer, since GitHub
+  forbids self-approval), and `Submit dependency graph` is deliberately **not** required (it is
+  gated to `push` events and never runs on a PR, so requiring it would deadlock every merge).
+
+  **⚠️ Phase 7 is still NOT complete.** GOV09 requires both exit criteria; the retrieval-quality
+  criterion (ADR RQ07) remains open and the `Phase 7` milestone stays open. From this commit on,
+  every change to `main` — including the maintainer's — goes through a pull request.
+
 ### Fixed
 
 - **PDF `pageCount` was always 0** (`TikaDocumentParserAdapter`). The adapter read the page count from

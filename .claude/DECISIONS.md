@@ -666,3 +666,27 @@ Decision: All five Phase 7 work packages have shipped (v0.8.0–v0.8.4), but Pha
 
 Everything else is verified met: re-ranking shipped (RQ01/RQ02), reconciliation running with alerting (OR02/OR03), refresh tokens with revocation (RT01–RT05), Weaviate timeouts closing ADR HD03 (OR01), prompt-injection review documented with mitigations and accepted residual risk (PI01–PI04), SCA in CI with the dependency graph confirmed enabled (CG01), Docker build-verified in CI (CG02).
 Rationale: The whole purpose of a completion gate is to be capable of returning "no". ADR GOV02 states that milestone review exists so a phase is never left "open indefinitely with stale, half-finished scope" — but the converse failure is worse and more tempting: closing a milestone because every *work package* finished, when two of the phase's own criteria demonstrably did not. Both gaps were disclosed in advance rather than discovered here (GOV08 recorded branch protection as owner-executed and explicitly not descoped; RQ07 recorded the quality criterion as open the moment it was known), so closing the phase now would contradict two ADRs written specifically to prevent that. The status was also *verified* rather than assumed — the branch-protection state comes from a live API call at the gate, not from memory of an earlier decision, which is the standard ADR GOV05 set when it required an audit before closing Phase 6. Phase 7 closes when both rows above turn green; neither requires new engineering, and neither is something an implementation session can honestly close on its own.
+
+---
+
+ADR GOV10: Branch protection is applied on `main` — the first of ADR GOV09's two open Phase 7 exit criteria closes; Phase 7 remains open on the second
+
+Decision: Branch protection is **live** on `main` as of 2026-09-26, applied via `gh api` with the owner's explicit authorization in-session. Full configuration and reproduction commands: [`docs/governance/branch-protection.md`](../docs/governance/branch-protection.md).
+
+Applied: pull requests required (0 approvals — see below); three required status checks (`Build, test, ArchUnit`, `Docker image build`, `Dependency review (SCA)`) with `strict` up-to-date enforcement; `enforce_admins` true; linear history required; conversation resolution required; force pushes and deletions blocked. Repository merge settings: squash-only, merge commits and rebase merging disabled, auto-merge and head-branch deletion enabled.
+
+| ADR GOV09 exit criterion | Status now |
+|---|---|
+| Branch protection live | ✅ **Closed** — verified via `GET /branches/main/protection` (was `404`) |
+| Measurable relevance improvement on an internal evaluation set | ❌ **Still open** (ADR RQ07) — no live model, no human-labelled dataset |
+
+**Phase 7 therefore remains NOT complete and the `Phase 7` milestone stays open.** GOV09 states Phase 7 closes when *both* rows turn green; one did.
+
+Two configuration choices are deliberate and recorded because they look like mistakes otherwise:
+
+- **`required_approving_review_count` is 0.** With `enforce_admins` enabled, any non-zero value locks the sole maintainer out permanently — GitHub forbids self-approval, so `1` + admin enforcement means nothing can ever merge. `0` still routes every change through a pull request and still gates it on all three checks. Raise to 1 when a second contributor joins; `dismiss_stale_reviews` is already on for that.
+- **`Submit dependency graph` is deliberately NOT a required check.** It is gated to `push` events and never runs on a pull request, so requiring it would leave every PR waiting forever on a check that cannot start. The job name makes it a natural thing to require, which is exactly why the exclusion is written down.
+
+Rationale: ADR GOV08 held that applying branch protection was a repository-owner action outside an implementation session, and GOV09 verified it unapplied at the v0.8.4 gate rather than assuming. Neither ADR is contradicted here: the owner authorized the change explicitly in this session, which is the condition GOV08 was waiting on — not a unilateral settings change. It was also sequenced correctly rather than conveniently: the three code/documentation commits of this session were pushed to `main` and CI verified green **before** protection was applied, because enabling it first would have required routing that work through a pull request for no benefit. From this point every change to `main`, the owner's included, goes through a pull request — the change this ADR's own commit was landed through, as its first test.
+
+The honest limitation: `enforce_admins` prevents *accidental* direct pushes, not determined ones. A repository owner can disable protection, push, and re-enable it. This is a guardrail against mistakes and a forcing function for CI, not a control against the owner.
