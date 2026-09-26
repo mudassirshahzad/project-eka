@@ -164,6 +164,46 @@ tasks.withType(Test).configureEach {
 // glob there silently matched whichever jar happened to exist.
 tasks.named('jar') {
     archiveClassifier = ''
+
+    // ── What the LIBRARY jar must not carry ────────────────────────────────
+    // The boot jar is unaffected by any of this — it is built by a separate task from
+    // the same source set, and the application still ships everything it always did.
+    //
+    // These files are correct for an application and actively harmful inside a
+    // dependency, because Spring Boot and Flyway both discover them by convention from
+    // the classpath — a consumer inherits them without ever asking:
+    //
+    //   application.yml
+    //       Spring Boot loads `classpath:/application.yml`. A consumer that depends on
+    //       EKA would get EKA's configuration on its classpath, competing with its own —
+    //       and EKA's requires DB_PASSWORD and JWT_SECRET_KEY, so the failure mode is a
+    //       consumer that will not start, for reasons pointing at a file it never wrote.
+    //
+    //   META-INF/build-info.properties
+    //       Actuator reports this as /actuator/info. A consumer would report EKA's
+    //       version and artifact as its own build.
+    //
+    //   db/migration/**
+    //       The dangerous one. `spring.flyway.locations` defaults to
+    //       classpath:db/migration, so a consumer running Flyway would pick up EKA's 19
+    //       migrations and apply them to its own database. That is a data-integrity
+    //       hazard, not an inconvenience.
+    //
+    // The migrations are still published, relocated to a path nothing scans by default,
+    // so a consumer that genuinely wants EKA's schema can opt in explicitly with
+    //   spring.flyway.locations=classpath:eka/db/migration
+    // rather than receiving it by accident. Opt-in beats both silence and deletion.
+    exclude 'application.yml'
+    exclude 'META-INF/build-info.properties'
+    exclude 'db/migration/**'
+
+    from('src/main/resources/db/migration') {
+        into 'eka/db/migration'
+    }
+
+    // prompts/qa-system.txt is deliberately kept at its original path: it is loaded by
+    // TemplateBasedPromptBuilderAdapter via `classpath:prompts/qa-system.txt`, so the
+    // library does not work without it.
 }
 tasks.named('bootJar') {
     archiveClassifier = 'boot'
