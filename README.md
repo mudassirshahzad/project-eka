@@ -62,13 +62,13 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | | |
 |---|---|
-| **Current Release** | v0.8.4 — Phase 7 / WP-5: Indirect Prompt-Injection Review |
+| **Current Release** | v0.8.5 — Security Remediation & Platform Enablement (EKA consumable as a library) |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
 | **Automated Tests** | 819 passing, 0 failures · 84 test classes |
 | **ArchUnit Rules** | 11 enforced at build time |
 | **CI** | GitHub Actions — build + full test suite + ArchUnit, dependency-review SCA gate, a verified `docker build`, and an external consumer smoke test, on every PR and push to `main`; the library is published to GitHub Packages on release tags |
 | **Schema Migrations** | Flyway V001–V019 (19 migrations) |
-| **Current Focus** | Phase 7 — all five work packages shipped (v0.8.0–v0.8.4); **phase not yet closed**, one exit criterion open (ADR GOV09; branch protection closed by ADR GOV10) |
+| **Current Focus** | Maintenance mode. Phase 7's five work packages shipped (v0.8.0–v0.8.4) and v0.8.5 adds security remediation and library publication alongside the frozen roadmap; **Phase 7 is not closed** — one exit criterion remains open (ADR GOV09; branch protection closed by ADR GOV10) |
 | **Next Milestone** | Close Phase 7's remaining criterion — benchmark retrieval quality against a real evaluation set (ADR RQ07) |
 
 ---
@@ -499,6 +499,7 @@ graph TD
 | v0.8.2 | Phase 7 / WP-3 — Operational Resilience (Weaviate timeout + reconciliation) | ✅ Complete |
 | v0.8.3 | Phase 7 / WP-4 — Retrieval Quality (re-ranking + HyDE) | ✅ Complete |
 | v0.8.4 | Phase 7 / WP-5 — Prompt-Injection Review (phase gate: **not complete**) | ✅ Complete |
+| v0.8.5 | Security Remediation & Platform Enablement (dependency advisories, EKA as a consumable library) | ✅ Complete |
 | Phase 8 → v0.9.x | Scale & Ecosystem Readiness | ⏳ Planned |
 | v1.0.0 | Stable Enterprise Release | ⏳ Planned |
 

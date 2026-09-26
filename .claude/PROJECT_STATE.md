@@ -2,17 +2,17 @@
 
 Current Version
 
-v0.8.4 (Complete) — **Phase 7 / WP-5 — Indirect Prompt-Injection Review** (ADR PI01–PI04). **⚠️ Phase 7 itself is NOT complete** — all five work packages shipped and the GitHub milestone stays open (ADR GOV09), but **one** exit criterion remains open. Branch protection **is now applied** on `main` (2026-09-26, ADR GOV10 — verified live; was 404 at the v0.8.4 gate, ADR GOV08), closing the first of GOV09's two rows. The retrieval-quality success criterion is still not met (ADR RQ07), and GOV09 requires both before Phase 7 closes. WP-4 (Retrieval Quality, ADR RQ01–RQ07) shipped at v0.8.3. **Phase 7's retrieval-quality success criterion remains OPEN** (ADR RQ07) — mechanism delivered, no measured improvement and no real evaluation set. WP-3 (Operational Resilience, ADR OR01–OR04) shipped at v0.8.2. WP-2 (Session Security, ADR RT01–RT05) shipped at v0.8.1. WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
+v0.8.5 (Complete) — **Security Remediation & Platform Enablement** (ADR DEP01–DEP03, PL01–PL06, SEC01) — a track running alongside the frozen roadmap, not a Phase 7 work package. The preceding release, v0.8.4, was **Phase 7 / WP-5 — Indirect Prompt-Injection Review** (ADR PI01–PI04). **⚠️ Phase 7 itself is NOT complete** — all five work packages shipped and the GitHub milestone stays open (ADR GOV09), but **one** exit criterion remains open. Branch protection **is now applied** on `main` (2026-09-26, ADR GOV10 — verified live; was 404 at the v0.8.4 gate, ADR GOV08), closing the first of GOV09's two rows. The retrieval-quality success criterion is still not met (ADR RQ07), and GOV09 requires both before Phase 7 closes. WP-4 (Retrieval Quality, ADR RQ01–RQ07) shipped at v0.8.3. **Phase 7's retrieval-quality success criterion remains OPEN** (ADR RQ07) — mechanism delivered, no measured improvement and no real evaluation set. WP-3 (Operational Resilience, ADR OR01–OR04) shipped at v0.8.2. WP-2 (Session Security, ADR RT01–RT05) shipped at v0.8.1. WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
 
 ---
 
-## Security & Platform Enablement (post-v0.8.4, unreleased)
+## Security & Platform Enablement (v0.8.5)
 
 A track that runs **alongside** the frozen Phase 6 → 7 → 8 roadmap (ADR GOV03), not inside it. It closes nothing in Phase 7 and claims nothing of Phase 8. Phase 8's objective is "prepare for more than one instance **and for external consumption**"; the platform work below is an early down-payment on the second half, taken because a consuming project needs an artifact now — and because publishing a library propagates its advisories to every consumer, which is why the security work came first.
 
-**Not yet released.** Recommended version when it ships: **v0.8.5** — a point release inside Phase 7's v0.8.x series. Explicitly *not* v0.9.0, which the frozen roadmap reserves for Phase 8 complete.
+**Released as v0.8.5** (2026-09-26) — a point release inside Phase 7's v0.8.x series. Explicitly *not* v0.9.0, which the frozen roadmap reserves for Phase 8 complete. Merged to `main` via PR #15 (squash) under branch protection.
 
 | Item | Status | ADRs |
 |---|---|---|
@@ -295,6 +295,7 @@ Sequencing rationale (from the approved plan): WP-1 first so every subsequent pa
 | v0.8.2 | Phase 7 / WP-3 — Operational Resilience | Weaviate connect/read timeout configured (ADR HD03 closed); reconciliation job scheduled with alerting |
 | v0.8.3 | Phase 7 / WP-4 — Retrieval Quality | Re-ranking shipped; HyDE evaluated; benchmark result documented in an ADR |
 | v0.8.4 | Phase 7 / WP-5 — **Phase 7 Complete** | Prompt-injection review documented; **branch protection verified applied** (ADR GOV08); every Phase 7 exit criterion met |
+| v0.8.5 | Security Remediation & Platform Enablement (alongside the roadmap, not a Phase 7 work package) | Shipped — 103 of 104 advisories closed, EKA publishable and consumable as a library, consumer smoke test in CI |
 | v0.9.0 | Phase 8 complete | Metrics dashboarded, streaming shipped, MCP go/no-go decided |
 | v1.0.0 | Version 1.0.0 milestone | Every item in the official v1.0.0 definition above is met — reviewed as a gate, not assumed from phase completion alone |
 

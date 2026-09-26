@@ -5,6 +5,8 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+## [0.8.5] — 2026-09-26 — Security Remediation & Platform Enablement
+
 ### Security
 
 - **Dependency upgrade closing 103 of 104 open advisories** — **8 of 8 critical, 40 of 40 high**,
