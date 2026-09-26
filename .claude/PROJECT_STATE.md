@@ -657,7 +657,7 @@ GeneratedResponse
 - `UploadDocumentUseCase` no longer carries a class-level `@Transactional`; `DocumentApplicationService`/`ChunkApplicationService` each keep their own, giving the pipeline short per-step transactions instead of one long one spanning Tika/Ollama/Weaviate calls; pipeline failures now call `Document.markFailed(...)` (P05.5, ADR HD01)
 - `ConversationApplicationService.renameConversation`/`.deleteConversation` now call `requireTenantMatch` identically to the three previously-checked methods — every ownership-scoped method in this service is now tenant-checked (P05.5, ADR HD02)
 - `HttpClientTimeoutConfig` (`infrastructure.config`) registers a `RestClientCustomizer` bounding Ollama's connect/read timeouts (`app.ollama.connect-timeout-ms`/`read-timeout-ms`); no equivalent exists for Weaviate — deferred, not a code gap (P05.5, ADR HD03)
-- `RetrievalService.doRetrieve()` rewraps any infrastructure `RuntimeException` (e.g. `HybridRetrievalException`, `QueryRewriteException`, `VectorStoreException`) as `RetrievalException`, so `GlobalExceptionHandler`'s 502 mapping actually reaches them; `GlobalExceptionHandler` gained a more-specific `InvalidRetrievalRequestException` → 400 handler ahead of the 502 handler (P05.5, ADR HD04)
+- `RetrievalService.doRetrieve()` rewraps any infrastructure `RuntimeException` (e.g. `HybridRetrievalException`, `VectorStoreException`) as `RetrievalException`, so `GlobalExceptionHandler`'s 502 mapping actually reaches them; `GlobalExceptionHandler` gained a more-specific `InvalidRetrievalRequestException` → 400 handler ahead of the 502 handler (P05.5, ADR HD04)
 - `spring.datasource.password` has no base-profile default (mirrors `JWT_SECRET_KEY`); `management.server.port` is an opt-in escape hatch for isolating actuator endpoints in a real deployment (P05.5, ADR HD05)
 - `GlobalExceptionHandler extends ResponseEntityExceptionHandler` — Spring MVC's own framework exceptions (malformed JSON, non-UUID path variables, unsupported methods) now resolve to correct 4xx `ProblemDetail` responses instead of the generic 500 fallback (v0.6.1, ADR EX02)
 - `JwtProperties`'s compact constructor validates HS256 key strength (≥32 bytes) and positive expiry at application-context startup, not on first token signed (v0.6.1, ADR EX04)
@@ -728,13 +728,11 @@ com.mudassirshahzad.eka
 │   ├── conversation                 — PersistentConversationHistoryAdapter
 │   ├── guardrails                   — PolicyBasedOutputGuardrailsAdapter
 │   ├── llm
-│   │   ├── exception                — LlmTimeoutException, LlmRateLimitException,
-│   │   │                              LlmProviderUnavailableException, LlmInvalidResponseException,
-│   │   │                              LlmModelNotFoundException
+│   │   ├── exception                — LlmProviderUnavailableException
 │   │   └── ollama                   — OllamaLlmAdapter
 │   ├── observability                — OllamaHealthIndicator, WeaviateHealthIndicator (P05.4, ADR OB05)
 │   ├── prompt                       — TemplateBasedPromptBuilderAdapter
-│   ├── query.rewrite                — OllamaQueryRewriteAdapter, QueryRewriteException
+│   ├── query.rewrite                — OllamaQueryRewriteAdapter, HydeQueryRewriteAdapter
 │   ├── ranking                      — RrfRankingAdapter
 │   └── retrieval
 │       ├── hybrid                   — HybridRetrievalAdapter, HybridRetrievalException
