@@ -47,6 +47,11 @@ ext {
 //                 httpcore5 5.4.3 (its parent POM's httpcore.version), so raising core
 //                 without client would pair a 5.4 core with a client compiled for 5.3.
 //   postgresql    Boot 3.5.16 pins 42.7.11; GHSA-j92g-9f8w-j867 is first patched in 42.7.12.
+//   jackson       Boot 3.5.16 pins the jackson BOM at 2.21.4 — and the BOM *wins*, forcing
+//                 transitively-requested 2.22.x back down to it. GHSA-5jmj-h7xm-6q6v needs
+//                 2.21.5. 2.21.7 is the current release on that same 2.21 line; 2.22.x is
+//                 deliberately not taken, since staying on the line Boot targets is the
+//                 whole point of these overrides.
 ext['tomcat.version']        = '10.1.60'
 ext['commons-lang3.version'] = '3.18.0'
 ext['spring-retry.version']  = '2.0.13'
@@ -54,6 +59,7 @@ ext['log4j2.version']        = '2.25.5'
 ext['httpclient5.version']   = '5.6.4'
 ext['httpcore5.version']     = '5.4.4'
 ext['postgresql.version']    = '42.7.13'
+ext['jackson-bom.version']   = '2.21.7'
 
 repositories {
     mavenCentral()
