@@ -385,6 +385,54 @@ Override via environment variables or `application.yml`:
 
 ---
 
+## Using EKA as a library
+
+EKA ships as an application **and** as a consumable library, from the same build:
+
+| Artifact | Size | What it is |
+|---|---|---|
+| `project-eka-<version>.jar` | ~500 KB | **the library** — depend on this |
+| `project-eka-<version>-boot.jar` | ~145 MB | the executable EKA Assistant |
+
+```groovy
+repositories {
+    mavenCentral()
+    maven {
+        url = 'https://maven.pkg.github.com/mudassirshahzad/project-eka'
+        credentials {
+            username = System.getenv('GITHUB_ACTOR')
+            password = System.getenv('GITHUB_TOKEN')   // needs read:packages
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.mudassirshahzad:project-eka:<version>'
+}
+```
+
+The part that matters to a consumer is the hexagon: `domain/` holds the model and **every port
+interface**, and is pure Java — no Spring, no JPA, no Spring AI, no Jackson. That purity is enforced
+by ArchUnit rather than convention, so you can implement a port without inheriting a vector store:
+
+```java
+public final class MyRetrieval implements RetrievalPort {
+    @Override
+    public RetrievalResult retrieve(String queryText, TenantId tenantId,
+                                    MetadataFilter filter, RetrievalOptions options) { ... }
+}
+```
+
+`platform-smoke/` is exactly this, kept minimal and run in CI against the published artifact on every
+pull request — because EKA's own tests compile against EKA's own source tree and cannot detect a
+packaging defect.
+
+**Read [`docs/platform/consuming-eka.md`](docs/platform/consuming-eka.md) before depending on
+this in anger** — it documents the real limitations (every POM dependency is `runtime` scope; it is
+currently one jar rather than the four-module split, so you inherit the full transitive set).
+
+---
+
 ## Documentation
 
 | Document | Description |
@@ -394,6 +442,9 @@ Override via environment variables or `application.yml`:
 | [Component Architecture](docs/architecture/components.md) | Service responsibilities, RAG pipeline design, and sequence flows |
 | [Executive Summary](docs/architecture/executive-summary.md) | Non-technical overview for architects and engineering managers |
 | [Roadmap (historical)](docs/roadmap.md) | Pre-implementation phase design — superseded for numbering/status by [Release Roadmap](#release-roadmap) below and `.claude/PROJECT_STATE.md`; retained for its MCP/LangGraph/multi-agent technical content, which is post-v1.0 scope, not current roadmap |
+| [Consuming EKA as a library](docs/platform/consuming-eka.md) | How to depend on EKA from another project, what the published jar contains, and the known limitations |
+| [Platform Blueprint](docs/analysis/eka-platform-blueprint.md) | The planned `eka-core`/`eka-llm`/`eka-rag`/`eka-app` module split, and why four modules rather than eight |
+| [Dependency Roadmap](docs/analysis/dependency-roadmap.md) | Per-dependency audit with recommended targets, and what is deliberately blocked |
 | [Release Notes v0.4.0](docs/releases/v0.4.0.md) | Document ingestion pipeline — full changelog |
 | [Release Notes v0.3.0](docs/releases/v0.3.0.md) | Application layer — full changelog |
 

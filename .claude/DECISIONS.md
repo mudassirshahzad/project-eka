@@ -690,3 +690,101 @@ Two configuration choices are deliberate and recorded because they look like mis
 Rationale: ADR GOV08 held that applying branch protection was a repository-owner action outside an implementation session, and GOV09 verified it unapplied at the v0.8.4 gate rather than assuming. Neither ADR is contradicted here: the owner authorized the change explicitly in this session, which is the condition GOV08 was waiting on — not a unilateral settings change. It was also sequenced correctly rather than conveniently: the three code/documentation commits of this session were pushed to `main` and CI verified green **before** protection was applied, because enabling it first would have required routing that work through a pull request for no benefit. From this point every change to `main`, the owner's included, goes through a pull request — the change this ADR's own commit was landed through, as its first test.
 
 The honest limitation: `enforce_admins` prevents *accidental* direct pushes, not determined ones. A repository owner can disable protection, push, and re-enable it. This is a guardrail against mistakes and a forcing function for CI, not a control against the owner.
+
+---
+
+# Security & Platform Enablement ADRs — dependency remediation and library publication
+
+These sit **alongside** the frozen Phase 6 → 7 → 8 → v1.0.0 roadmap (ADR GOV03), not inside it. Phase 7 remains open on ADR RQ07, and nothing here closes it or claims Phase 8. Phase 8's stated objective is "prepare for more than one instance and for external consumption" — the platform work below is a deliberate early down-payment on the second half of that, taken because FayaScout needs a consumable artifact now, and because publishing a library propagates its advisories to every consumer (hence the security work first).
+
+---
+
+ADR DEP01: Managed-version overrides are pinned explicitly in `build.gradle`, each with its justifying advisory and a delete-when condition
+
+Decision: Eight `ext['*.version']` overrides sit above the dependency block — tomcat 10.1.60, postgresql 42.7.13, jackson-bom 2.21.7, httpclient5 5.6.4, httpcore5 5.4.4, commons-lang3 3.18.0, spring-retry 2.0.13, log4j-api 2.25.5. Each carries an inline comment naming the advisory that justifies it and an instruction to delete it once Spring Boot's BOM carries the same version or newer.
+
+Rationale: The governing principle from the dependency audit is **"latest is not the target"** — every major version (Boot 4, Spring AI 2, springdoc 3, Gradle 9) was recommended against, because in every case the entire security benefit was available on the current line at a fraction of the risk. But the audit's own §2.2 established the corollary that makes these overrides necessary: staying in-line is right, and it is **not automatically sufficient**. Spring Boot 3.5.16 leaves three critical Tomcat CVEs open, and only an explicit pin closes them.
+
+Two of the eight are worth recording individually because reading the build file alone would mislead:
+
+- **Tomcat 10.1.60, not 10.1.58.** The three criticals are first patched in 10.1.58, which was **never published to Maven Central** — the published sequence runs 10.1.57 → 10.1.59 → 10.1.60. A pin written from the advisory text alone would not resolve.
+- **jackson-bom 2.21.7.** Several dependencies transitively *request* 2.22.1, but Boot's BOM pins 2.21.4 and under `io.spring.dependency-management` the BOM wins — the resolved version is forced *down* to 2.21.4. Reading the dependency tree for the highest requested version would wrongly conclude jackson was already patched; `GHSA-5jmj-h7xm-6q6v` requires 2.21.5.
+
+The delete-when condition is load-bearing. An override with no expiry becomes a silent downgrade the moment Boot moves past it, which is the failure mode this whole exercise exists to fix. Every version was verified against the resolved `runtimeClasspath`, never the declaration.
+
+Deliberately not taken: `grpc-netty-shaded` 1.75.0 (1 high). It arrives via the Weaviate client, which pins its own gRPC stack; a 7-minor jump underneath a client with opinions about gRPC is a real compatibility risk for no benefit verifiable without a live Weaviate. It is upgraded **with** the Weaviate client, not ahead of it.
+
+---
+
+ADR DEP02: Dependabot's `spring` group is capped at minor/patch; majors are raised as milestones
+
+Decision: The `spring` group in `.github/dependabot.yml` declares `update-types: [minor, patch]`.
+
+Rationale: Uncapped, the group did exactly what its patterns told it to and combined a Spring Boot major with a Spring AI major into one pull request (#3: Boot 3.5 → 4.1 *and* Spring AI 1.0 → 2.0). That PR could never go green — it failed at plugin resolution, before compilation. The grouping itself is correct and stays: Boot and Spring AI release their modules in lockstep, and upgrading them one PR at a time produces a series of individually-broken builds. What was wrong was the absence of a ceiling. Majors in this stack are **migrations, not upgrades** — Boot 4 additionally requires springdoc 3 and a newer Gradle, together, which is a milestone with its own planning session, not something a bot should open on a Monday.
+
+---
+
+ADR PL01: EKA is published as a library from the existing single module; the boot jar takes a classifier
+
+Decision: `maven-publish` publishes the **plain** jar as `project-eka-<version>.jar` with no classifier, and the executable jar becomes `project-eka-<version>-boot.jar`. A sources jar is published alongside. No module split accompanies this.
+
+Rationale: Gradle's default gives the boot jar the bare name and the library the `-plain` classifier, which would make a ~145 MB fat jar — containing a flattened, repackaged copy of the entire dependency tree — the artifact every consumer depends on. Swapping the classifiers makes `from components.java` publish the ~500 KB library instead.
+
+Publishing **before** splitting is deliberate sequencing, not laziness: it delivers the headline benefit (an external project can consume EKA) without holding it hostage to the riskiest work, and it produces a real consumer whose existence makes the later split verifiable rather than theoretical. The four-module split (`eka-core`/`eka-llm`/`eka-rag`/`eka-app`) remains planned and unstarted.
+
+Known limitation, recorded rather than hidden: every POM dependency is `runtime` scope, because EKA declares everything as Gradle `implementation`. Consumers get EKA's transitive dependencies at runtime but not at compile time. This is a non-issue for a Spring Boot consumer, and EKA's own classes — the ones a consumer compiles against — are in the jar. It resolves properly with the module split, where `eka-core` can declare `api` dependencies meaningfully.
+
+The Dockerfile's `COPY build/libs/*.jar` glob was a latent coupling this change activated: it was safe only while the image build ran `bootJar` alone, so exactly one jar existed. The build stage now normalises the boot jar to a fixed path, resolved inside the build stage so the project version is not restated in the Dockerfile (ADR EX03).
+
+---
+
+ADR PL02: Gradle Module Metadata is not published; the POM is the sole published metadata
+
+Decision: `tasks.withType(GenerateModuleMetadata) { enabled = false }`. Only `.pom` is published.
+
+Rationale: This fixes a defect that was found by a consumer, not by reasoning. `io.spring.dependency-management` writes its resolved versions into the generated POM's `<dependencyManagement>` block but **not** into Gradle Module Metadata. Gradle prefers `.module` over `.pom` when both are present, so publishing both handed every Gradle consumer a dependency graph with no versions at all:
+
+```
+> Could not find org.postgresql:postgresql:.
+  Required by: root project : > com.mudassirshahzad:project-eka:0.8.4
+```
+
+— while the POM sitting beside it was perfectly correct. Publishing the POM alone is right for Maven **and** Gradle consumers, because Gradle honours `<dependencyManagement>` entries as constraints.
+
+The alternative fix is migrating to Gradle's native `platform()` BOM support, which would produce correct module metadata. It is deliberately **not** taken here, because it would simultaneously invalidate every `ext['*.version']` override in ADR DEP01 — the two changes are coupled and belong in one deliberate commit with the module split, not bundled into a publication change.
+
+---
+
+ADR PL03: A standalone consumer smoke test guards the published artifact, and is excluded from the root build on purpose
+
+Decision: `platform-smoke/` is a separate Gradle project that resolves `com.mudassirshahzad:project-eka` **by coordinate** and compiles against its ports. It is not listed in `settings.gradle`. CI runs it on every pull request.
+
+Rationale: ADR PL02's defect is the entire argument. EKA's test suite compiles against EKA's own source tree, so **no test in this repository can detect a packaging defect** — the versionless-metadata bug would have shipped green and broken every downstream consumer on first use.
+
+The exclusion from `settings.gradle` is the load-bearing detail. A composite build or project dependency would resolve EKA's classes directly from the build that produced them, which proves nothing about what a consumer actually receives from a repository. The smoke test is only meaningful because it goes through publication.
+
+It is deliberately a *packaging* test and not a functional one: it implements a port with a lambda (which only compiles if every type on that port's signature is also published and reachable) and constructs a domain value object without a Spring context. Behaviour is covered by the 816 tests in the main build.
+
+---
+
+ADR PL04: The three module-boundary ArchUnit rules are added before any code moves
+
+Decision: `HexagonalArchitectureTest` gains three rules (11 total): `domain` must not depend on Spring AI or Jackson; `api` must not depend on `infrastructure`; every `*Adapter` must implement a port declared in `domain`.
+
+Rationale: These are the safety net for the future module split. Added afterwards, they would only confirm whatever the moves happened to produce — which is not a check, it is a description. Added first, a bad move fails the build.
+
+The domain-purity rule is the most valuable invariant in the build, and the reason is external: a consumer depends on `domain` in order to implement a port *without* inheriting a vector store, an LLM client, or an opinion about JSON serialization. Spring and JPA were already covered; Spring AI (via a provider type on a port signature) and Jackson (via a serialization annotation on a value object) were the two remaining frameworks that could leak in unnoticed. Domain is verified JDK-only today.
+
+Each rule was **verified to actually fail** before being kept — a Jackson annotation was temporarily added to `TenantId`, the rule failed the build, and it was reverted. A rule that cannot fail is not a safety net, and an untested ArchUnit rule is indistinguishable from one with a typo'd package name.
+
+---
+
+ADR SEC01: `UserDetailsServiceAutoConfiguration` is excluded
+
+Decision: `@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)`.
+
+Rationale: Booting the production image against a real Postgres logged `Using generated security password: …` on every startup. This was **not a vulnerability**, and the distinction is the point of recording it: authentication is JWT-only — `SecurityConfig` registers no `httpBasic()` and no `formLogin()`, and `JwtAuthenticationFilter` is the single authentication mechanism in the chain — so no code path could ever present that password. The account was unreachable, not exposed.
+
+Removing it is still right. An operator reading production logs is told a default account exists, which becomes either a wasted incident investigation or, worse, someone "fixing" it by adding `httpBasic()` and making it real. Verified safe before excluding: nothing in the codebase injects an `AuthenticationManager` or a `UserDetailsService`.
+
+Recorded also because of **how** it was found — by actually booting the image against Postgres, not by reading configuration. The log line exists only at runtime, and no amount of static review would have surfaced it.

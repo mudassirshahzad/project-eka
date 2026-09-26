@@ -5,6 +5,114 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+### Security
+
+- **Dependency upgrade closing 96 of 104 open advisories** — 8 of 8 critical, 34 of 40 high, 41
+  medium, 13 low. Executes §4 of [`docs/analysis/dependency-roadmap.md`](docs/analysis/dependency-roadmap.md).
+  The audit's finding was that this is a **stale-BOM problem, not a dependency-choice problem**:
+  Spring Boot 3.5.0 pinned ~30 transitive libraries to their May 2025 versions.
+
+  | Dependency | From | To |
+  |---|---|---|
+  | Spring Boot | 3.5.0 | 3.5.16 |
+  | Spring AI | 1.0.0 | 1.1.8 |
+  | springdoc | 2.7.0 | 2.9.1 |
+  | ArchUnit | 1.5.0 | 1.5.1 |
+
+  Boot 3.5.16 carries spring-framework 6.2.19, spring-security 6.5.11, spring-data 3.5.13,
+  micrometer 1.15.12 and logback 1.5.34 with it.
+
+  Explicit managed-version overrides, each documented inline in `build.gradle` with the advisory
+  that justifies it and a note to delete it once Boot carries the same version or newer (ADR DEP01):
+  **tomcat 10.1.60**, **postgresql 42.7.13**, **jackson-bom 2.21.7**, **httpclient5 5.6.4**,
+  **httpcore5 5.4.4**, **commons-lang3 3.18.0**, **spring-retry 2.0.13**, **log4j-api 2.25.5**.
+
+  Two of these are worth calling out because a Boot bump alone does *not* close them:
+
+  - **Tomcat.** Boot 3.5.16 ships 10.1.55; three criticals (`GHSA-h3x4-894j-xpx5` FORM-auth
+    incorrect authorization, `GHSA-9xv2-5v5q-p794` DIGEST capture-replay auth bypass,
+    `GHSA-gcx9-497g-6cp6` improper access control) are first patched in 10.1.58 — which was never
+    published to Maven Central. 10.1.60 is the first available release carrying the fixes.
+  - **Jackson.** Several dependencies transitively *request* 2.22.1, but Boot's BOM pins 2.21.4 and
+    the BOM wins, forcing the resolved version *down*. Reading the dependency tree for the highest
+    requested version would have wrongly concluded jackson was already patched.
+    `GHSA-5jmj-h7xm-6q6v` needs 2.21.5; 2.21.7 is the current release on Boot's line.
+
+  Every version above was verified against the **resolved** `runtimeClasspath`, not the declaration.
+
+- **Stopped auto-configuring an unusable in-memory user.** Booting the production image logged
+  `Using generated security password: …` on every startup. Not a vulnerability — authentication is
+  JWT-only, `SecurityConfig` registers no `httpBasic()` or `formLogin()`, so no code path could
+  present that password — but it tells an operator reading production logs that a default account
+  exists. `UserDetailsServiceAutoConfiguration` is now excluded (ADR SEC01). Verified safe first:
+  nothing in the codebase injects an `AuthenticationManager` or `UserDetailsService`. Found by
+  booting the image against a real Postgres, not by reading configuration.
+
+### Added (platform enablement)
+
+- **EKA is now consumable as a versioned library** (ADR PL01–PL03) — executes Tasks 1–3 of
+  [`docs/analysis/eka-platform-blueprint.md`](docs/analysis/eka-platform-blueprint.md). **No
+  restructuring**; the module split (Tasks 4–7) remains deliberately separate and unstarted.
+
+  Two artifacts now ship from one build: `project-eka-<version>.jar` (~500 KB, **the library**) and
+  `project-eka-<version>-boot.jar` (~145 MB, the executable Assistant). Gradle's default is the
+  other way round, which would publish a fat jar containing a flattened copy of the whole dependency
+  tree as the artifact consumers depend on. A sources jar ships alongside. Published to GitHub
+  Packages by CI on **release tags only** — the version is a fixed release number and GitHub
+  Packages rejects re-publishing one, so publishing on every push would fail on the second commit
+  after each release.
+
+- **`platform-smoke/` — a standalone consumer smoke test, run in CI on every pull request.** It
+  resolves `project-eka` *by coordinate* and compiles against its ports. Deliberately excluded from
+  `settings.gradle`: a project dependency would resolve EKA's classes directly and prove nothing
+  about what consumers actually receive.
+
+- **Three module-boundary ArchUnit rules** (816 tests, +3), added *before* any code moves so a bad
+  move fails the build rather than silently redefining the boundary: `domain` must not depend on
+  Spring AI or Jackson (the JDK-only purity invariant — Spring and JPA were already covered); `api`
+  must not depend on `infrastructure`; every `*Adapter` must implement a port declared in `domain`.
+  Each was verified to actually fail before being kept.
+
+- **New documentation:** [`docs/platform/consuming-eka.md`](docs/platform/consuming-eka.md) — how to
+  depend on EKA, what you get, and the known limitations (all POM dependencies are `runtime` scope;
+  it is one jar, not four).
+
+### Fixed
+
+- **Published Gradle Module Metadata made the library unresolvable for Gradle consumers** (ADR PL02).
+  `io.spring.dependency-management` writes its resolved versions into the POM's
+  `<dependencyManagement>` block but **not** into Gradle Module Metadata, and Gradle prefers
+  `.module` over `.pom`. Publishing both handed Gradle consumers a versionless dependency graph:
+
+  ```
+  > Could not find org.postgresql:postgresql:.
+    Required by: root project : > com.mudassirshahzad:project-eka:0.8.4
+  ```
+
+  …while the POM beside it was correct. Module metadata is no longer published; the POM alone is
+  right for Maven *and* Gradle consumers, since Gradle honours `<dependencyManagement>` as
+  constraints. **Nothing in this repository could have caught this** — EKA's tests compile against
+  EKA's own source tree — which is why `platform-smoke/` now exists.
+
+- **The Dockerfile's `COPY build/libs/*.jar` glob** was only safe while the image build ran `bootJar`
+  alone, so exactly one jar existed. With a library jar now also produced, the build stage
+  normalises the boot jar to a fixed path — resolved *inside* the build stage rather than restating
+  the project version in the Dockerfile, keeping `project.version` the single source of truth
+  (ADR EX03).
+
+### Changed (CI & dependency governance)
+
+- **CI now runs on every pull request, not only those targeting `main`.** The
+  `pull_request: branches: [ main ]` filter meant a stacked pull request ran no checks at all and
+  reported "no checks reported" — worse than a red build, because a silent PR looks ready to merge.
+- **Dependabot's `spring` group is capped at minor/patch** (ADR DEP02). Uncapped, it grouped a Boot
+  major and a Spring AI major into one pull request — which is how PR #3 proposed Boot 3.5 → 4.1
+  *and* Spring AI 1.0 → 2.0 together and could never go green. Majors in this stack are migrations,
+  not upgrades, and are raised deliberately as their own milestone.
+- **Closed obsolete Dependabot PRs #3 and #7**, each with the reasoning recorded on the PR. #7
+  proposed springdoc 3.1.1, which requires Boot 4; springdoc 2.9.1 was taken instead.
+
+
 ### Changed (repository governance)
 
 - **Branch protection applied on `main`** (ADR GOV10) — closing the first of ADR GOV09's two open

@@ -8,6 +8,33 @@ v0.8.4 (Complete) — **Phase 7 / WP-5 — Indirect Prompt-Injection Review** (A
 
 ---
 
+## Security & Platform Enablement (post-v0.8.4, unreleased)
+
+A track that runs **alongside** the frozen Phase 6 → 7 → 8 roadmap (ADR GOV03), not inside it. It closes nothing in Phase 7 and claims nothing of Phase 8. Phase 8's objective is "prepare for more than one instance **and for external consumption**"; the platform work below is an early down-payment on the second half, taken because a consuming project needs an artifact now — and because publishing a library propagates its advisories to every consumer, which is why the security work came first.
+
+**Not yet released.** Recommended version when it ships: **v0.8.5** — a point release inside Phase 7's v0.8.x series. Explicitly *not* v0.9.0, which the frozen roadmap reserves for Phase 8 complete.
+
+| Item | Status | ADRs |
+|---|---|---|
+| Dependency remediation — 96 of 104 advisories closed (8/8 critical) | ✅ Complete | DEP01, DEP02 |
+| EKA publishable as a library; boot jar reclassified | ✅ Complete | PL01 |
+| Gradle Module Metadata suppressed (fixes unresolvable consumers) | ✅ Complete | PL02 |
+| `platform-smoke/` consumer test, run in CI | ✅ Complete | PL03 |
+| Three module-boundary ArchUnit rules (11 total) | ✅ Complete | PL04 |
+| `UserDetailsServiceAutoConfiguration` excluded | ✅ Complete | SEC01 |
+| CI runs on every PR, not only those targeting `main` | ✅ Complete | — |
+| Module split (`eka-core`/`eka-llm`/`eka-rag`/`eka-app`) | ⬜ Not started | — |
+
+**Grand total tests: 816 — 0 failures** (net +3, all ArchUnit boundary rules)
+
+**Verified empirically, not assumed:** every dependency version against the resolved `runtimeClasspath`; each new ArchUnit rule made to fail before being kept; `docker build` run locally and in CI; the application booted from the image against a real Postgres (19 Flyway migrations applied, Tomcat up, `/actuator/info` reporting v0.8.4); and an external project compiled and ran against the published artifact.
+
+**Known limitations, recorded rather than hidden:** every published POM dependency is `runtime` scope (resolves with the module split); EKA is one jar, so a consumer wanting only prompting still inherits Weaviate and Tika; `grpc-netty-shaded` remains on 1.68.2 with one high advisory, deliberately pinned by the Weaviate client (ADR DEP01).
+
+**Next step:** blueprint Task 4 — extract `eka-core`. Its prerequisites (Tasks 1–3, the boundary rules) are all in place.
+
+---
+
 ## Phase 4 — Foundation (Complete)
 
 | Milestone | Description                        | New Tests | Status     |
