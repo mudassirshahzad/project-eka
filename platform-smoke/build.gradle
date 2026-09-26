@@ -15,9 +15,23 @@ java {
     }
 }
 
-// The version under test. CI passes -PekaVersion=<root project version> so this never
-// drifts from build.gradle; the default keeps a bare `gradle run` working locally.
-def ekaVersion = project.findProperty('ekaVersion') ?: '0.8.4'
+// The version under test, read from the root build rather than restated here.
+//
+// This previously defaulted to a hardcoded '0.8.4' with CI passing -PekaVersion to keep it
+// honest — which meant the literal silently went stale on the first version bump and a local
+// `gradle run` would then test a version that no longer exists (or worse, an older one that
+// does). Parsing the root build makes the drift impossible and lets CI drop the extra step.
+// -PekaVersion still overrides, for testing a specific published version.
+def ekaVersion = project.findProperty('ekaVersion') ?: {
+    def rootBuild = file('../build.gradle')
+    def matcher = rootBuild.text =~ /(?m)^version\s*=\s*['"]([^'"]+)['"]/
+    if (!matcher) {
+        throw new GradleException(
+                "Could not read `version` from ${rootBuild} — platform-smoke must test the " +
+                "version the root project actually builds. Pass -PekaVersion=<version> to override.")
+    }
+    matcher[0][1]
+}()
 
 dependencies {
     implementation "com.mudassirshahzad:project-eka:${ekaVersion}"

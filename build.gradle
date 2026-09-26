@@ -24,6 +24,7 @@ ext {
     tikaVersion      = '4.0.0'
     archunitVersion  = '1.5.1'
     springdocVersion = '2.9.1'
+    grpcVersion      = '1.75.0'
 }
 
 // ── Managed-dependency overrides (security) ────────────────────────────────
@@ -68,6 +69,29 @@ repositories {
 dependencyManagement {
     imports {
         mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+
+        // ── gRPC alignment (security + correctness) ────────────────────────
+        // gRPC arrives transitively via io.weaviate:client, whose own POM declares its
+        // gRPC artifacts under THREE separate version properties — and they disagree:
+        //
+        //   grpc-netty-shaded.version = 1.68.2
+        //   grpc-protobuf.version     = 1.70.0
+        //   grpc-stub.version         = 1.68.2
+        //
+        // which resolved here as a split stack (grpc-api/protobuf/protobuf-lite at
+        // 1.70.0; core/netty-shaded/stub/util/context at 1.68.2). gRPC requires every
+        // io.grpc artifact to be on the same version — a mixed stack is a latent
+        // NoSuchMethodError, not merely untidy.
+        //
+        // Importing grpc-bom aligns all of them to one version, and that version is
+        // chosen to also close GHSA-prj3-ccx8-p6x4 (high; first patched in 1.75.0).
+        // 1.75.0 is the minimum that does both — deliberately not the newest (1.79.0),
+        // since the smaller move from what the Weaviate client was built against is the
+        // safer one and buys the same result.
+        //
+        // Verified against a real Weaviate 1.25.0 over its gRPC port, not assumed — the
+        // adapter tests are mock-based and cannot exercise this path.
+        mavenBom "io.grpc:grpc-bom:${grpcVersion}"
     }
 }
 

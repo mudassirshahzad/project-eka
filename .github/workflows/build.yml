@@ -169,15 +169,11 @@ jobs:
       - name: Publish the library to the local Maven repository
         run: gradle publishToMavenLocal -x test
 
-      # The version is read from the root build rather than restated here, so this job
-      # cannot silently start testing a stale coordinate after a version bump.
+      # No -PekaVersion needed: platform-smoke/build.gradle reads `version` from the root
+      # build itself, so it cannot test a stale coordinate after a version bump.
       - name: Resolve and run the consumer against the published artifact
         working-directory: platform-smoke
-        run: |
-          set -euo pipefail
-          EKA_VERSION=$(cd .. && gradle -q properties --property version | awk '/^version:/ {print $2}')
-          echo "Consuming com.mudassirshahzad:project-eka:${EKA_VERSION}"
-          gradle run --no-daemon -PekaVersion="${EKA_VERSION}"
+        run: gradle run --no-daemon
 
   # Platform enablement — publishes the *library* jar (the plain jar; the executable boot
   # jar is not a dependency artifact) so external projects can consume EKA's domain model,
