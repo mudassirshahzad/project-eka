@@ -8,6 +8,8 @@ import com.mudassirshahzad.eka.domain.document.SupportedFormat;
 import com.mudassirshahzad.eka.infrastructure.parsing.exception.DocumentParsingException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.io.TikaInputStream;
+import org.apache.tika.metadata.HttpHeaders;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.AutoDetectParser;
@@ -17,7 +19,6 @@ import org.apache.tika.sax.BodyContentHandler;
 import org.springframework.stereotype.Component;
 import org.xml.sax.SAXException;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
 
@@ -34,7 +35,7 @@ public class TikaDocumentParserAdapter implements DocumentParser {
         ParseContext       context  = new ParseContext();
         context.set(Parser.class, parser);
 
-        try (ByteArrayInputStream in = new ByteArrayInputStream(content)) {
+        try (TikaInputStream in = TikaInputStream.get(content)) {
             parser.parse(in, handler, metadata, context);
         } catch (IOException | SAXException | TikaException e) {
             log.warn("Tika failed to parse document of format {}: {}", format, e.getMessage());
@@ -43,7 +44,7 @@ public class TikaDocumentParserAdapter implements DocumentParser {
         }
 
         String extractedText  = handler.toString();
-        SupportedFormat detected = SupportedFormat.fromMimeType(metadata.get(Metadata.CONTENT_TYPE))
+        SupportedFormat detected = SupportedFormat.fromMimeType(metadata.get(HttpHeaders.CONTENT_TYPE))
                 .orElse(format);
         ParsingStatus   status   = extractedText.isBlank() ? ParsingStatus.PARTIAL : ParsingStatus.SUCCESS;
 
