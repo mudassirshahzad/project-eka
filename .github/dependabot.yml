@@ -19,10 +19,21 @@ updates:
     groups:
       # Spring Boot and Spring AI release their modules in lockstep; upgrading them
       # one pull request at a time produces a series of individually-broken builds.
+      #
+      # `update-types` is deliberately capped at minor/patch. Without it, Dependabot
+      # groups a Spring Boot major and a Spring AI major into a single pull request
+      # (this is exactly how PR #3 proposed Boot 3.5 -> 4.1 *and* Spring AI 1.0 -> 2.0
+      # together, and could never go green). Majors in this stack are migrations, not
+      # upgrades: Boot 4 additionally requires springdoc 3 and a newer Gradle, so it is
+      # raised deliberately as its own milestone with its own planning session — see
+      # docs/analysis/dependency-roadmap.md section 6.
       spring:
         patterns:
           - "org.springframework*"
           - "io.spring*"
+        update-types:
+          - minor
+          - patch
       test:
         patterns:
           - "org.testcontainers:*"
