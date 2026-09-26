@@ -7,13 +7,13 @@
 *A reference implementation of an enterprise-grade Retrieval-Augmented Generation (RAG) platform — built with Hexagonal Architecture, Spring AI, and fully on-premises AI models — with complete data ownership and no external API dependencies.*
 
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5.0-6DB33F?style=flat-square&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Spring AI](https://img.shields.io/badge/Spring_AI-1.0.0-6DB33F?style=flat-square&logo=spring&logoColor=white)](https://spring.io/projects/spring-ai)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5.16-6DB33F?style=flat-square&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring AI](https://img.shields.io/badge/Spring_AI-1.1.8-6DB33F?style=flat-square&logo=spring&logoColor=white)](https://spring.io/projects/spring-ai)
 [![Weaviate](https://img.shields.io/badge/Weaviate-1.25-FF6D00?style=flat-square)](https://weaviate.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Apache Tika](https://img.shields.io/badge/Apache_Tika-2.9.2-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
-[![Tests](https://img.shields.io/badge/tests-810_passing-22c55e?style=flat-square)](docs/releases/v0.4.0.md)
-[![License](https://img.shields.io/badge/license-MIT-64748b?style=flat-square)](LICENSE)
+[![Apache Tika](https://img.shields.io/badge/Apache_Tika-4.0.0-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
+[![Tests](https://img.shields.io/badge/tests-816_passing-22c55e?style=flat-square)](CHANGELOG.md)
+[![License](https://img.shields.io/badge/license-Apache_2.0-64748b?style=flat-square)](LICENSE)
 
 </div>
 
@@ -23,15 +23,15 @@
 
 - Hexagonal Architecture (Ports & Adapters) — ArchUnit-enforced at build time
 - Domain-Driven Design — pure domain model with zero framework dependencies
-- Spring AI 1.0.0 — unified abstraction over embedding models and vector stores
-- Apache Tika 2.9.2 — multi-format document parsing with magic-byte detection
+- Spring AI 1.1.8 — unified abstraction over embedding models and vector stores
+- Apache Tika 4.0.0 — multi-format document parsing with magic-byte detection
 - Ollama — local embedding (`nomic-embed-text`, 768-dim) and generation (`qwen3`)
 - Weaviate 1.25 — vector store, tenant-isolated via a mandatory query-time filter
 - PostgreSQL 16 — relational metadata, full-text search
 - Hybrid Search *(v0.5.0)*
 - Authorization Filter *(v0.7.1)* — role-based document-classification clearance
 - MCP & LangGraph Ready — architecturally (port interfaces align with both), not yet on the release roadmap; see [Roadmap](#release-roadmap)
-- 810 Automated Tests, 0 failures
+- 816 Automated Tests, 0 failures
 
 ---
 
@@ -49,7 +49,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 | Differentiator | What it means in practice |
 |---|---|
-| **Hexagonal Architecture — enforced** | The build fails if an infrastructure class is imported into the domain layer. Eight ArchUnit rules run on every `gradle test`. Architecture is not a convention — it is a constraint. |
+| **Hexagonal Architecture — enforced** | The build fails if an infrastructure class is imported into the domain layer. Eleven ArchUnit rules run on every `gradle test`. Architecture is not a convention — it is a constraint. |
 | **Zero external API dependency** | No OpenAI key. No cloud vector store account. Ollama, Weaviate, and PostgreSQL run locally via Docker. Complete data ownership from day one. |
 | **Multi-tenancy as a first-class citizen** | Every entity carries `TenantId`, in V001 of the schema, not retrofitted. Weaviate isolation is a mandatory `tenantId` query-time filter applied server-side on every call (property-based, not Weaviate's native per-collection multi-tenancy). |
 | **Provider independence is real** | To swap the embedding provider, implement `EmbeddingProvider` (one file) and update `application.yml`. Zero domain or application layer changes — enforced by the port boundary, not by documentation. |
@@ -64,12 +64,12 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 |---|---|
 | **Current Release** | v0.8.4 — Phase 7 / WP-5: Indirect Prompt-Injection Review |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 810 passing, 0 failures · 83 test classes |
-| **ArchUnit Rules** | 8 enforced at build time |
-| **CI** | GitHub Actions — build + full test suite + ArchUnit, dependency-review SCA gate, and a verified `docker build`, on every PR and push to `main` |
+| **Automated Tests** | 816 passing, 0 failures · 83 test classes |
+| **ArchUnit Rules** | 11 enforced at build time |
+| **CI** | GitHub Actions — build + full test suite + ArchUnit, dependency-review SCA gate, a verified `docker build`, and an external consumer smoke test, on every PR and push to `main`; the library is published to GitHub Packages on release tags |
 | **Schema Migrations** | Flyway V001–V019 (19 migrations) |
-| **Current Focus** | Phase 7 — all five work packages shipped (v0.8.0–v0.8.4); **phase not yet closed**, two exit criteria open (ADR GOV09) |
-| **Next Milestone** | Close Phase 7's two open criteria — apply branch protection, and benchmark retrieval quality against a real evaluation set |
+| **Current Focus** | Phase 7 — all five work packages shipped (v0.8.0–v0.8.4); **phase not yet closed**, one exit criterion open (ADR GOV09; branch protection closed by ADR GOV10) |
+| **Next Milestone** | Close Phase 7's remaining criterion — benchmark retrieval quality against a real evaluation set (ADR RQ07) |
 
 ---
 
@@ -106,7 +106,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 **Implemented — v0.6.1 (engineering excellence & repository governance, post-Phase-5)**
 
-- ✅ CI/CD — GitHub Actions builds, tests, and runs ArchUnit on every pull request and push to `main`; branch protection specified in [docs/governance/branch-protection.md](docs/governance/branch-protection.md)
+- ✅ CI/CD — GitHub Actions builds, tests, and runs ArchUnit on every pull request and push to `main`; branch protection specified in [docs/governance/branch-protection.md](docs/governance/branch-protection.md), and applied on `main` as of 2026-09-26 (ADR GOV10)
 - ✅ Correct HTTP status codes for client mistakes — malformed JSON, a non-UUID path variable, and similar framework-level errors now return `400`, not a misleading `500`
 - ✅ JWT configuration fails fast at startup — a too-short HS256 secret or non-positive token expiry stops the application at boot, not on the first login request
 - ✅ Login rate limiting — `POST /api/v1/auth/login` is capped per source IP (10 attempts/minute by default)
@@ -165,7 +165,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 **Planned — beyond Phase 7** (see [Release Roadmap](#release-roadmap))
 
-- ⚠️ **Phase 7 is not closed** (ADR GOV09) — two exit criteria remain open: branch protection is not applied (owner-executed, ADR GOV08) and the retrieval-quality criterion is unmet (ADR RQ07)
+- ⚠️ **Phase 7 is not closed** (ADR GOV09) — one exit criterion remains open: the retrieval-quality criterion is unmet (ADR RQ07). Branch protection, the other criterion, was applied on `main` on 2026-09-26 (ADR GOV10)
 - ⏳ Phase 8 (v0.9.x) — Prometheus/Grafana dashboards, Server-Sent Events streaming responses with source citations, an MCP go/no-go spike (not full delivery)
 - ⏳ Post-v1.0, not yet on the release roadmap — MCP server (full delivery), LangGraph agentic pipeline, multi-agent platform
 
@@ -184,7 +184,7 @@ api/          →  application/  →  domain/  ←  infrastructure/
 - **Application** — use cases, commands, domain events; no infrastructure imports
 - **Infrastructure** — JPA adapters, Weaviate adapter, Ollama adapter, Tika adapter, file storage
 - **API** — REST controllers, JWT authentication, tenant/role authorization, observability (`v0.5.1`–`v0.5.4`)
-- **ArchUnit** — 8 layering rules enforced at build time; violations fail the build
+- **ArchUnit** — 11 rules enforced at build time (8 layering/purity + 3 module-boundary); violations fail the build
 
 ### High-Level Architecture
 
@@ -213,18 +213,18 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 | Category | Technology | Version | Role |
 |---|---|---|---|
 | Runtime | Java | 21 (LTS) | Records, pattern matching, sealed types — all final in 21; no preview features are used (`--enable-preview` removed in v0.5.0, ADR R05) |
-| Framework | Spring Boot | 3.5.0 | Application container and auto-configuration |
-| AI Orchestration | Spring AI | 1.0.0 | Unified embedding and vector store abstraction |
+| Framework | Spring Boot | 3.5.16 | Application container and auto-configuration |
+| AI Orchestration | Spring AI | 1.1.8 | Unified embedding and vector store abstraction |
 | Embedding | nomic-embed-text via Ollama | Latest | Local 768-dim dense embeddings |
 | Vector Store | Weaviate | 1.25 | ANN search, tenant-isolated via a mandatory query-time filter |
 | Relational DB | PostgreSQL | 16 | Metadata, BM25 full-text search |
 | ORM | Hibernate 6 / Spring Data JPA | Bundled | JPA persistence with custom domain mappers |
-| Migrations | Flyway | 10+ | Versioned schema migrations (V001–V019) |
-| Document Parsing | Apache Tika | 2.9.2 | Multi-format extraction, magic-byte detection |
+| Migrations | Flyway | 11.7 | Versioned schema migrations (V001–V019) |
+| Document Parsing | Apache Tika | 4.0.0 | Multi-format extraction, magic-byte detection |
 | Generation | Qwen3 via Ollama | Latest | Local LLM for query rewriting and chat generation |
-| Security | Spring Security + JJWT 0.12+ | — | JWT (HS256) authentication (v0.5.2); role + tenant/ownership authorization (v0.5.3, extended to every ownership-scoped method in v0.6.0) |
+| Security | Spring Security + JJWT 0.13 | — | JWT (HS256) authentication (v0.5.2); role + tenant/ownership authorization (v0.5.3, extended to every ownership-scoped method in v0.6.0) |
 | Observability | Spring Boot Actuator + Micrometer + Micrometer Observation | — | Health, metrics, request/latency instrumentation, correlation IDs, structured logging (v0.5.4); optional separate management port (v0.6.0); no Prometheus/Grafana deployment yet — see Planned |
-| Architecture Testing | ArchUnit | 1.3.0 | Hexagonal layering enforcement |
+| Architecture Testing | ArchUnit | 1.5.1 | Hexagonal layering enforcement |
 | Build | Gradle | 8.12 | |
 
 ### Planned
@@ -244,7 +244,7 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 - Java 21+
 - Docker and Docker Compose v2
 - 8 GB RAM minimum (Weaviate + PostgreSQL + Ollama)
-- Gradle Wrapper (included)
+- Gradle 8.12 (no wrapper is committed — CI provisions the same version, see `.claude/PROJECT_STATE.md` "Build Tool")
 
 ### 1. Start infrastructure
 
@@ -252,16 +252,17 @@ For detailed architecture documentation see [docs/architecture/overview.md](docs
 docker compose up -d postgres weaviate ollama
 ```
 
-### 2. Pull the embedding model (first run only)
+### 2. Pull the models (first run only)
 
 ```bash
-docker exec -it ollama ollama pull nomic-embed-text
+docker exec -it eka-ollama ollama pull nomic-embed-text
+docker exec -it eka-ollama ollama pull qwen3
 ```
 
 ### 3. Run the application
 
 ```bash
-./gradlew bootRun
+gradle bootRun
 ```
 
 Flyway migrations run automatically on startup.
@@ -508,8 +509,10 @@ reopening of P06.3 and not Phase 7; the milestone-level detail behind each row a
 per-phase objective/scope/exit criteria) lives in `.claude/PROJECT_STATE.md`, not duplicated here.
 Phase 7 is planned and underway: its frozen scope (ADR GOV03) is unchanged, grouped into five work
 packages by engineering boundary, each shipping its own point release (ADR GOV07). Applying branch
-protection remains a Phase 7 exit criterion executed by the repository owner rather than from inside
-the repository, verified at the v0.8.4 gate (ADR GOV08).
+protection was a Phase 7 exit criterion executed by the repository owner rather than from inside the
+repository (ADR GOV08); it was verified unapplied at the v0.8.4 gate and has since been applied on
+`main` (2026-09-26, ADR GOV10), leaving the retrieval-quality criterion (ADR RQ07) as the one
+criterion still open.
 MCP (full delivery), LangGraph orchestration, and a multi-agent platform remain explicitly out of
 scope before v1.0.0 — see `.claude/PROJECT_STATE.md`'s "Roadmap to v1.0.0 (Frozen)" section for the
 complete v1.0.0 product definition and out-of-scope list.
@@ -523,7 +526,7 @@ complete v1.0.0 product definition and out-of-scope list.
 3. Ensure all tests and ArchUnit rules pass: `gradle test`
 4. Submit a pull request with a clear description of changes
 
-**Architecture constraints:** The hexagonal layer structure (`domain`, `application`, `infrastructure`, `api`), domain aggregate boundaries, port interface contracts, and all 8 ArchUnit rules are frozen. Review [docs/architecture/overview.md](docs/architecture/overview.md) before making structural changes.
+**Architecture constraints:** The hexagonal layer structure (`domain`, `application`, `infrastructure`, `api`), domain aggregate boundaries, port interface contracts, and all 11 ArchUnit rules are frozen. Review [docs/architecture/overview.md](docs/architecture/overview.md) before making structural changes.
 
 For questions or feedback, open an issue.
 
@@ -531,4 +534,4 @@ For questions or feedback, open an issue.
 
 ## License
 
-[MIT License](LICENSE)
+[Apache License 2.0](LICENSE)
