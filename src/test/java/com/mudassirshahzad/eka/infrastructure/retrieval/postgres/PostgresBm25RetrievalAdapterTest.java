@@ -29,6 +29,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+// Mockito matches NamedParameterJdbcTemplate.query(..) — a generic method — through the raw
+// RowMapper.class literal, which javac reports as an unchecked invocation at every one of the
+// ~10 stub/verify sites below. Suppressed once at the class rather than repeated per method:
+// there is no type-safety question to answer here, only a limitation of expressing a generic
+// matcher as a class literal, and a per-method annotation would just be noise on every test.
+@SuppressWarnings("unchecked")
 class PostgresBm25RetrievalAdapterTest {
 
     @Mock private NamedParameterJdbcTemplate jdbcTemplate;
@@ -369,7 +375,6 @@ class PostgresBm25RetrievalAdapterTest {
 
     // ── Helper ───────────────────────────────────────────────────────────────
 
-    @SuppressWarnings("unchecked")
     private void givenJdbcReturns(List<Bm25ResultRow> rows) {
         when(jdbcTemplate.query(anyString(), any(SqlParameterSource.class), any(RowMapper.class)))
                 .thenReturn((List) rows);

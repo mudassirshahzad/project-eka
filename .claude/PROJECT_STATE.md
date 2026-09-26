@@ -2,9 +2,41 @@
 
 Current Version
 
-v0.8.4 (Complete) — **Phase 7 / WP-5 — Indirect Prompt-Injection Review** (ADR PI01–PI04). **⚠️ Phase 7 itself is NOT complete** — all five work packages shipped and the GitHub milestone stays open (ADR GOV09), but **one** exit criterion remains open. Branch protection **is now applied** on `main` (2026-09-26, ADR GOV10 — verified live; was 404 at the v0.8.4 gate, ADR GOV08), closing the first of GOV09's two rows. The retrieval-quality success criterion is still not met (ADR RQ07), and GOV09 requires both before Phase 7 closes. WP-4 (Retrieval Quality, ADR RQ01–RQ07) shipped at v0.8.3. **Phase 7's retrieval-quality success criterion remains OPEN** (ADR RQ07) — mechanism delivered, no measured improvement and no real evaluation set. WP-3 (Operational Resilience, ADR OR01–OR04) shipped at v0.8.2. WP-2 (Session Security, ADR RT01–RT05) shipped at v0.8.1. WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
+v0.8.5 (Complete) — **Security Remediation & Platform Enablement** (ADR DEP01–DEP03, PL01–PL06, SEC01) — a track running alongside the frozen roadmap, not a Phase 7 work package. The preceding release, v0.8.4, was **Phase 7 / WP-5 — Indirect Prompt-Injection Review** (ADR PI01–PI04). **⚠️ Phase 7 itself is NOT complete** — all five work packages shipped and the GitHub milestone stays open (ADR GOV09), but **one** exit criterion remains open. Branch protection **is now applied** on `main` (2026-09-26, ADR GOV10 — verified live; was 404 at the v0.8.4 gate, ADR GOV08), closing the first of GOV09's two rows. The retrieval-quality success criterion is still not met (ADR RQ07), and GOV09 requires both before Phase 7 closes. WP-4 (Retrieval Quality, ADR RQ01–RQ07) shipped at v0.8.3. **Phase 7's retrieval-quality success criterion remains OPEN** (ADR RQ07) — mechanism delivered, no measured improvement and no real evaluation set. WP-3 (Operational Resilience, ADR OR01–OR04) shipped at v0.8.2. WP-2 (Session Security, ADR RT01–RT05) shipped at v0.8.1. WP-1 (CI/CD & Release Governance Hardening, ADR GOV07/GOV08, CG01/CG02) shipped at v0.8.0. Phase 7 is planned (its own session, as required) and underway; its frozen scope (ADR GOV03) is unchanged, grouped into five work packages each shipping a point release (v0.8.0–v0.8.4). **Phase 6 remains complete** at v0.7.1 (P06.1 + P06.2; P06.3–P06.5 still deliberately not opened, ADR GOV05 unchanged); v0.7.2 remains a maintenance release (ADR GOV06).
 
 **Namespace:** Root package is `com.mudassirshahzad.eka` (renamed from `com.mudassir.eka` in R01 — pure namespace refactor, no behavioral or architectural change).
+
+---
+
+## Security & Platform Enablement (v0.8.5)
+
+A track that runs **alongside** the frozen Phase 6 → 7 → 8 roadmap (ADR GOV03), not inside it. It closes nothing in Phase 7 and claims nothing of Phase 8. Phase 8's objective is "prepare for more than one instance **and for external consumption**"; the platform work below is an early down-payment on the second half, taken because a consuming project needs an artifact now — and because publishing a library propagates its advisories to every consumer, which is why the security work came first.
+
+**Released as v0.8.5** (2026-09-26) — a point release inside Phase 7's v0.8.x series. Explicitly *not* v0.9.0, which the frozen roadmap reserves for Phase 8 complete. Merged to `main` via PR #15 (squash) under branch protection.
+
+| Item | Status | ADRs |
+|---|---|---|
+| Dependency remediation — **103 of 104** advisories closed (8/8 critical, 40/40 high) | ✅ Complete | DEP01, DEP02, DEP03 |
+| gRPC stack aligned on 1.75.0 (fixes a split 1.68.2/1.70.0 stack) + real-Weaviate IT | ✅ Complete | DEP03 |
+| Library jar no longer leaks `application.yml` / migrations / build-info | ✅ Complete | PL05 |
+| Five never-thrown exception types removed before the API is committed | ✅ Complete | PL06 |
+| EKA publishable as a library; boot jar reclassified | ✅ Complete | PL01 |
+| Gradle Module Metadata suppressed (fixes unresolvable consumers) | ✅ Complete | PL02 |
+| `platform-smoke/` consumer test, run in CI | ✅ Complete | PL03 |
+| Three module-boundary ArchUnit rules (11 total) | ✅ Complete | PL04 |
+| `UserDetailsServiceAutoConfiguration` excluded | ✅ Complete | SEC01 |
+| CI runs on every PR, not only those targeting `main` | ✅ Complete | — |
+| Module split (`eka-core`/`eka-llm`/`eka-rag`/`eka-app`) | ⬜ Not started | — |
+
+**Grand total tests: 819 — 0 failures** (net +6: 3 ArchUnit boundary rules, 3 in `WeaviateGrpcStackIT`)
+
+**Verified empirically, not assumed:** every dependency version against the resolved `runtimeClasspath`; the gRPC stack against a real Weaviate 1.25.0 in Testcontainers; `docker build` run locally and in CI; the application booted from the image against a real Postgres (19 Flyway migrations applied, readiness UP, `/actuator/info` correct); and an external project compiled and ran against the published artifact.
+
+**Every guard in this work was made to fail before being kept** — the three ArchUnit rules, the gRPC version-alignment assertion, and the `platform-smoke` packaging assertions. This mattered: the first version of the gRPC test asserted only that classes load, and it **passed against the deliberately split stack**. A test that cannot fail is worse than none, because it is read as coverage.
+
+**Known limitations, recorded rather than hidden:** every published POM dependency is `runtime` scope (resolves with the module split); EKA is one jar, so a consumer wanting only prompting still inherits Weaviate and Tika. **One advisory remains open** — `artemis-project` (medium), which is not on the resolved classpath at all (ActiveMQ Artemis auto-configuration never activates) and is therefore not applicable rather than unfixed.
+
+**Next step:** blueprint Task 4 — extract `eka-core`. Its prerequisites (Tasks 1–3, the boundary rules) are all in place.
 
 ---
 
@@ -263,6 +295,7 @@ Sequencing rationale (from the approved plan): WP-1 first so every subsequent pa
 | v0.8.2 | Phase 7 / WP-3 — Operational Resilience | Weaviate connect/read timeout configured (ADR HD03 closed); reconciliation job scheduled with alerting |
 | v0.8.3 | Phase 7 / WP-4 — Retrieval Quality | Re-ranking shipped; HyDE evaluated; benchmark result documented in an ADR |
 | v0.8.4 | Phase 7 / WP-5 — **Phase 7 Complete** | Prompt-injection review documented; **branch protection verified applied** (ADR GOV08); every Phase 7 exit criterion met |
+| v0.8.5 | Security Remediation & Platform Enablement (alongside the roadmap, not a Phase 7 work package) | Shipped — 103 of 104 advisories closed, EKA publishable and consumable as a library, consumer smoke test in CI |
 | v0.9.0 | Phase 8 complete | Metrics dashboarded, streaming shipped, MCP go/no-go decided |
 | v1.0.0 | Version 1.0.0 milestone | Every item in the official v1.0.0 definition above is met — reviewed as a gate, not assumed from phase completion alone |
 
@@ -630,7 +663,7 @@ GeneratedResponse
 - `UploadDocumentUseCase` no longer carries a class-level `@Transactional`; `DocumentApplicationService`/`ChunkApplicationService` each keep their own, giving the pipeline short per-step transactions instead of one long one spanning Tika/Ollama/Weaviate calls; pipeline failures now call `Document.markFailed(...)` (P05.5, ADR HD01)
 - `ConversationApplicationService.renameConversation`/`.deleteConversation` now call `requireTenantMatch` identically to the three previously-checked methods — every ownership-scoped method in this service is now tenant-checked (P05.5, ADR HD02)
 - `HttpClientTimeoutConfig` (`infrastructure.config`) registers a `RestClientCustomizer` bounding Ollama's connect/read timeouts (`app.ollama.connect-timeout-ms`/`read-timeout-ms`); no equivalent exists for Weaviate — deferred, not a code gap (P05.5, ADR HD03)
-- `RetrievalService.doRetrieve()` rewraps any infrastructure `RuntimeException` (e.g. `HybridRetrievalException`, `QueryRewriteException`, `VectorStoreException`) as `RetrievalException`, so `GlobalExceptionHandler`'s 502 mapping actually reaches them; `GlobalExceptionHandler` gained a more-specific `InvalidRetrievalRequestException` → 400 handler ahead of the 502 handler (P05.5, ADR HD04)
+- `RetrievalService.doRetrieve()` rewraps any infrastructure `RuntimeException` (e.g. `HybridRetrievalException`, `VectorStoreException`) as `RetrievalException`, so `GlobalExceptionHandler`'s 502 mapping actually reaches them; `GlobalExceptionHandler` gained a more-specific `InvalidRetrievalRequestException` → 400 handler ahead of the 502 handler (P05.5, ADR HD04)
 - `spring.datasource.password` has no base-profile default (mirrors `JWT_SECRET_KEY`); `management.server.port` is an opt-in escape hatch for isolating actuator endpoints in a real deployment (P05.5, ADR HD05)
 - `GlobalExceptionHandler extends ResponseEntityExceptionHandler` — Spring MVC's own framework exceptions (malformed JSON, non-UUID path variables, unsupported methods) now resolve to correct 4xx `ProblemDetail` responses instead of the generic 500 fallback (v0.6.1, ADR EX02)
 - `JwtProperties`'s compact constructor validates HS256 key strength (≥32 bytes) and positive expiry at application-context startup, not on first token signed (v0.6.1, ADR EX04)
@@ -701,13 +734,11 @@ com.mudassirshahzad.eka
 │   ├── conversation                 — PersistentConversationHistoryAdapter
 │   ├── guardrails                   — PolicyBasedOutputGuardrailsAdapter
 │   ├── llm
-│   │   ├── exception                — LlmTimeoutException, LlmRateLimitException,
-│   │   │                              LlmProviderUnavailableException, LlmInvalidResponseException,
-│   │   │                              LlmModelNotFoundException
+│   │   ├── exception                — LlmProviderUnavailableException
 │   │   └── ollama                   — OllamaLlmAdapter
 │   ├── observability                — OllamaHealthIndicator, WeaviateHealthIndicator (P05.4, ADR OB05)
 │   ├── prompt                       — TemplateBasedPromptBuilderAdapter
-│   ├── query.rewrite                — OllamaQueryRewriteAdapter, QueryRewriteException
+│   ├── query.rewrite                — OllamaQueryRewriteAdapter, HydeQueryRewriteAdapter
 │   ├── ranking                      — RrfRankingAdapter
 │   └── retrieval
 │       ├── hybrid                   — HybridRetrievalAdapter, HybridRetrievalException

@@ -1,10 +1,19 @@
 name: Build
 
 on:
+  # Every pull request, not just those targeting `main`. The previous
+  # `branches: [ main ]` filter meant a stacked pull request — one opened against
+  # another feature branch, which is how a dependent change gets reviewed on its own
+  # diff — ran no checks whatsoever and reported "no checks reported". Unverified is
+  # worse than red: a red PR tells you something; a silent one looks ready to merge.
   pull_request:
-    branches: [ main ]
   push:
     branches: [ main ]
+    # Release tags build *and* publish the library to GitHub Packages (see the
+    # `publish` job). Branch pushes deliberately do not publish — the project version
+    # is a fixed release number, and GitHub Packages rejects re-publishing one, so a
+    # publish-on-every-push job would fail on the second commit after each release.
+    tags: [ 'v*' ]
 
 permissions:
   contents: read
@@ -52,7 +61,10 @@ jobs:
   # scan against. Push-only: the graph describes what is actually on `main`.
   dependency-submission:
     name: Submit dependency graph
-    if: github.event_name == 'push'
+    # Branch pushes only, not tags: the graph describes what is currently on `main`,
+    # and re-submitting an identical tree for the tag that points at the same commit
+    # would just overwrite it with itself.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -125,3 +137,76 @@ jobs:
             exit 1
           fi
           echo "Boot jar present; runtime uid=$RUNTIME_UID (non-root)."
+
+  # Platform enablement — proves an external project can actually consume the published
+  # artifact. This is not redundant with `build`: EKA's own tests compile against its own
+  # source tree and can never detect a packaging defect.
+  #
+  # It exists because a real one slipped through. `io.spring.dependency-management` writes
+  # its resolved versions into the POM's <dependencyManagement> but not into Gradle Module
+  # Metadata, and Gradle prefers .module over .pom — so consumers got a versionless
+  # dependency graph that failed with "Could not find org.postgresql:postgresql:." while
+  # every check in this repository stayed green. See platform-smoke/README.md.
+  platform-smoke:
+    name: Consumer smoke test
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.12
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.12'
+
+      - name: Publish the library to the local Maven repository
+        run: gradle publishToMavenLocal -x test
+
+      # No -PekaVersion needed: platform-smoke/build.gradle reads `version` from the root
+      # build itself, so it cannot test a stale coordinate after a version bump.
+      - name: Resolve and run the consumer against the published artifact
+        working-directory: platform-smoke
+        run: gradle run --no-daemon
+
+  # Platform enablement — publishes the *library* jar (the plain jar; the executable boot
+  # jar is not a dependency artifact) so external projects can consume EKA's domain model,
+  # ports and services as a versioned dependency rather than by copying source.
+  #
+  # Tag-triggered, and gated behind `build`: an artifact other projects will compile
+  # against must never be published from a red build. `GITHUB_TOKEN` is scoped to this
+  # repository and needs `packages: write`; no long-lived credential is stored anywhere.
+  publish:
+    name: Publish library to GitHub Packages
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle 8.12
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.12'
+
+      - name: Publish library
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gradle publishAllPublicationsToGitHubPackagesRepository

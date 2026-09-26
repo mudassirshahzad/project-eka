@@ -15,14 +15,23 @@ COPY src ./src
 # Tests run in CI (.github/workflows/build.yml), not here — an image build isn't the place to
 # also stand up Testcontainers-backed Postgres, and duplicating that verification here would
 # only slow every image build without adding coverage CI doesn't already provide.
-RUN gradle clean bootJar --no-daemon -x test
+#
+# The build stage normalises the jar to a fixed path. build.gradle gives the executable
+# jar the `-boot` classifier so the plain jar can be the published *library* artifact,
+# which means `build/libs/` can legitimately hold two jars. Selecting by the `-boot`
+# suffix here (rather than the `*.jar` glob this used to use) keeps the COPY below
+# unambiguous, and resolving the name inside the build stage avoids restating the
+# project version in this file — `project.version` stays the single source of truth
+# (ADR EX03).
+RUN gradle clean bootJar --no-daemon -x test \
+ && cp build/libs/*-boot.jar /workspace/app.jar
 
 # ---- Runtime stage -------------------------------------------------------------------------
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 RUN groupadd --system app && useradd --system --gid app app
-COPY --from=build /workspace/build/libs/*.jar app.jar
+COPY --from=build /workspace/app.jar app.jar
 RUN chown app:app app.jar
 USER app
 

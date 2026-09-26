@@ -3,8 +3,49 @@
 **Date:** 2026-09-26 · **Repository state:** v0.8.4, `main` · **Build:** green (813 tests, 0 failures)
 
 Audit of every dependency Project EKA declares or resolves, with a recommended target version for
-each. **No upgrade is implemented by this document** — it is the decision record that the upgrade
-work will be executed against.
+each. **This document is the decision record the upgrade work was executed against.**
+
+> ## ✅ Executed — 2026-09-26
+>
+> §4 "Safe to upgrade now" and **both** deferred items (§2.5's `httpcore5`/`httpclient5` *and*
+> `grpc-netty-shaded`) have been implemented — ADR DEP01, DEP02, DEP03.
+>
+> **103 of the 104 open advisories close: 8 of 8 critical, 40 of 40 high, 42 medium, 13 low.
+> Zero remain open.** The one outstanding alert (`artemis-project`, medium) is the
+> not-applicable case §2.6 already predicted — Artemis is not on the resolved classpath.
+>
+> Actual versions taken, all verified against the resolved `runtimeClasspath`:
+> Boot **3.5.16**, Spring AI **1.1.8**, springdoc **2.9.1**, ArchUnit **1.5.1**, and explicit pins
+> for tomcat **10.1.60**, postgresql **42.7.13**, jackson-bom **2.21.7**, httpclient5 **5.6.4**,
+> httpcore5 **5.4.4**, commons-lang3 **3.18.0**, spring-retry **2.0.13**, log4j-api **2.25.5**.
+>
+> **Two corrections to this document, found during execution:**
+>
+> 1. **§2.3 recommended Spring AI 1.1.8 with 1.0.9 as fallback. 1.1.8 was taken and needed one code
+>    change** this document did not anticipate: Spring AI 1.1 renamed `OllamaOptions` to
+>    `OllamaChatOptions` (identical builder). Two lines, confined to `OllamaLlmAdapter` — the
+>    hexagonal boundary working as designed.
+> 2. **A pin was needed that this audit missed: `jackson-bom` 2.21.7.** The audit read
+>    jackson as covered by the Boot bump. It is not. Several dependencies transitively *request*
+>    2.22.1, but Boot's BOM pins 2.21.4 and the BOM **wins** — the resolved version is forced
+>    *down*. `GHSA-5jmj-h7xm-6q6v` needs 2.21.5. This generalises §8's standing rule: verify against
+>    the **resolved** tree, and note that resolution can move a version *down* as well as up.
+>
+> **§2.5's deferral of `grpc-netty-shaded` was revisited and reversed**, on evidence the audit did
+> not have. Its objection — "a 7-minor jump under a client with opinions about gRPC, for no benefit
+> EKA can verify without a live Weaviate" — was answered on both halves rather than overridden:
+>
+> - **The benefit was larger than one advisory.** `io.weaviate:client` declares its gRPC artifacts
+>   under three *disagreeing* version properties, so the stack was **already split** (1.70.0 for
+>   `grpc-api`/`grpc-protobuf`, 1.68.2 for `grpc-core`/`grpc-netty-shaded`/`grpc-stub`). gRPC
+>   requires one version throughout; this was a live latent `NoSuchMethodError`, not just a stale pin.
+> - **It was verified with a live Weaviate.** `WeaviateGrpcStackIT` runs a real Weaviate 1.25.0 in
+>   Testcontainers. Importing `io.grpc:grpc-bom:1.75.0` aligns all eight artifacts — the minimum
+>   version that both aligns the stack and closes `GHSA-prj3-ccx8-p6x4`.
+>
+> **Still blocked:** anything requiring Boot 4 (§5) — unchanged, and correctly so.
+>
+> The two Dependabot PRs in §5 were closed with the reasoning recorded on each.
 
 Every version in this document was resolved empirically, not assumed:
 

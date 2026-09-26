@@ -344,6 +344,35 @@ is a legitimate, stable resting point, not a failure.
 
 ## 16. Implementation Checklist
 
+> ### Status — 2026-09-26
+>
+> | Task | Status |
+> |---|---|
+> | 0 — Security upgrade | ✅ **Done** — 96/104 advisories closed (ADR DEP01/DEP02) |
+> | 1 — Make EKA consumable as a library | ✅ **Done** (ADR PL01) |
+> | 2 — Enforce the future module boundaries now | ✅ **Done** — 11 ArchUnit rules (ADR PL04) |
+> | 3 — Publish to GitHub Packages and prove consumption | ✅ **Done** (ADR PL03) — with one deviation, below |
+> | 4–7 — Module extraction (`eka-core`/`eka-llm`/`eka-rag`/`eka-app`) | ⬜ **Not started** |
+> | 8–13 — FayaScout consumption, `OllamaCallGate` donation | ⬜ **Not started** |
+>
+> **Deviations from Task 1/3 as written, and why:**
+>
+> - **Task 3 said set `version = '0.9.0-SNAPSHOT'` for the duration.** Not done. `v0.9.0` is
+>   reserved by the frozen roadmap (ADR GOV03) for *Phase 8 complete*, and Phase 7 is still open on
+>   ADR RQ07 — claiming that number here would silently reorder the roadmap. Publishing is instead
+>   gated to release tags, so no version change was needed.
+> - **Task 3's scratch consumer became a permanent, CI-run project** (`platform-smoke/`, ADR PL03).
+>   It stopped being throwaway the moment it caught a real defect: Gradle Module Metadata published
+>   versionless dependencies and would have broken every Gradle consumer while every check in this
+>   repository stayed green (ADR PL02).
+> - **Task 1 did not anticipate a code change.** Spring AI 1.1 renamed `OllamaOptions` to
+>   `OllamaChatOptions`; two lines in `OllamaLlmAdapter`.
+>
+> **Tasks 4–7 are deliberately not started in the same session as 0–3.** The blueprint's own
+> migration rules require one module per commit, each complete and green, with the boundary tests
+> (Task 2) landed first as the safety net — which they now are. Everything Task 4 needs is in place.
+
+
 Sequential. Each task: objective → files → steps → validation → rollback → duration.
 Run `gradle clean build` at the root and record the test count in every commit message.
 

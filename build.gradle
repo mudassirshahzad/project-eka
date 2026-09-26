@@ -1,25 +1,66 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.5.0'
+    id 'maven-publish'
+    id 'org.springframework.boot' version '3.5.16'
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.mudassirshahzad'
-version = '0.8.4'
+version = '0.8.5'
 
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+    // Published alongside the library so consumers can navigate into EKA's domain
+    // model and port interfaces from their IDE. Javadoc is deliberately not published
+    // yet — see docs/platform/consuming-eka.md.
+    withSourcesJar()
 }
 
 ext {
-    springAiVersion  = '1.0.0'
+    springAiVersion  = '1.1.8'
     jjwtVersion      = '0.13.0'
     tikaVersion      = '4.0.0'
-    archunitVersion  = '1.5.0'
-    springdocVersion = '2.7.0'
+    archunitVersion  = '1.5.1'
+    springdocVersion = '2.9.1'
+    grpcVersion      = '1.75.0'
 }
+
+// ── Managed-dependency overrides (security) ────────────────────────────────
+// Spring Boot's BOM is the source of truth for every version below; each entry
+// here exists only because the BOM's pin is older than the first patched release
+// for an advisory that applies to this application. Each is a patch/minor move
+// inside the line Boot already targets, and each should be DELETED as soon as a
+// Boot upgrade carries the same version or newer — see docs/analysis/dependency-roadmap.md.
+//
+//   tomcat        Boot 3.5.16 pins 10.1.55; three criticals (GHSA-h3x4-894j-xpx5,
+//                 GHSA-9xv2-5v5q-p794, GHSA-gcx9-497g-6cp6) are first patched in
+//                 10.1.58, which was never published to Maven Central — 10.1.60 is
+//                 the first available release that carries the fixes.
+//   commons-lang3 arrives via Tika. 1 medium.
+//   spring-retry  arrives via Spring AI. 1 medium.
+//   log4j-api     arrives via Tika (API jar only, no Log4j core binding). 1 medium.
+//   httpclient5 / httpcore5
+//                 arrive via the Weaviate client. httpcore5 5.3.x carries 2 highs
+//                 (GHSA-hf6x-8p5f-cgmf, GHSA-v3jc-474w-2wm6), first patched in 5.4.3.
+//                 These two move together on purpose: httpclient5 5.6.4 is built against
+//                 httpcore5 5.4.3 (its parent POM's httpcore.version), so raising core
+//                 without client would pair a 5.4 core with a client compiled for 5.3.
+//   postgresql    Boot 3.5.16 pins 42.7.11; GHSA-j92g-9f8w-j867 is first patched in 42.7.12.
+//   jackson       Boot 3.5.16 pins the jackson BOM at 2.21.4 — and the BOM *wins*, forcing
+//                 transitively-requested 2.22.x back down to it. GHSA-5jmj-h7xm-6q6v needs
+//                 2.21.5. 2.21.7 is the current release on that same 2.21 line; 2.22.x is
+//                 deliberately not taken, since staying on the line Boot targets is the
+//                 whole point of these overrides.
+ext['tomcat.version']        = '10.1.60'
+ext['commons-lang3.version'] = '3.18.0'
+ext['spring-retry.version']  = '2.0.13'
+ext['log4j2.version']        = '2.25.5'
+ext['httpclient5.version']   = '5.6.4'
+ext['httpcore5.version']     = '5.4.4'
+ext['postgresql.version']    = '42.7.13'
+ext['jackson-bom.version']   = '2.21.7'
 
 repositories {
     mavenCentral()
@@ -28,6 +69,29 @@ repositories {
 dependencyManagement {
     imports {
         mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+
+        // ── gRPC alignment (security + correctness) ────────────────────────
+        // gRPC arrives transitively via io.weaviate:client, whose own POM declares its
+        // gRPC artifacts under THREE separate version properties — and they disagree:
+        //
+        //   grpc-netty-shaded.version = 1.68.2
+        //   grpc-protobuf.version     = 1.70.0
+        //   grpc-stub.version         = 1.68.2
+        //
+        // which resolved here as a split stack (grpc-api/protobuf/protobuf-lite at
+        // 1.70.0; core/netty-shaded/stub/util/context at 1.68.2). gRPC requires every
+        // io.grpc artifact to be on the same version — a mixed stack is a latent
+        // NoSuchMethodError, not merely untidy.
+        //
+        // Importing grpc-bom aligns all of them to one version, and that version is
+        // chosen to also close GHSA-prj3-ccx8-p6x4 (high; first patched in 1.75.0).
+        // 1.75.0 is the minimum that does both — deliberately not the newest (1.79.0),
+        // since the smaller move from what the Weaviate client was built against is the
+        // safer one and buys the same result.
+        //
+        // Verified against a real Weaviate 1.25.0 over its gRPC port, not assumed — the
+        // adapter tests are mock-based and cannot exercise this path.
+        mavenBom "io.grpc:grpc-bom:${grpcVersion}"
     }
 }
 
@@ -81,6 +145,140 @@ dependencies {
 // ── Tests ──────────────────────────────────────────────────────────────────
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+}
+
+// ── Publishing (platform enablement) ───────────────────────────────────────
+// EKA is consumed two ways, and they need different artifacts:
+//
+//   the library  build/libs/project-eka-<version>.jar        <- plain jar, no classifier
+//   the app      build/libs/project-eka-<version>-boot.jar   <- executable fat jar
+//
+// Gradle's default is the other way round (the boot jar takes the bare name and the
+// library gets `-plain`), which would publish a 146MB fat jar as the dependency
+// artifact — every consumer would inherit a flattened, repackaged copy of the whole
+// dependency tree. Swapping the classifiers makes the *library* the primary artifact,
+// which is what `from components.java` publishes.
+//
+// NOTE: `Dockerfile` copies the boot jar by its exact name. If the classifier below
+// changes, that COPY must change with it — the two are coupled on purpose, because a
+// glob there silently matched whichever jar happened to exist.
+tasks.named('jar') {
+    archiveClassifier = ''
+
+    // ── What the LIBRARY jar must not carry ────────────────────────────────
+    // The boot jar is unaffected by any of this — it is built by a separate task from
+    // the same source set, and the application still ships everything it always did.
+    //
+    // These files are correct for an application and actively harmful inside a
+    // dependency, because Spring Boot and Flyway both discover them by convention from
+    // the classpath — a consumer inherits them without ever asking:
+    //
+    //   application.yml
+    //       Spring Boot loads `classpath:/application.yml`. A consumer that depends on
+    //       EKA would get EKA's configuration on its classpath, competing with its own —
+    //       and EKA's requires DB_PASSWORD and JWT_SECRET_KEY, so the failure mode is a
+    //       consumer that will not start, for reasons pointing at a file it never wrote.
+    //
+    //   META-INF/build-info.properties
+    //       Actuator reports this as /actuator/info. A consumer would report EKA's
+    //       version and artifact as its own build.
+    //
+    //   db/migration/**
+    //       The dangerous one. `spring.flyway.locations` defaults to
+    //       classpath:db/migration, so a consumer running Flyway would pick up EKA's 19
+    //       migrations and apply them to its own database. That is a data-integrity
+    //       hazard, not an inconvenience.
+    //
+    // The migrations are still published, relocated to a path nothing scans by default,
+    // so a consumer that genuinely wants EKA's schema can opt in explicitly with
+    //   spring.flyway.locations=classpath:eka/db/migration
+    // rather than receiving it by accident. Opt-in beats both silence and deletion.
+    exclude 'application.yml'
+    exclude 'META-INF/build-info.properties'
+    exclude 'db/migration/**'
+
+    from('src/main/resources/db/migration') {
+        into 'eka/db/migration'
+    }
+
+    // prompts/qa-system.txt is deliberately kept at its original path: it is loaded by
+    // TemplateBasedPromptBuilderAdapter via `classpath:prompts/qa-system.txt`, so the
+    // library does not work without it.
+}
+tasks.named('bootJar') {
+    archiveClassifier = 'boot'
+}
+
+// Gradle Module Metadata is deliberately NOT published.
+//
+// Versions in this build come from Spring's `io.spring.dependency-management` plugin
+// (a Maven-style BOM import), which is also what makes the `ext['tomcat.version']`
+// security overrides above work. That plugin writes its resolved versions into the
+// generated POM's <dependencyManagement> block — but *not* into Gradle Module
+// Metadata, which ends up listing every dependency with no version at all.
+//
+// Gradle prefers .module over .pom when both are present, so publishing both would
+// hand Gradle consumers a versionless dependency graph that fails to resolve with
+// "Could not find org.postgresql:postgresql:." — verified against a real consumer
+// project, not assumed. Publishing the POM alone is correct for both Maven and
+// Gradle consumers, because Gradle honours <dependencyManagement> as constraints.
+//
+// The alternative fix is migrating to Gradle's native `platform()` BOM support, which
+// would produce correct module metadata — but it would also invalidate every
+// `ext['*.version']` override above, so it belongs with the module split, not here.
+tasks.withType(GenerateModuleMetadata).configureEach {
+    enabled = false
+}
+
+publishing {
+    publications {
+        library(MavenPublication) {
+            artifactId = 'project-eka'
+            from components.java
+
+            pom {
+                name        = 'Project EKA'
+                description = 'Enterprise RAG platform: domain model, ports, retrieval, and LLM gateway.'
+                url         = 'https://github.com/mudassirshahzad/project-eka'
+                licenses {
+                    license {
+                        name = 'Apache License 2.0'
+                        url  = 'https://www.apache.org/licenses/LICENSE-2.0'
+                    }
+                }
+                developers {
+                    developer {
+                        id   = 'mudassirshahzad'
+                        name = 'Mudassir Shahzad'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/mudassirshahzad/project-eka'
+                }
+            }
+        }
+    }
+
+    repositories {
+        // `gradle publishToMavenLocal` — the zero-infrastructure path for developing a
+        // consumer against an unreleased EKA build on the same machine.
+        mavenLocal()
+
+        // GitHub Packages. Credentials come from the environment rather than
+        // gradle.properties so that nothing resolvable to a token is ever committed;
+        // in CI, GITHUB_ACTOR/GITHUB_TOKEN are provided by Actions. Publishing is a
+        // no-op locally when they are unset — the repository is simply unusable, which
+        // fails only the `publishAllPublicationsToGitHubPackagesRepository` task and
+        // never `build`.
+        maven {
+            name = 'GitHubPackages'
+            url  = 'https://maven.pkg.github.com/mudassirshahzad/project-eka'
+            credentials {
+                username = System.getenv('GITHUB_ACTOR')
+                password = System.getenv('GITHUB_TOKEN')
+            }
+        }
+    }
 }
 
 // ── Build info (v0.6.1, ADR EX03) ───────────────────────────────────────────
