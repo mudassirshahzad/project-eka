@@ -1,156 +1,164 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" width="900" height="700"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1154 802" width="1154" height="802"
      font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
 
-  <!-- Marker defs FIRST so all references resolve -->
+  <!-- Project EKA — High-Level Architecture, v0.8.5.
+       Executive presentation of the same architecture verified against the repository:
+       four REST controllers, 24 domain port interfaces, single published library jar,
+       docker-compose externals (postgres:16, weaviate:1.25.0, ollama). -->
+
   <defs>
-    <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/>
+    <marker id="a-blue" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#93b4f5"/>
     </marker>
-    <marker id="arr-gray" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+    <marker id="a-green" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#86d3a4"/>
+    </marker>
+    <marker id="a-rail" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L0,8 L10,4 z" fill="#2563eb"/>
     </marker>
   </defs>
 
-  <rect width="900" height="700" fill="#ffffff"/>
+  <rect width="1154" height="802" fill="#ffffff"/>
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- TITLE                                                   -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <text x="450" y="36" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Project EKA — High-Level Architecture</text>
+  <!-- ───────── Title ───────── -->
+  <text x="583" y="50" text-anchor="middle" font-size="27" font-weight="700" fill="#0f172a">Project EKA — High-Level Architecture</text>
+  <text x="583" y="76" text-anchor="middle" font-size="14" fill="#475569">v0.8.5 • Enterprise AI Platform</text>
+  <text x="583" y="96" text-anchor="middle" font-size="13" fill="#94a3b8">Hexagonal Architecture • Java 21 • Spring Boot 3.5.16</text>
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- 1. CLIENT                                               -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="330" y="56" width="240" height="50" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
-  <text x="450" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#64748b" letter-spacing="0.5">CLIENT</text>
-  <text x="450" y="95" text-anchor="middle" font-size="11" fill="#94a3b8">Browser · API Consumer · CLI</text>
+  <!-- ───────── Dependency rail ───────── -->
+  <rect x="36" y="204" width="112" height="490" rx="10" fill="#f8fafc" stroke="#dbe3ec" stroke-width="1.2"/>
+  <text x="92" y="252" text-anchor="middle" font-size="14" font-weight="700" fill="#1d4ed8">Dependency</text>
+  <text x="92" y="270" text-anchor="middle" font-size="14" font-weight="700" fill="#1d4ed8">Rule</text>
+  <line x1="92" y1="296" x2="92" y2="590" stroke="#2563eb" stroke-width="3" marker-end="url(#a-rail)"/>
+  <text x="92" y="632" text-anchor="middle" font-size="12" fill="#475569">Dependencies</text>
+  <text x="92" y="649" text-anchor="middle" font-size="12" fill="#475569">always point</text>
+  <text x="92" y="666" text-anchor="middle" font-size="12" fill="#475569">inward</text>
 
-  <!-- Arrow: Client → REST API (dashed — API is future) -->
-  <line x1="450" y1="106" x2="450" y2="127" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-gray)"/>
+  <!-- ───────── Consumers ───────── -->
+  <rect x="168" y="124" width="330" height="62" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="333" y="152" text-anchor="middle" font-size="15" font-weight="700" fill="#334155">HTTP Clients</text>
+  <text x="333" y="172" text-anchor="middle" font-size="12" fill="#94a3b8">Browser • REST Consumers</text>
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- 2. REST API (future)                                    -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="295" y="128" width="310" height="50" rx="8" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,3"/>
-  <text x="450" y="148" text-anchor="middle" font-size="12" font-weight="600" fill="#94a3b8" letter-spacing="0.5">REST API LAYER</text>
-  <text x="450" y="167" text-anchor="middle" font-size="11" fill="#cbd5e1">Controllers · DTOs · OpenAPI  (v0.6.0)</text>
+  <rect x="508" y="124" width="330" height="62" rx="8" fill="#f5f9ff" stroke="#93b4f5" stroke-width="1.6"/>
+  <text x="673" y="152" text-anchor="middle" font-size="15" font-weight="700" fill="#1d4ed8">Published Library</text>
+  <text x="673" y="172" text-anchor="middle" font-size="11.5" font-weight="600" fill="#2563eb">com.mudassirshahzad:project-eka:0.8.5</text>
 
-  <!-- Arrow: REST API → Application (dashed) -->
-  <line x1="450" y1="178" x2="450" y2="199" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-gray)"/>
+  <line x1="503" y1="186" x2="503" y2="200" stroke="#93b4f5" stroke-width="2" marker-end="url(#a-blue)"/>
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- 3. APPLICATION LAYER                                    -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="255" y="200" width="390" height="54" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="450" y="222" text-anchor="middle" font-size="12" font-weight="700" fill="#2563eb" letter-spacing="0.5">APPLICATION LAYER</text>
-  <text x="450" y="241" text-anchor="middle" font-size="11" fill="#3b82f6">Use Cases · Commands · Domain Events</text>
+  <!-- ───────── REST API ───────── -->
+  <rect x="168" y="204" width="670" height="76" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <rect x="168" y="204" width="5" height="76" rx="2.5" fill="#2563eb"/>
+  <text x="192" y="234" font-size="19" font-weight="700" fill="#1d4ed8">REST API</text>
+  <text x="369" y="264" text-anchor="middle" font-size="14" fill="#3b82f6">Authentication</text>
+  <text x="501" y="264" text-anchor="middle" font-size="14" fill="#3b82f6">Authorization</text>
+  <text x="628" y="264" text-anchor="middle" font-size="14" fill="#3b82f6">Validation</text>
+  <text x="749" y="264" text-anchor="middle" font-size="14" fill="#3b82f6">OpenAPI</text>
 
-  <!-- Arrow: Application → Domain (solid — implemented dependency) -->
-  <line x1="450" y1="254" x2="450" y2="274" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+  <line x1="503" y1="280" x2="503" y2="292" stroke="#93b4f5" stroke-width="2" marker-end="url(#a-blue)"/>
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- 4. DOMAIN LAYER                                         -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="290" y="275" width="320" height="54" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
-  <text x="450" y="297" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8" letter-spacing="0.5">DOMAIN LAYER</text>
-  <text x="450" y="316" text-anchor="middle" font-size="11" fill="#2563eb">Aggregates · Value Objects · Port Interfaces</text>
+  <!-- ───────── Application ───────── -->
+  <rect x="168" y="296" width="670" height="76" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <rect x="168" y="296" width="5" height="76" rx="2.5" fill="#2563eb"/>
+  <text x="192" y="326" font-size="19" font-weight="700" fill="#1d4ed8">Application</text>
+  <text x="254" y="356" text-anchor="middle" font-size="14" fill="#3b82f6">Retrieval</text>
+  <text x="379" y="356" text-anchor="middle" font-size="14" fill="#3b82f6">Conversation</text>
+  <text x="503" y="356" text-anchor="middle" font-size="14" fill="#3b82f6">Documents</text>
+  <text x="627" y="356" text-anchor="middle" font-size="14" fill="#3b82f6">Generation</text>
+  <text x="752" y="356" text-anchor="middle" font-size="14" fill="#3b82f6">Sessions</text>
 
-  <!-- Dependency direction annotation (right of domain) -->
-  <text x="625" y="282" font-size="9" fill="#94a3b8" font-weight="600">DEPENDENCY RULE</text>
-  <text x="625" y="296" font-size="9" fill="#94a3b8">outer layers depend on inner</text>
-  <text x="625" y="309" font-size="9" fill="#94a3b8">Infra implements Domain ports</text>
-  <line x1="619" y1="287" x2="613" y2="302" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="2,2"/>
+  <line x1="503" y1="372" x2="503" y2="384" stroke="#93b4f5" stroke-width="2" marker-end="url(#a-blue)"/>
 
-  <!-- Two-headed note: Domain defines ports, Infra implements -->
-  <line x1="450" y1="329" x2="450" y2="349" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+  <!-- ───────── Domain (core) ───────── -->
+  <rect x="168" y="388" width="670" height="146" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2.6"/>
+  <text x="192" y="422" font-size="21" font-weight="700" fill="#1e3a8a">Domain</text>
+  <text x="192" y="444" font-size="13" fill="#1d4ed8">Pure Java • Zero Framework Dependencies</text>
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- 5. INFRASTRUCTURE ADAPTERS                              -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="200" y="350" width="500" height="54" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="450" y="372" text-anchor="middle" font-size="12" font-weight="700" fill="#2563eb" letter-spacing="0.5">INFRASTRUCTURE ADAPTERS</text>
-  <text x="450" y="391" text-anchor="middle" font-size="11" fill="#3b82f6">Implements Domain Ports · Zero domain coupling</text>
+  <rect x="192" y="460" width="622" height="58" rx="7" fill="#ffffff" stroke="#93b4f5" stroke-width="1.2"/>
+  <text x="208" y="480" font-size="14" font-weight="700" fill="#1d4ed8">24 Domain Ports</text>
 
-  <!-- Fan-out lines: equally spaced across Infrastructure width (200–700)       -->
-  <!-- 5 adapters, w=92 each, gap=10: x=200,302,404,506,608  centers=246,348,450,552,654 -->
-  <line x1="246" y1="404" x2="246" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <line x1="348" y1="404" x2="348" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <line x1="450" y1="404" x2="450" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <line x1="552" y1="404" x2="552" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <line x1="654" y1="404" x2="654" y2="424" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+  <rect x="208" y="488" width="80" height="22" rx="11" fill="#eff6ff"/>
+  <text x="248" y="503" text-anchor="middle" font-size="11.5" fill="#2563eb">Retrieval</text>
+  <rect x="293" y="488" width="80" height="22" rx="11" fill="#eff6ff"/>
+  <text x="333" y="503" text-anchor="middle" font-size="11.5" fill="#2563eb">Ranking</text>
+  <rect x="378" y="488" width="80" height="22" rx="11" fill="#eff6ff"/>
+  <text x="418" y="503" text-anchor="middle" font-size="11.5" fill="#2563eb">Storage</text>
+  <rect x="463" y="488" width="80" height="22" rx="11" fill="#eff6ff"/>
+  <text x="503" y="503" text-anchor="middle" font-size="11.5" fill="#2563eb">Embedding</text>
+  <rect x="548" y="488" width="80" height="22" rx="11" fill="#eff6ff"/>
+  <text x="588" y="503" text-anchor="middle" font-size="11.5" fill="#2563eb">Citation</text>
+  <rect x="633" y="488" width="80" height="22" rx="11" fill="#eff6ff"/>
+  <text x="673" y="503" text-anchor="middle" font-size="11.5" fill="#2563eb">Prompt</text>
+  <rect x="718" y="488" width="80" height="22" rx="11" fill="#eff6ff"/>
+  <text x="758" y="503" text-anchor="middle" font-size="11.5" fill="#2563eb">Repositories</text>
 
-  <!-- Adapter boxes: x=200,302,404,506,608  w=92  h=56 -->
-  <!-- PostgreSQL -->
-  <rect x="200" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="246" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">PostgreSQL</text>
-  <text x="246" y="464" text-anchor="middle" font-size="10" fill="#64748b">Metadata · FTS</text>
+  <line x1="503" y1="546" x2="503" y2="534" stroke="#86d3a4" stroke-width="2" marker-end="url(#a-green)"/>
 
-  <!-- Weaviate -->
-  <rect x="302" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="348" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">Weaviate</text>
-  <text x="348" y="464" text-anchor="middle" font-size="10" fill="#64748b">Vector Search</text>
+  <!-- ───────── Infrastructure ───────── -->
+  <rect x="168" y="550" width="670" height="144" rx="9" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <rect x="168" y="550" width="5" height="144" rx="2.5" fill="#16a34a"/>
+  <text x="192" y="582" font-size="19" font-weight="700" fill="#15803d">Infrastructure</text>
 
-  <!-- Ollama -->
-  <rect x="404" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="450" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">Ollama</text>
-  <text x="450" y="464" text-anchor="middle" font-size="10" fill="#64748b">Embed · Generate</text>
+  <rect x="192" y="596" width="148" height="84" rx="7" fill="#ffffff" stroke="#bbf7d0" stroke-width="1.2"/>
+  <text x="266" y="618" text-anchor="middle" font-size="13" font-weight="700" fill="#15803d">Retrieval</text>
+  <text x="266" y="639" text-anchor="middle" font-size="12" fill="#16a34a">Weaviate</text>
+  <text x="266" y="657" text-anchor="middle" font-size="12" fill="#16a34a">BM25</text>
+  <text x="266" y="675" text-anchor="middle" font-size="12" fill="#16a34a">RRF</text>
 
-  <!-- Apache Tika -->
-  <rect x="506" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="552" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">Apache Tika</text>
-  <text x="552" y="464" text-anchor="middle" font-size="10" fill="#64748b">Doc Parsing</text>
+  <rect x="350" y="596" width="148" height="84" rx="7" fill="#ffffff" stroke="#bbf7d0" stroke-width="1.2"/>
+  <text x="424" y="618" text-anchor="middle" font-size="13" font-weight="700" fill="#15803d">Persistence</text>
+  <text x="424" y="639" text-anchor="middle" font-size="12" fill="#16a34a">PostgreSQL</text>
+  <text x="424" y="657" text-anchor="middle" font-size="12" fill="#16a34a">Flyway</text>
+  <text x="424" y="675" text-anchor="middle" font-size="12" fill="#16a34a">JPA</text>
 
-  <!-- File Storage -->
-  <rect x="608" y="424" width="92" height="56" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="654" y="447" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">File Storage</text>
-  <text x="654" y="464" text-anchor="middle" font-size="10" fill="#64748b">Local FS</text>
+  <rect x="508" y="596" width="148" height="84" rx="7" fill="#ffffff" stroke="#bbf7d0" stroke-width="1.2"/>
+  <text x="582" y="618" text-anchor="middle" font-size="13" font-weight="700" fill="#15803d">AI</text>
+  <text x="582" y="639" text-anchor="middle" font-size="12" fill="#16a34a">Ollama</text>
+  <text x="582" y="657" text-anchor="middle" font-size="12" fill="#16a34a">Embeddings</text>
+  <text x="582" y="675" text-anchor="middle" font-size="12" fill="#16a34a">Qwen</text>
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- FUTURE EXTENSIONS (right panel)                         -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <text x="809" y="218" text-anchor="middle" font-size="10" fill="#94a3b8" font-weight="700" letter-spacing="0.8">FUTURE EXTENSIONS</text>
-  <line x1="750" y1="222" x2="868" y2="222" stroke="#e2e8f0" stroke-width="1"/>
+  <rect x="666" y="596" width="148" height="84" rx="7" fill="#ffffff" stroke="#bbf7d0" stroke-width="1.2"/>
+  <text x="740" y="618" text-anchor="middle" font-size="13" font-weight="700" fill="#15803d">Storage</text>
+  <text x="740" y="639" text-anchor="middle" font-size="12" fill="#16a34a">Apache Tika</text>
+  <text x="740" y="657" text-anchor="middle" font-size="12" fill="#16a34a">Local FS</text>
 
-  <!-- MCP Server -->
-  <rect x="738" y="232" width="142" height="46" rx="6" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="809" y="251" text-anchor="middle" font-size="11" font-weight="600" fill="#94a3b8">MCP Server</text>
-  <text x="809" y="268" text-anchor="middle" font-size="10" fill="#cbd5e1">v0.8.0</text>
+  <!-- ───────── Summary card ───────── -->
+  <rect x="868" y="204" width="250" height="260" rx="10" fill="#ffffff" stroke="#dbe3ec" stroke-width="1.4"/>
 
-  <!-- LangGraph -->
-  <rect x="738" y="292" width="142" height="46" rx="6" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="809" y="311" text-anchor="middle" font-size="11" font-weight="600" fill="#94a3b8">LangGraph</text>
-  <text x="809" y="328" text-anchor="middle" font-size="10" fill="#cbd5e1">v0.9.0</text>
+  <path d="M896,249 L902,256 L914,242" stroke="#16a34a" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="926" y="255" font-size="13" fill="#334155">Hexagonal Architecture</text>
 
-  <!-- Agent-to-Agent -->
-  <rect x="738" y="352" width="142" height="46" rx="6" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="809" y="371" text-anchor="middle" font-size="11" font-weight="600" fill="#94a3b8">Agent-to-Agent</text>
-  <text x="809" y="388" text-anchor="middle" font-size="10" fill="#cbd5e1">v0.9.0</text>
+  <path d="M896,293 L902,300 L914,286" stroke="#16a34a" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="926" y="299" font-size="13" fill="#334155">Self-hosted AI</text>
 
-  <!-- Connectors: APPLICATION right edge (645,227) → future boxes left edge (736) -->
-  <line x1="645" y1="227" x2="736" y2="255" stroke="#e2e8f0" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
-  <line x1="645" y1="227" x2="736" y2="315" stroke="#e2e8f0" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
-  <line x1="645" y1="227" x2="736" y2="375" stroke="#e2e8f0" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
+  <path d="M896,337 L902,344 L914,330" stroke="#16a34a" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="926" y="343" font-size="13" fill="#334155">Published Maven Library</text>
 
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <!-- LEGEND                                                  -->
-  <!-- ═══════════════════════════════════════════════════════ -->
-  <rect x="26" y="536" width="224" height="136" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
-  <text x="138" y="557" text-anchor="middle" font-size="11" font-weight="700" fill="#0f172a">Legend</text>
+  <path d="M896,381 L902,388 L914,374" stroke="#16a34a" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="926" y="387" font-size="13" fill="#334155">819 Tests</text>
 
-  <!-- Implemented component -->
-  <rect x="42" y="568" width="26" height="14" rx="3" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-  <text x="78" y="579" font-size="10" fill="#0f172a">Implemented component</text>
+  <path d="M896,425 L902,432 L914,418" stroke="#16a34a" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="926" y="431" font-size="13" fill="#334155">11 ArchUnit Rules</text>
 
-  <!-- Implemented flow -->
-  <line x1="42" y1="598" x2="68" y2="598" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <text x="78" y="602" font-size="10" fill="#0f172a">Implemented flow</text>
+  <!-- ───────── Future (Phase 8) ───────── -->
+  <rect x="868" y="482" width="250" height="212" rx="10" fill="#fafafa" stroke="#cbd5e1" stroke-width="1.4" stroke-dasharray="6,4"/>
+  <text x="993" y="522" text-anchor="middle" font-size="15" font-weight="700" fill="#64748b">Future (Phase 8)</text>
+  <text x="993" y="576" text-anchor="middle" font-size="13" fill="#94a3b8">Prometheus</text>
+  <text x="993" y="616" text-anchor="middle" font-size="13" fill="#94a3b8">SSE</text>
+  <text x="993" y="656" text-anchor="middle" font-size="13" fill="#94a3b8">MCP Spike</text>
 
-  <!-- Future component -->
-  <rect x="42" y="614" width="26" height="14" rx="3" fill="#fafafa" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <text x="78" y="625" font-size="10" fill="#0f172a">Future component</text>
+  <!-- ───────── External systems ───────── -->
+  <text x="168" y="708" font-size="13" font-weight="700" fill="#64748b">External Systems</text>
 
-  <!-- Future flow -->
-  <line x1="42" y1="644" x2="68" y2="644" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-gray)"/>
-  <text x="78" y="648" font-size="10" fill="#0f172a">Future flow</text>
+  <rect x="168" y="718" width="218" height="48" rx="8" fill="#fafafa" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="277" y="748" text-anchor="middle" font-size="13" font-weight="600" fill="#475569">PostgreSQL 16</text>
+
+  <rect x="412" y="718" width="218" height="48" rx="8" fill="#fafafa" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="521" y="748" text-anchor="middle" font-size="13" font-weight="600" fill="#475569">Weaviate</text>
+
+  <rect x="656" y="718" width="218" height="48" rx="8" fill="#fafafa" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="765" y="748" text-anchor="middle" font-size="13" font-weight="600" fill="#475569">Ollama</text>
+
+  <rect x="900" y="718" width="218" height="48" rx="8" fill="#fafafa" stroke="#cbd5e1" stroke-width="1.3"/>
+  <text x="1009" y="748" text-anchor="middle" font-size="13" font-weight="600" fill="#475569">File System</text>
 
 </svg>

@@ -6,13 +6,13 @@
 
 *A reference implementation of an enterprise-grade Retrieval-Augmented Generation (RAG) platform — built with Hexagonal Architecture, Spring AI, and fully on-premises AI models — with complete data ownership and no external API dependencies.*
 
+[![Latest Release](https://img.shields.io/github/v/release/mudassirshahzad/project-eka?style=flat-square&color=2563eb&label=release)](https://github.com/mudassirshahzad/project-eka/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/mudassirshahzad/project-eka/build.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=CI)](https://github.com/mudassirshahzad/project-eka/actions/workflows/build.yml)
+[![GitHub Packages](https://img.shields.io/badge/GitHub_Packages-project--eka-8250df?style=flat-square&logo=github&logoColor=white)](https://github.com/mudassirshahzad/project-eka/packages)
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5.16-6DB33F?style=flat-square&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Spring AI](https://img.shields.io/badge/Spring_AI-1.1.8-6DB33F?style=flat-square&logo=spring&logoColor=white)](https://spring.io/projects/spring-ai)
-[![Weaviate](https://img.shields.io/badge/Weaviate-1.25-FF6D00?style=flat-square)](https://weaviate.io)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Apache Tika](https://img.shields.io/badge/Apache_Tika-4.0.0-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
 [![Tests](https://img.shields.io/badge/tests-819_passing-22c55e?style=flat-square)](CHANGELOG.md)
+[![ArchUnit](https://img.shields.io/badge/ArchUnit-11_rules-16a34a?style=flat-square)](src/test/java/com/mudassirshahzad/eka/architecture/HexagonalArchitectureTest.java)
 [![License](https://img.shields.io/badge/license-Apache_2.0-64748b?style=flat-square)](LICENSE)
 
 </div>
@@ -23,15 +23,64 @@
 
 - Hexagonal Architecture (Ports & Adapters) — ArchUnit-enforced at build time
 - Domain-Driven Design — pure domain model with zero framework dependencies
+- Consumable as a library — published to GitHub Packages as `com.mudassirshahzad:project-eka:0.8.5`
+- Authorization Filter *(v0.7.1)* — role-based document-classification clearance
+- Hybrid Search *(v0.5.0)*
+- Zero external API dependency — embedding, generation and vector search all run on-premises
+- MCP & LangGraph Ready — architecturally (port interfaces align with both), not yet on the release roadmap; see [Roadmap](#release-roadmap)
+- 819 Automated Tests, 0 failures · 11 ArchUnit rules
 - Spring AI 1.1.8 — unified abstraction over embedding models and vector stores
-- Apache Tika 4.0.0 — multi-format document parsing with magic-byte detection
 - Ollama — local embedding (`nomic-embed-text`, 768-dim) and generation (`qwen3`)
 - Weaviate 1.25 — vector store, tenant-isolated via a mandatory query-time filter
 - PostgreSQL 16 — relational metadata, full-text search
-- Hybrid Search *(v0.5.0)*
-- Authorization Filter *(v0.7.1)* — role-based document-classification clearance
-- MCP & LangGraph Ready — architecturally (port interfaces align with both), not yet on the release roadmap; see [Roadmap](#release-roadmap)
-- 819 Automated Tests, 0 failures
+- Apache Tika 4.0.0 — multi-format document parsing with magic-byte detection
+
+---
+
+## Published as a GitHub Package
+
+EKA ships as an application **and** as a reusable library from the same build. The plain jar is the
+library; the executable application carries a `-boot` classifier.
+
+**Gradle**
+
+```groovy
+implementation "com.mudassirshahzad:project-eka:0.8.5"
+```
+
+**Maven**
+
+```xml
+<dependency>
+    <groupId>com.mudassirshahzad</groupId>
+    <artifactId>project-eka</artifactId>
+    <version>0.8.5</version>
+</dependency>
+```
+
+GitHub Packages requires authentication — see [Using EKA as a library](#using-eka-as-a-library) for
+the repository block and the `read:packages` token setup.
+
+---
+
+## Current Status
+
+- **Latest Release** — [v0.8.5](https://github.com/mudassirshahzad/project-eka/releases/tag/v0.8.5)
+- **Published on GitHub Packages** — `com.mudassirshahzad:project-eka:0.8.5`
+- **819 Tests** — 0 failures, across 84 test classes
+- **11 ArchUnit Rules** — architecture enforced at build time
+- **Apache 2.0** — permissive open-source licence
+- **Production-ready architecture** — Hexagonal, DDD, provider-independent
+
+---
+
+## Roadmap
+
+![Project EKA Roadmap](docs/diagrams/roadmap.svg)
+
+Phase 7 is shipped but **intentionally not closed** — one exit criterion (measurable retrieval
+relevance, ADR RQ07) remains open. Full version-by-version detail in
+[Release Roadmap](#release-roadmap).
 
 ---
 
@@ -58,7 +107,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 ---
 
-## Current Status
+## Project Snapshot
 
 | | |
 |---|---|
@@ -189,14 +238,6 @@ api/          →  application/  →  domain/  ←  infrastructure/
 ### High-Level Architecture
 
 ![High-Level Architecture](docs/diagrams/architecture.svg)
-
-### Package Structure
-
-![Package Structure](docs/diagrams/package-structure.svg)
-
-### Document Ingestion Pipeline
-
-![Document Ingestion Pipeline](docs/diagrams/ingestion-pipeline.svg)
 
 ### Retrieval & RAG Pipeline
 
@@ -472,13 +513,14 @@ graph TD
     I --> I2["v0.7.2<br/>Post-Phase-6 Audit<br/>Remediation (maintenance)"]
     I2 --> J1["v0.8.0 — Phase 7 / WP-1<br/>CI/CD &amp; Release<br/>Governance Hardening"]
     J1 --> J2["v0.8.1–v0.8.4 — Phase 7<br/>WP-2…WP-5: Retrieval Quality &amp;<br/>Operational Integrity"]
-    J2 --> K["Phase 8 → v0.9.x<br/>Scale &amp;<br/>Ecosystem Readiness"]
+    J2 --> J3["v0.8.5<br/>Security Remediation &amp;<br/>Platform Enablement"]
+    J3 --> K["Phase 8 → v0.9.x<br/>Scale &amp;<br/>Ecosystem Readiness"]
     K --> L["v1.0.0<br/>Stable Enterprise Release"]
 
     classDef done fill:#22c55e,stroke:#16a34a,color:#ffffff
     classDef planned fill:#e5e7eb,stroke:#9ca3af,color:#374151,stroke-dasharray: 5 5
 
-    class A,B,C,D,E,F,G,H,I,I2,J1,J2 done
+    class A,B,C,D,E,F,G,H,I,I2,J1,J2,J3 done
     class K,L planned
 ```
 
