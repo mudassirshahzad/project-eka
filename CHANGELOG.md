@@ -7,8 +7,10 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ### Security
 
-- **Dependency upgrade closing 96 of 104 open advisories** — 8 of 8 critical, 34 of 40 high, 41
-  medium, 13 low. Executes §4 of [`docs/analysis/dependency-roadmap.md`](docs/analysis/dependency-roadmap.md).
+- **Dependency upgrade closing 103 of 104 open advisories** — **8 of 8 critical, 40 of 40 high**,
+  42 medium, 13 low. The single remaining alert (`artemis-project`, medium) is **not applicable**:
+  ActiveMQ Artemis is not on the resolved classpath at all, so its auto-configuration never
+  activates. Executes §4 of [`docs/analysis/dependency-roadmap.md`](docs/analysis/dependency-roadmap.md).
   The audit's finding was that this is a **stale-BOM problem, not a dependency-choice problem**:
   Spring Boot 3.5.0 pinned ~30 transitive libraries to their May 2025 versions.
 
@@ -39,6 +41,20 @@ For detailed release notes see [docs/releases/](docs/releases/).
     `GHSA-5jmj-h7xm-6q6v` needs 2.21.5; 2.21.7 is the current release on Boot's line.
 
   Every version above was verified against the **resolved** `runtimeClasspath`, not the declaration.
+
+- **gRPC stack aligned on 1.75.0** (ADR DEP03) — closes `GHSA-prj3-ccx8-p6x4` (high), the last
+  advisory this repository can act on, and fixes a latent defect found while investigating it.
+  `io.weaviate:client` declares its gRPC artifacts under three disagreeing version properties, which
+  resolved here as a **split stack**: `grpc-api`/`grpc-protobuf` on 1.70.0 while
+  `grpc-core`/`grpc-netty-shaded`/`grpc-stub` sat on 1.68.2. gRPC requires every `io.grpc` artifact
+  on one version; a mixed stack is a latent `NoSuchMethodError`. Importing `io.grpc:grpc-bom` aligns
+  all eight. 1.75.0 is the minimum version that both aligns the stack and closes the advisory —
+  deliberately not the newest (1.79.0), since the smaller move from what the Weaviate client was
+  built against buys the same result.
+
+  Verified against a **real Weaviate 1.25.0**, not reasoned about: `WeaviateGrpcStackIT` is the
+  first test here to exercise a real instance (every other Weaviate test is mock-based and never
+  loads the gRPC stack, which is exactly why nothing caught the split).
 
 - **Stopped auto-configuring an unusable in-memory user.** Booting the production image logged
   `Using generated security password: …` on every startup. Not a vulnerability — authentication is
@@ -79,6 +95,22 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ### Fixed
 
+- **The library jar leaked application-owned resources onto consumers' classpaths** (ADR PL05).
+  The published library carried EKA's `application.yml`, all 19 Flyway migrations at their default
+  location, and `META-INF/build-info.properties`. All three are discovered *by convention*, so a
+  consumer inherited them without asking:
+
+  | Leaked file | Consequence for a consumer |
+  |---|---|
+  | `application.yml` | Spring Boot loads `classpath:/application.yml`. EKA's requires `DB_PASSWORD` and `JWT_SECRET_KEY` — the consumer fails to start, blaming a file it never wrote |
+  | `META-INF/build-info.properties` | The consumer's `/actuator/info` reports EKA's version as its own |
+  | `db/migration/**` | **The dangerous one.** `spring.flyway.locations` defaults to `classpath:db/migration`, so a consumer running Flyway applies EKA's 19 migrations to its own database |
+
+  Migrations are still published, relocated to `eka/db/migration` where nothing scans by default, so
+  a consumer can opt in with `spring.flyway.locations=classpath:eka/db/migration`.
+  `prompts/qa-system.txt` deliberately stays — the library needs it. The boot jar is untouched
+  (verified: it still boots, applies all 19 migrations and reports healthy).
+
 - **Published Gradle Module Metadata made the library unresolvable for Gradle consumers** (ADR PL02).
   `io.spring.dependency-management` writes its resolved versions into the POM's
   `<dependencyManagement>` block but **not** into Gradle Module Metadata, and Gradle prefers
@@ -99,6 +131,18 @@ For detailed release notes see [docs/releases/](docs/releases/).
   normalises the boot jar to a fixed path — resolved *inside* the build stage rather than restating
   the project version in the Dockerfile, keeping `project.version` the single source of truth
   (ADR EX03).
+
+### Removed
+
+- **Five exception classes nothing throws** (ADR PL06) — `LlmTimeoutException`,
+  `LlmRateLimitException`, `LlmModelNotFoundException`, `LlmInvalidResponseException`,
+  `QueryRewriteException`. No throw site, no catch site, no reference outside their own files.
+
+  Dead code in an application is clutter; in a *published library* it is public API — a type in the
+  jar is something a consumer can compile against, and therefore something that cannot be removed
+  later without a breaking change. Removing them now is free (publishing is tag-gated, no tag
+  carries the library, no packages are published) and would not be after a 1.0 commitment.
+  `LlmException` and `LlmProviderUnavailableException` are kept — both are genuinely used.
 
 ### Changed (CI & dependency governance)
 

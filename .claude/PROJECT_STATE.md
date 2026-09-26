@@ -16,7 +16,10 @@ A track that runs **alongside** the frozen Phase 6 → 7 → 8 roadmap (ADR GOV0
 
 | Item | Status | ADRs |
 |---|---|---|
-| Dependency remediation — 96 of 104 advisories closed (8/8 critical) | ✅ Complete | DEP01, DEP02 |
+| Dependency remediation — **103 of 104** advisories closed (8/8 critical, 40/40 high) | ✅ Complete | DEP01, DEP02, DEP03 |
+| gRPC stack aligned on 1.75.0 (fixes a split 1.68.2/1.70.0 stack) + real-Weaviate IT | ✅ Complete | DEP03 |
+| Library jar no longer leaks `application.yml` / migrations / build-info | ✅ Complete | PL05 |
+| Five never-thrown exception types removed before the API is committed | ✅ Complete | PL06 |
 | EKA publishable as a library; boot jar reclassified | ✅ Complete | PL01 |
 | Gradle Module Metadata suppressed (fixes unresolvable consumers) | ✅ Complete | PL02 |
 | `platform-smoke/` consumer test, run in CI | ✅ Complete | PL03 |
@@ -25,11 +28,13 @@ A track that runs **alongside** the frozen Phase 6 → 7 → 8 roadmap (ADR GOV0
 | CI runs on every PR, not only those targeting `main` | ✅ Complete | — |
 | Module split (`eka-core`/`eka-llm`/`eka-rag`/`eka-app`) | ⬜ Not started | — |
 
-**Grand total tests: 816 — 0 failures** (net +3, all ArchUnit boundary rules)
+**Grand total tests: 819 — 0 failures** (net +6: 3 ArchUnit boundary rules, 3 in `WeaviateGrpcStackIT`)
 
-**Verified empirically, not assumed:** every dependency version against the resolved `runtimeClasspath`; each new ArchUnit rule made to fail before being kept; `docker build` run locally and in CI; the application booted from the image against a real Postgres (19 Flyway migrations applied, Tomcat up, `/actuator/info` reporting v0.8.4); and an external project compiled and ran against the published artifact.
+**Verified empirically, not assumed:** every dependency version against the resolved `runtimeClasspath`; the gRPC stack against a real Weaviate 1.25.0 in Testcontainers; `docker build` run locally and in CI; the application booted from the image against a real Postgres (19 Flyway migrations applied, readiness UP, `/actuator/info` correct); and an external project compiled and ran against the published artifact.
 
-**Known limitations, recorded rather than hidden:** every published POM dependency is `runtime` scope (resolves with the module split); EKA is one jar, so a consumer wanting only prompting still inherits Weaviate and Tika; `grpc-netty-shaded` remains on 1.68.2 with one high advisory, deliberately pinned by the Weaviate client (ADR DEP01).
+**Every guard in this work was made to fail before being kept** — the three ArchUnit rules, the gRPC version-alignment assertion, and the `platform-smoke` packaging assertions. This mattered: the first version of the gRPC test asserted only that classes load, and it **passed against the deliberately split stack**. A test that cannot fail is worse than none, because it is read as coverage.
+
+**Known limitations, recorded rather than hidden:** every published POM dependency is `runtime` scope (resolves with the module split); EKA is one jar, so a consumer wanting only prompting still inherits Weaviate and Tika. **One advisory remains open** — `artemis-project` (medium), which is not on the resolved classpath at all (ActiveMQ Artemis auto-configuration never activates) and is therefore not applicable rather than unfixed.
 
 **Next step:** blueprint Task 4 — extract `eka-core`. Its prerequisites (Tasks 1–3, the boundary rules) are all in place.
 

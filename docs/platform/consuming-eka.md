@@ -80,6 +80,32 @@ public final class MyRetrieval implements RetrievalPort {
 
 ---
 
+## What the library jar does *not* contain
+
+Deliberately excluded, because Spring Boot and Flyway discover them by convention and a consumer
+would otherwise inherit them without asking:
+
+| Excluded | Why it would hurt you |
+|---|---|
+| `application.yml` | Spring Boot loads `classpath:/application.yml`. EKA's demands `DB_PASSWORD` and `JWT_SECRET_KEY` — your app would fail to start, blaming a file you never wrote |
+| `META-INF/build-info.properties` | Your `/actuator/info` would report EKA's version as yours |
+| `db/migration/**` | `spring.flyway.locations` defaults to `classpath:db/migration` — your Flyway would apply EKA's 19 migrations to **your** database |
+
+The migrations are still shipped, relocated to `eka/db/migration`. If you genuinely want EKA's
+schema, opt in explicitly:
+
+```yaml
+spring:
+  flyway:
+    locations: classpath:eka/db/migration
+```
+
+`prompts/qa-system.txt` **is** included and stays at its original path —
+`TemplateBasedPromptBuilderAdapter` loads it from `classpath:prompts/qa-system.txt`, so the library
+does not work without it.
+
+---
+
 ## Known limitations
 
 These are real and deliberate. Read them before depending on EKA in anger.

@@ -788,3 +788,41 @@ Rationale: Booting the production image against a real Postgres logged `Using ge
 Removing it is still right. An operator reading production logs is told a default account exists, which becomes either a wasted incident investigation or, worse, someone "fixing" it by adding `httpBasic()` and making it real. Verified safe before excluding: nothing in the codebase injects an `AuthenticationManager` or a `UserDetailsService`.
 
 Recorded also because of **how** it was found — by actually booting the image against Postgres, not by reading configuration. The log line exists only at runtime, and no amount of static review would have surfaced it.
+
+---
+
+ADR DEP03: The gRPC stack is aligned by importing `io.grpc:grpc-bom`, and an integration test keeps it aligned
+
+Decision: `build.gradle` imports `io.grpc:grpc-bom:1.75.0`, and `WeaviateGrpcStackIT` asserts that every `io.grpc` artifact on the classpath resolves to the same version.
+
+Rationale: `io.weaviate:client` declares its gRPC dependencies under **three separate version properties that disagree with each other** (`grpc-netty-shaded` 1.68.2, `grpc-protobuf` 1.70.0, `grpc-stub` 1.68.2). The result here was a split stack — `grpc-api`/`grpc-protobuf`/`grpc-protobuf-lite` on 1.70.0, `grpc-core`/`grpc-netty-shaded`/`grpc-stub`/`grpc-util`/`grpc-context` on 1.68.2. gRPC requires every `io.grpc` artifact to be on one version; a mixed stack is a latent `NoSuchMethodError` on whichever call first crosses a changed internal signature.
+
+The dependency audit (`dependency-roadmap.md` §2.5) had deferred this upgrade as "a 7-minor jump under a client with opinions about gRPC, for no benefit EKA can verify without a live Weaviate." Both halves of that objection are answered rather than overridden: the benefit is not only the advisory but an **already-violated version invariant**, and it was verified against a real Weaviate 1.25.0 in Testcontainers rather than reasoned about. 1.75.0 is chosen as the minimum version that both aligns the stack and closes `GHSA-prj3-ccx8-p6x4`; 1.79.0 was available and deliberately not taken, because the smaller move from what the client was built against buys the same result.
+
+**The finding worth keeping is about the test, not the dependency.** The first version of `WeaviateGrpcStackIT` asserted only that the gRPC classes load and a channel constructs. Run against the deliberately split stack, it **passed** — every class loaded, the channel built, and a real Weaviate round-trip succeeded. Class loading does not detect a version split, because the incompatibility only surfaces on a call path that crosses a changed signature. The test now reads each artifact's version back from its jar manifest and asserts they are identical; that version was confirmed to fail on the split stack and pass once aligned. A pin with no test is a comment, and a test that cannot fail is worse than none, because it is read as coverage.
+
+---
+
+ADR PL05: The library jar excludes application-owned resources; migrations are relocated rather than deleted
+
+Decision: the `jar` task excludes `application.yml`, `META-INF/build-info.properties` and `db/migration/**`, and re-adds the migrations under `eka/db/migration`. The `bootJar` is untouched. `platform-smoke` asserts all of it.
+
+Rationale: the published library carried all three, and each is discovered **by convention** rather than by explicit reference — so a consumer inherited them without ever asking for them. `application.yml` competes with the consumer's own and demands `DB_PASSWORD`/`JWT_SECRET_KEY`, so the failure mode is a consumer that will not start for reasons pointing at a file it never wrote. `build-info.properties` makes a consumer's `/actuator/info` report EKA's version as its own. `db/migration/**` is the serious one: `spring.flyway.locations` defaults to `classpath:db/migration`, so a consumer running Flyway would have applied EKA's 19 migrations to its own database — a data-integrity hazard, not an inconvenience.
+
+The migrations are **relocated rather than deleted**, because deleting them would silently make the published persistence adapters unusable, while leaving them in place risks a consumer's schema. A path nothing scans by default turns an accident into an opt-in (`spring.flyway.locations=classpath:eka/db/migration`). `prompts/qa-system.txt` stays at its original path because `TemplateBasedPromptBuilderAdapter` loads it from `classpath:prompts/qa-system.txt` — the library does not work without it.
+
+This is the second defect (after ADR PL02) that **only a consumer could see**, and it shipped while every check in this repository was green. That is the argument for `platform-smoke` existing at all, and the reason its assertions were extended here rather than the fix being trusted on its own. The new assertions were confirmed to fail with the excludes removed, not added and assumed.
+
+---
+
+ADR PL06: Unused exception types are deleted before the API is committed, not carried forward
+
+Decision: `LlmTimeoutException`, `LlmRateLimitException`, `LlmModelNotFoundException`, `LlmInvalidResponseException` and `QueryRewriteException` are removed. `LlmException` and `LlmProviderUnavailableException` are kept.
+
+Rationale: none of the five had a throw site, a catch site, or any reference outside its own file. They were declared as a taxonomy and never wired up.
+
+The reason to act now rather than leave them is that **publication changes what dead code costs**. In an application an unused class is clutter; in a published library every type in the jar is public API — something a consumer can compile against, and therefore something that cannot be removed later without a breaking change. Removing them today is provably free: publishing is tag-gated, no tag carries the library, and the repository has no published packages, so there is no consumer to break. After a 1.0 API commitment this would no longer be true.
+
+This is deliberately a deletion and **not** an implementation. Mapping provider failures onto distinct types (timeout vs. rate-limit vs. model-not-found) is genuinely useful behaviour, but it means parsing Ollama's error responses and changing what callers observe — new work with its own tests, not cleanup. The types can return when something throws them.
+
+ADR HD04's text is deliberately **not** edited even though it names `QueryRewriteException`. ADRs record what was decided at the time; retroactively rewriting them would destroy the history they exist to preserve. `.claude/PROJECT_STATE.md`'s package tree — which describes current state — is corrected instead.
