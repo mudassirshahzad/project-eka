@@ -12,7 +12,7 @@
 [![Weaviate](https://img.shields.io/badge/Weaviate-1.25-FF6D00?style=flat-square)](https://weaviate.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Apache Tika](https://img.shields.io/badge/Apache_Tika-4.0.0-D22128?style=flat-square&logo=apache&logoColor=white)](https://tika.apache.org/)
-[![Tests](https://img.shields.io/badge/tests-816_passing-22c55e?style=flat-square)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-819_passing-22c55e?style=flat-square)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Apache_2.0-64748b?style=flat-square)](LICENSE)
 
 </div>
@@ -31,7 +31,7 @@
 - Hybrid Search *(v0.5.0)*
 - Authorization Filter *(v0.7.1)* — role-based document-classification clearance
 - MCP & LangGraph Ready — architecturally (port interfaces align with both), not yet on the release roadmap; see [Roadmap](#release-roadmap)
-- 816 Automated Tests, 0 failures
+- 819 Automated Tests, 0 failures
 
 ---
 
@@ -64,7 +64,7 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 |---|---|
 | **Current Release** | v0.8.4 — Phase 7 / WP-5: Indirect Prompt-Injection Review |
 | **Document Pipeline** | `PENDING → PARSING → CHUNKING → EMBEDDING → INDEXED` ✅ |
-| **Automated Tests** | 816 passing, 0 failures · 83 test classes |
+| **Automated Tests** | 819 passing, 0 failures · 84 test classes |
 | **ArchUnit Rules** | 11 enforced at build time |
 | **CI** | GitHub Actions — build + full test suite + ArchUnit, dependency-review SCA gate, a verified `docker build`, and an external consumer smoke test, on every PR and push to `main`; the library is published to GitHub Packages on release tags |
 | **Schema Migrations** | Flyway V001–V019 (19 migrations) |
