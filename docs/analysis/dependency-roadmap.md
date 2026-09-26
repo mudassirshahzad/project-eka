@@ -11,7 +11,10 @@ Every version in this document was resolved empirically, not assumed:
 - **Current** — `gradle dependencies --configuration runtimeClasspath` (resolved, post-conflict-resolution
   version, not the requested one).
 - **Latest** — `maven-metadata.xml` from `repo1.maven.org` (authoritative; Maven Central's solr
-  search endpoint returns a stale ordering and was not used).
+  search endpoint returns a stale ordering and was not used). **Caveat learned the hard way:** the
+  `<release>` tag points at the newest version *overall*, which for Spring AI is a 2.x milestone —
+  reading it alone hides the stable in-major lines. Always filter the full `<version>` list per
+  line (1.0.x **and** 1.1.x, 2.x **and** 2.9.x) before concluding what the in-line target is.
 - **Advisories** — GitHub Dependabot alerts via `gh api`, **paginated**. This matters: the first
   unpaginated page reports 27 alerts; the true open count is **104**.
 
@@ -86,11 +89,21 @@ where the criticals live.
 ### 2.3 Spring AI 1.0.0 → 1.0.9 — closes 1 critical + 5 high
 
 `spring-ai-vector-store` carries **1 critical + 2 high**; `spring-ai-client-chat` 2 high;
-`spring-ai-model` 1 high. All are first patched at 1.0.4–1.0.7. The 1.0.x line has run to
-**1.0.9**, so this stays entirely within the same minor — a patch bump, not the 2.x major jump
-Dependabot is proposing (§5).
+`spring-ai-model` 1 high. All are first patched at 1.0.4–1.0.7.
 
-**Risk:** low. **Effort:** ~15 min + CI. **Recommended target: `1.0.9`.**
+Two in-major targets exist, and the choice matters:
+
+| Target | Kind | Closes the advisories | Note |
+|---|---|---|---|
+| `1.0.9` | pure patch | ✅ | Zero-risk fallback. But 1.0.x is the **older** line and will stop receiving fixes once 1.1.x is the maintained one |
+| **`1.1.8`** | minor, same major | ✅ | **Recommended.** The current maintained 1.x line, built against Boot 3.5.x |
+
+**Recommended target: `1.1.8`**, with `1.0.9` as the fallback if the minor bump surfaces any API
+friction. Both stay inside major 1 — neither is the 2.x jump Dependabot proposes (§5). Taking
+`1.0.9` closes today's advisories but leaves EKA on a line that is about to stop being patched,
+which is how this situation recurs.
+
+**Risk:** low either way. **Effort:** ~15 min + CI.
 
 ### 2.4 Four remaining transitive pins
 
@@ -128,11 +141,11 @@ incidentally with 2.1. Recorded here so it is not re-investigated later.
 | Dependency | Current | Latest | Gap | Security | Compatibility | Effort | **Target** |
 |---|---|---|---|---|---|---|---|
 | `org.springframework.boot` (plugin + BOM) | 3.5.0 | 4.2.0-M2 | major behind; **16 patches** behind in-line | **~70 advisories** | 3.5.16 drop-in. 4.x is a breaking major | 15 min | **3.5.16** |
-| `spring-ai-bom` | 1.0.0 | 2.1.0-M1 | major behind; **9 patches** behind in-line | **1 critical, 5 high** | 1.0.9 drop-in. 2.x needs Boot 4 | 15 min | **1.0.9** |
+| `spring-ai-bom` | 1.0.0 | 2.1.0-M1 (2.0.1 stable) | major behind; a full **minor** behind in-line (1.1.8) | **1 critical, 5 high** | 1.1.8 targets Boot 3.5.x; 2.x needs Boot 4 | 15 min | **1.1.8** (fallback 1.0.9) |
 | `tika` | 4.0.0 | 4.0.0 | current | none | migrated and green | — | **4.0.0** (hold) |
 | `jjwt` | 0.13.0 | 0.13.0 | current | none | — | — | **0.13.0** (hold) |
 | `archunit-junit5` | 1.5.0 | 1.5.1 | 1 patch | none | test-only, drop-in | 5 min | **1.5.1** |
-| `springdoc-openapi` | 2.7.0 | 3.1.1 | major behind | none | **3.x requires Boot 4** — blocked | — | **hold at 2.x** |
+| `springdoc-openapi` | 2.7.0 | 3.1.1 | major behind; **2.9.1** available in-line | none | 3.x requires Boot 4 — blocked. 2.9.1 is built against Boot 3.5.x | 10 min | **2.9.1** |
 | `java` toolchain | 21 | 21 LTS | current | — | — | — | **21** (hold) |
 | `gradle` | 8.12 | 9.x | major behind | none | see §6 | — | **8.12** for now |
 
@@ -146,7 +159,8 @@ incidentally with 2.1. Recorded here so it is not re-investigated later.
 |---|---|---|---|
 | Spring Boot 3.5.0 → **3.5.16** | ~70 advisories | very low | 15 min + CI |
 | `ext['tomcat.version'] = '10.1.60'` | **6 critical, 12 high** | low | 5 min + CI |
-| Spring AI 1.0.0 → **1.0.9** | 1 critical, 5 high | low | 15 min + CI |
+| Spring AI 1.0.0 → **1.1.8** | 1 critical, 5 high | low | 15 min + CI |
+| springdoc 2.7.0 → **2.9.1** | — (hygiene; stays on Boot 3.5.x) | low | 10 min + CI |
 | ArchUnit 1.5.0 → **1.5.1** | — (hygiene) | very low | 5 min |
 | Pin `commons-lang3` 3.18.0, `spring-retry` 2.0.13, `log4j-api` 2.25.5 | 3 medium | low | 10 min + CI |
 
@@ -179,8 +193,8 @@ Neither should be merged as-is; neither should be closed as noise — each is po
 
 | PR | Proposes | Status | Action |
 |---|---|---|---|
-| [#3](https://github.com/mudassirshahzad/project-eka/pull/3) | Boot 3.5.0 → **4.1.1**, Spring AI 1.0.0 → **2.0.1** | ❌ CI red: `An exception occurred applying plugin request [id: 'org.springframework.boot', version: '4.1.1']` | **Close in favour of the in-line 3.5.16 / 1.0.9 upgrade.** A grouped double-major jump cannot be validated in one PR |
-| [#7](https://github.com/mudassirshahzad/project-eka/pull/7) | springdoc 2.7.0 → **3.1.1** | ❌ CI red | **Close.** springdoc 3.x requires Boot 4 |
+| [#3](https://github.com/mudassirshahzad/project-eka/pull/3) | Boot 3.5.0 → **4.1.1**, Spring AI 1.0.0 → **2.0.1** | ❌ CI red: `An exception occurred applying plugin request [id: 'org.springframework.boot', version: '4.1.1']` | **Close in favour of the in-line 3.5.16 / 1.1.8 upgrade.** A grouped double-major jump cannot be validated in one PR |
+| [#7](https://github.com/mudassirshahzad/project-eka/pull/7) | springdoc 2.7.0 → **3.1.1** | ❌ CI red | **Close.** springdoc 3.x requires Boot 4 — take **2.9.1** instead, which is in-line and current |
 
 **Configuration improvement worth making:** `.github/dependabot.yml` groups all
 `org.springframework*` + `io.spring*` into one `spring` group with no version ceiling, which is
@@ -207,7 +221,7 @@ security position can be fixed on Gradle 8.12 / Boot 3.5.16.
 
 ## 7. Recommended execution order
 
-1. **Boot 3.5.16 + Tomcat 10.1.60 + Spring AI 1.0.9 + the three medium pins** — one commit. Closes 8/8 criticals, ~37/40 highs.
+1. **Boot 3.5.16 + Tomcat 10.1.60 + Spring AI 1.1.8 + springdoc 2.9.1 + the three medium pins** — one commit. Closes 8/8 criticals, ~37/40 highs.
 2. **Close Dependabot PRs #3 and #7** with a comment pointing at this document.
 3. **Constrain the `spring` Dependabot group to minor/patch** so future PRs are mergeable.
 4. **ArchUnit 1.5.1** — hygiene, bundle with any convenient commit.
