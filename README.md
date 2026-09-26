@@ -124,6 +124,33 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 
 ## Current Capabilities
 
+Listed in the order they were delivered, so the platform's evolution is visible from the first
+release rather than starting mid-way.
+
+**Implemented — v0.1.0 (architecture foundation)**
+
+- ✅ Hexagonal Architecture (Ports & Adapters) scaffold — the layering every later release was built inside
+- ✅ ArchUnit enforcement from day one — 8 layering rules at build time (11 today)
+- ✅ Domain model — `Document`, `Chunk`, `Conversation`, `ChatSession`, `KnowledgeQuery` and `User` aggregates
+- ✅ Port interfaces defined before any adapter existed — `FileStorage`, `DocumentParser`, `VectorStore`, `EmbeddingProvider`, `DomainEventPublisher`
+- ✅ Java 21 / Spring Boot (3.5.0 at this release) / Gradle 8.12 baseline
+- ✅ Docker Compose for the full local stack — PostgreSQL 16, Weaviate 1.25, Ollama
+
+**Implemented — v0.2.0 (persistence foundation)**
+
+- ✅ 16 Flyway schema migrations (V001–V016; 19 today)
+- ✅ JPA entity hierarchy — `BaseUuidEntity` → `AuditableEntity`
+- ✅ Spring Data repository adapters for every domain aggregate
+- ✅ Multi-tenancy in the schema itself — `TenantId` on every entity from V001, not retrofitted later
+- ✅ PostgreSQL 16 with full-text search columns prepared ahead of the BM25 work in v0.5.0
+
+**Implemented — v0.3.0 (application layer)**
+
+- ✅ Full use case layer for document, conversation, query and user management
+- ✅ Domain event system — 17 event types with a Spring-backed publisher
+- ✅ `UploadDocumentUseCase` — end-to-end ingestion orchestration
+- ✅ `DeleteDocumentUseCase` — cascade removal with file-storage cleanup
+
 **Implemented — v0.4.0 (ingestion foundation)**
 
 - ✅ Multi-format document upload with format-filename consistency validation — implemented at the application layer (`UploadDocumentUseCase`) and fully tested; **REST-exposed as of P06.1** via `POST /api/v1/documents` (multipart, closes v0.6.1 ADR EX09's deferral and post-Phase-5 audit finding H2). See "Application Platform" below.
@@ -211,6 +238,17 @@ Most RAG implementations are demos. They work for a single user, on a single mac
 - ✅ Untrusted retrieved content is fenced and labelled as data in the system prompt, with the rules restated after it, and fence markers stripped from document content so a document cannot close its own fence
 - ✅ The re-ranking scoring prompt gets identical treatment — a surface WP-4 itself created, and the higher-value target of the two
 - ✅ [Full review published](docs/security/prompt-injection-review.md) with residual risk **explicitly accepted**, not implied away: the mitigations are defence in depth, and no prompt-level technique closes indirect injection
+
+**Implemented — v0.8.5 (platform enablement & security remediation)**
+
+- ✅ EKA is consumable as a library — published to GitHub Packages as `com.mudassirshahzad:project-eka:0.8.5`; the plain jar is the library, the executable application carries a `-boot` classifier
+- ✅ The library jar no longer leaks application-owned resources — `application.yml`, Flyway migrations and build-info are excluded, so a consumer's own configuration wins
+- ✅ Gradle Module Metadata suppressed — fixes consumers that previously could not resolve the artifact at all
+- ✅ `platform-smoke/` — a standalone consumer project that resolves the published artifact and runs against it in CI; it reads the version from the root build, so it cannot go stale on a bump
+- ✅ Three module-boundary ArchUnit rules added (11 enforced in total)
+- ✅ 103 of 104 dependency advisories closed — 8 of 8 critical, 40 of 40 high; Spring Boot 3.5.0 → 3.5.16, Spring AI 1.0.0 → 1.1.8, plus eight documented managed-version overrides where a Boot bump alone does not close the advisory
+- ✅ gRPC stack aligned on 1.75.0, replacing a split 1.68.2/1.70.0 stack, covered by an integration test against a real Weaviate
+- ✅ No auto-configured in-memory user — `UserDetailsServiceAutoConfiguration` excluded
 
 **Planned — beyond Phase 7** (see [Release Roadmap](#release-roadmap))
 

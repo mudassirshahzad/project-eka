@@ -1,101 +1,100 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 940" width="760" height="940"
      font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
 
-  <!-- Project EKA — Roadmap, current as of v0.8.5 (2026-09-26).
-       Source of truth: .claude/PROJECT_STATE.md "Roadmap to v1.0.0 (Frozen)" (ADR GOV03),
-       .claude/ROADMAP.md, README.md release history. docs/roadmap.md is historical only
-       and deliberately NOT used for scope — its Phase 6-9 numbering does not apply. -->
+  <!-- Project EKA — Roadmap, complete delivery timeline, current as of v0.8.5 (2026-09-26).
+       Every row verified against git tags, CHANGELOG.md, README.md's release history and
+       .claude/PROJECT_STATE.md. docs/roadmap.md is historical only and was not used for scope. -->
 
   <rect width="760" height="940" fill="#ffffff"/>
 
   <!-- Title -->
   <text x="380" y="40" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Project EKA — Roadmap</text>
   <text x="380" y="61" text-anchor="middle" font-size="11" fill="#64748b">Current release v0.8.5 · 819 tests, 0 failures · 11 ArchUnit rules</text>
-  <text x="380" y="79" text-anchor="middle" font-size="10" fill="#94a3b8">Frozen sequence (ADR GOV03) — Phase 6 → Phase 7 → Phase 8 → v1.0.0</text>
+  <text x="380" y="79" text-anchor="middle" font-size="10" fill="#94a3b8">Complete delivery timeline — v0.1.0 through v1.0.0 · phases numbered by delivery order</text>
 
   <!-- Timeline spine -->
   <line x1="62" y1="134" x2="62" y2="774" stroke="#e2e8f0" stroke-width="2"/>
 
-  <!-- ══════════ 1 · Phase 4 — Foundation (complete) ══════════ -->
+  <!-- ══════════ 1 · Architecture Foundation ══════════ -->
   <rect x="92" y="104" width="624" height="60" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="92" y="104" width="4" height="60" fill="#16a34a"/>
   <circle cx="62" cy="134" r="12" fill="#16a34a"/>
   <path d="M57,134 L60.5,138 L67,130.5" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="606" y="114" width="94" height="18" rx="9" fill="#dcfce7"/>
-  <text x="653" y="127" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.4.0 – v0.5.0</text>
-  <text x="110" y="128" font-size="12" font-weight="700" fill="#15803d">Phase 4 — Foundation</text>
-  <text x="110" y="147" font-size="10" fill="#16a34a">Document ingestion · hybrid retrieval (vector + BM25 + RRF) · context assembly · citations · output guardrails</text>
+  <rect x="646" y="114" width="54" height="18" rx="9" fill="#dcfce7"/>
+  <text x="673" y="127" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.1.0</text>
+  <text x="110" y="128" font-size="12" font-weight="700" fill="#15803d">Phase 1 — Architecture Foundation</text>
+  <text x="110" y="147" font-size="10" fill="#16a34a">Hexagonal scaffold · domain model &amp; port interfaces · 8 ArchUnit rules enforced from the first release</text>
 
-  <!-- ══════════ 2 · Phase 5 — Application Platform (complete) ══════════ -->
+  <!-- ══════════ 2 · Persistence Foundation ══════════ -->
   <rect x="92" y="184" width="624" height="60" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="92" y="184" width="4" height="60" fill="#16a34a"/>
   <circle cx="62" cy="214" r="12" fill="#16a34a"/>
   <path d="M57,214 L60.5,218 L67,210.5" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   <rect x="646" y="194" width="54" height="18" rx="9" fill="#dcfce7"/>
-  <text x="673" y="207" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.6.0</text>
-  <text x="110" y="208" font-size="12" font-weight="700" fill="#15803d">Phase 5 — Application Platform</text>
-  <text x="110" y="227" font-size="10" fill="#16a34a">End-to-end RAG over REST · authentication · tenant &amp; role authorization · observability foundation</text>
+  <text x="673" y="207" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.2.0</text>
+  <text x="110" y="208" font-size="12" font-weight="700" fill="#15803d">Phase 2 — Persistence Foundation</text>
+  <text x="110" y="227" font-size="10" fill="#16a34a">Flyway V001–V016 · JPA adapters for every aggregate · TenantId on every entity from the first migration</text>
 
-  <!-- ══════════ 3 · v0.6.1 Engineering Excellence (complete) ══════════ -->
+  <!-- ══════════ 3 · Application Layer ══════════ -->
   <rect x="92" y="264" width="624" height="60" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="92" y="264" width="4" height="60" fill="#16a34a"/>
   <circle cx="62" cy="294" r="12" fill="#16a34a"/>
   <path d="M57,294 L60.5,298 L67,290.5" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   <rect x="646" y="274" width="54" height="18" rx="9" fill="#dcfce7"/>
-  <text x="673" y="287" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.6.1</text>
-  <text x="110" y="288" font-size="12" font-weight="700" fill="#15803d">Engineering Excellence &amp; Repository Governance</text>
-  <text x="110" y="307" font-size="10" fill="#16a34a">Post-Phase-5 independent audit remediation — CI/CD, exception handling, rate limiting, Dockerfile</text>
+  <text x="673" y="287" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.3.0</text>
+  <text x="110" y="288" font-size="12" font-weight="700" fill="#15803d">Phase 3 — Application Layer</text>
+  <text x="110" y="307" font-size="10" fill="#16a34a">Use cases for documents, conversations, queries and users · 17 domain event types with a Spring publisher</text>
 
-  <!-- ══════════ 4 · Phase 6 (complete) ══════════ -->
+  <!-- ══════════ 4 · Document Ingestion ══════════ -->
   <rect x="92" y="344" width="624" height="60" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="92" y="344" width="4" height="60" fill="#16a34a"/>
   <circle cx="62" cy="374" r="12" fill="#16a34a"/>
   <path d="M57,374 L60.5,378 L67,370.5" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="606" y="354" width="94" height="18" rx="9" fill="#dcfce7"/>
-  <text x="653" y="367" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.7.0 – v0.7.1</text>
-  <text x="110" y="368" font-size="12" font-weight="700" fill="#15803d">Phase 6 — Product Completeness &amp; Authorization Depth</text>
-  <text x="110" y="387" font-size="10" fill="#16a34a">REST surface foundation (P06.1) · Authorization Filter (P06.2) — P06.3–P06.5 formally not opened (ADR GOV05)</text>
+  <rect x="646" y="354" width="54" height="18" rx="9" fill="#dcfce7"/>
+  <text x="673" y="367" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.4.0</text>
+  <text x="110" y="368" font-size="12" font-weight="700" fill="#15803d">Phase 4 — Document Ingestion</text>
+  <text x="110" y="387" font-size="10" fill="#16a34a">Apache Tika parsing · token-aware chunking · Ollama embeddings · Weaviate indexing with delete sync</text>
 
-  <!-- ══════════ 5 · v0.7.2 maintenance (complete) ══════════ -->
+  <!-- ══════════ 5 · Retrieval & RAG ══════════ -->
   <rect x="92" y="424" width="624" height="60" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="92" y="424" width="4" height="60" fill="#16a34a"/>
   <circle cx="62" cy="454" r="12" fill="#16a34a"/>
   <path d="M57,454 L60.5,458 L67,450.5" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="646" y="434" width="54" height="18" rx="9" fill="#dcfce7"/>
-  <text x="673" y="447" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.7.2</text>
-  <text x="110" y="448" font-size="12" font-weight="700" fill="#15803d">Post-Phase-6 Independent Audit Remediation</text>
-  <text x="110" y="467" font-size="10" fill="#16a34a">Maintenance release only — transaction boundary, dead config, README accuracy corrections (ADR GOV06)</text>
+  <rect x="606" y="434" width="94" height="18" rx="9" fill="#dcfce7"/>
+  <text x="653" y="447" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.5.0 – v0.6.0</text>
+  <text x="110" y="448" font-size="12" font-weight="700" fill="#15803d">Phase 5 — Retrieval &amp; RAG</text>
+  <text x="110" y="467" font-size="10" fill="#16a34a">Hybrid retrieval (BM25 + ANN + RRF) · context assembly · citations · REST API · JWT auth · tenant isolation</text>
 
-  <!-- ══════════ 6 · Phase 7 — CURRENT, NOT CLOSED ══════════ -->
-  <rect x="92" y="504" width="624" height="60" rx="6" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
-  <rect x="92" y="504" width="4" height="60" fill="#f59e0b"/>
-  <circle cx="62" cy="534" r="12" fill="#f59e0b"/>
-  <circle cx="62" cy="534" r="5" fill="#ffffff"/>
-  <rect x="606" y="514" width="94" height="18" rx="9" fill="#fef3c7"/>
-  <text x="653" y="527" text-anchor="middle" font-size="10" font-weight="600" fill="#b45309">v0.8.0 – v0.8.4</text>
-  <text x="110" y="528" font-size="12" font-weight="700" fill="#b45309">Phase 7 — Retrieval Quality &amp; Operational Integrity</text>
-  <text x="110" y="547" font-size="10" fill="#d97706">All five work packages shipped — phase NOT closed: retrieval-quality criterion still open (ADR RQ07)</text>
+  <!-- ══════════ 6 · Product Hardening ══════════ -->
+  <rect x="92" y="504" width="624" height="60" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
+  <rect x="92" y="504" width="4" height="60" fill="#16a34a"/>
+  <circle cx="62" cy="534" r="12" fill="#16a34a"/>
+  <path d="M57,534 L60.5,538 L67,530.5" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="606" y="514" width="94" height="18" rx="9" fill="#dcfce7"/>
+  <text x="653" y="527" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.6.1 – v0.7.2</text>
+  <text x="110" y="528" font-size="12" font-weight="700" fill="#15803d">Phase 6 — Product Hardening</text>
+  <text x="110" y="547" font-size="10" fill="#16a34a">Repository governance · document-ingestion REST surface · Authorization Filter · independent audit remediation</text>
 
-  <!-- ══════════ 7 · v0.8.5 — current release, alongside the roadmap ══════════ -->
-  <rect x="92" y="584" width="624" height="60" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.2"/>
-  <rect x="92" y="584" width="4" height="60" fill="#16a34a"/>
-  <circle cx="62" cy="614" r="12" fill="#16a34a"/>
-  <path d="M57,614 L60.5,618 L67,610.5" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="646" y="594" width="54" height="18" rx="9" fill="#dcfce7"/>
-  <text x="673" y="607" text-anchor="middle" font-size="10" font-weight="600" fill="#15803d">v0.8.5</text>
-  <text x="110" y="608" font-size="12" font-weight="700" fill="#15803d">Security Remediation &amp; Platform Enablement</text>
-  <text x="110" y="627" font-size="10" fill="#16a34a">Alongside the frozen roadmap, not inside it — 103/104 advisories closed · EKA consumable as a library</text>
+  <!-- ══════════ 7 · Platform Maturity — CURRENT, NOT CLOSED ══════════ -->
+  <rect x="92" y="584" width="624" height="60" rx="6" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+  <rect x="92" y="584" width="4" height="60" fill="#f59e0b"/>
+  <circle cx="62" cy="614" r="12" fill="#f59e0b"/>
+  <circle cx="62" cy="614" r="5" fill="#ffffff"/>
+  <rect x="606" y="594" width="94" height="18" rx="9" fill="#fef3c7"/>
+  <text x="653" y="607" text-anchor="middle" font-size="10" font-weight="600" fill="#b45309">v0.8.0 – v0.8.5</text>
+  <text x="110" y="608" font-size="12" font-weight="700" fill="#b45309">Phase 7 — Platform Maturity  (current)</text>
+  <text x="110" y="627" font-size="10" fill="#d97706">Published GitHub Package · reusable Java library · security remediation · retrieval quality · 819 tests, 11 rules</text>
 
-  <!-- ══════════ 8 · Phase 8 — planned ══════════ -->
+  <!-- ══════════ 8 · Ecosystem Readiness ══════════ -->
   <rect x="92" y="664" width="624" height="60" rx="6" fill="#fafafa" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="5,3"/>
   <rect x="92" y="664" width="4" height="60" fill="#cbd5e1"/>
   <circle cx="62" cy="694" r="12" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,2"/>
   <rect x="646" y="674" width="54" height="18" rx="9" fill="#f1f5f9"/>
   <text x="673" y="687" text-anchor="middle" font-size="10" font-weight="600" fill="#64748b">v0.9.0</text>
-  <text x="110" y="688" font-size="12" font-weight="700" fill="#475569">Phase 8 — Scale &amp; Ecosystem Readiness</text>
-  <text x="110" y="707" font-size="10" fill="#94a3b8">Prometheus + Grafana · SSE streaming · distributed rate limit (conditional) · MCP spike — go/no-go only</text>
+  <text x="110" y="688" font-size="12" font-weight="700" fill="#475569">Phase 8 — Ecosystem Readiness</text>
+  <text x="110" y="707" font-size="10" fill="#94a3b8">Prometheus · Grafana · SSE streaming on the chat endpoint · MCP spike — go/no-go recommendation only</text>
 
-  <!-- ══════════ 9 · v1.0.0 — goal ══════════ -->
+  <!-- ══════════ 9 · v1.0.0 ══════════ -->
   <rect x="92" y="744" width="624" height="60" rx="6" fill="#f8fafc" stroke="#2563eb" stroke-width="1.4" stroke-dasharray="5,3"/>
   <rect x="92" y="744" width="4" height="60" fill="#2563eb"/>
   <circle cx="62" cy="774" r="12" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
