@@ -1,0 +1,28 @@
+// Standalone on purpose — see README.md. `mavenLocal()` is listed first so the smoke
+// test resolves the build under test rather than a previously released version.
+plugins {
+    id 'application'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+// The version under test. CI passes -PekaVersion=<root project version> so this never
+// drifts from build.gradle; the default keeps a bare `gradle run` working locally.
+def ekaVersion = project.findProperty('ekaVersion') ?: '0.8.4'
+
+dependencies {
+    implementation "com.mudassirshahzad:project-eka:${ekaVersion}"
+}
+
+application {
+    mainClass = 'com.mudassirshahzad.eka.smoke.ConsumerSmokeTest'
+}

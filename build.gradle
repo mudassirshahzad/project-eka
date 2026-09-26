@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'maven-publish'
     id 'org.springframework.boot' version '3.5.16'
     id 'io.spring.dependency-management' version '1.1.7'
 }
@@ -11,6 +12,10 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+    // Published alongside the library so consumers can navigate into EKA's domain
+    // model and port interfaces from their IDE. Javadoc is deliberately not published
+    // yet — see docs/platform/consuming-eka.md.
+    withSourcesJar()
 }
 
 ext {
@@ -110,6 +115,100 @@ dependencies {
 // ── Tests ──────────────────────────────────────────────────────────────────
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+}
+
+// ── Publishing (platform enablement) ───────────────────────────────────────
+// EKA is consumed two ways, and they need different artifacts:
+//
+//   the library  build/libs/project-eka-<version>.jar        <- plain jar, no classifier
+//   the app      build/libs/project-eka-<version>-boot.jar   <- executable fat jar
+//
+// Gradle's default is the other way round (the boot jar takes the bare name and the
+// library gets `-plain`), which would publish a 146MB fat jar as the dependency
+// artifact — every consumer would inherit a flattened, repackaged copy of the whole
+// dependency tree. Swapping the classifiers makes the *library* the primary artifact,
+// which is what `from components.java` publishes.
+//
+// NOTE: `Dockerfile` copies the boot jar by its exact name. If the classifier below
+// changes, that COPY must change with it — the two are coupled on purpose, because a
+// glob there silently matched whichever jar happened to exist.
+tasks.named('jar') {
+    archiveClassifier = ''
+}
+tasks.named('bootJar') {
+    archiveClassifier = 'boot'
+}
+
+// Gradle Module Metadata is deliberately NOT published.
+//
+// Versions in this build come from Spring's `io.spring.dependency-management` plugin
+// (a Maven-style BOM import), which is also what makes the `ext['tomcat.version']`
+// security overrides above work. That plugin writes its resolved versions into the
+// generated POM's <dependencyManagement> block — but *not* into Gradle Module
+// Metadata, which ends up listing every dependency with no version at all.
+//
+// Gradle prefers .module over .pom when both are present, so publishing both would
+// hand Gradle consumers a versionless dependency graph that fails to resolve with
+// "Could not find org.postgresql:postgresql:." — verified against a real consumer
+// project, not assumed. Publishing the POM alone is correct for both Maven and
+// Gradle consumers, because Gradle honours <dependencyManagement> as constraints.
+//
+// The alternative fix is migrating to Gradle's native `platform()` BOM support, which
+// would produce correct module metadata — but it would also invalidate every
+// `ext['*.version']` override above, so it belongs with the module split, not here.
+tasks.withType(GenerateModuleMetadata).configureEach {
+    enabled = false
+}
+
+publishing {
+    publications {
+        library(MavenPublication) {
+            artifactId = 'project-eka'
+            from components.java
+
+            pom {
+                name        = 'Project EKA'
+                description = 'Enterprise RAG platform: domain model, ports, retrieval, and LLM gateway.'
+                url         = 'https://github.com/mudassirshahzad/project-eka'
+                licenses {
+                    license {
+                        name = 'Apache License 2.0'
+                        url  = 'https://www.apache.org/licenses/LICENSE-2.0'
+                    }
+                }
+                developers {
+                    developer {
+                        id   = 'mudassirshahzad'
+                        name = 'Mudassir Shahzad'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/mudassirshahzad/project-eka'
+                }
+            }
+        }
+    }
+
+    repositories {
+        // `gradle publishToMavenLocal` — the zero-infrastructure path for developing a
+        // consumer against an unreleased EKA build on the same machine.
+        mavenLocal()
+
+        // GitHub Packages. Credentials come from the environment rather than
+        // gradle.properties so that nothing resolvable to a token is ever committed;
+        // in CI, GITHUB_ACTOR/GITHUB_TOKEN are provided by Actions. Publishing is a
+        // no-op locally when they are unset — the repository is simply unusable, which
+        // fails only the `publishAllPublicationsToGitHubPackagesRepository` task and
+        // never `build`.
+        maven {
+            name = 'GitHubPackages'
+            url  = 'https://maven.pkg.github.com/mudassirshahzad/project-eka'
+            credentials {
+                username = System.getenv('GITHUB_ACTOR')
+                password = System.getenv('GITHUB_TOKEN')
+            }
+        }
+    }
 }
 
 // ── Build info (v0.6.1, ADR EX03) ───────────────────────────────────────────
