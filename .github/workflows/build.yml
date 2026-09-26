@@ -1,8 +1,12 @@
 name: Build
 
 on:
+  # Every pull request, not just those targeting `main`. The previous
+  # `branches: [ main ]` filter meant a stacked pull request — one opened against
+  # another feature branch, which is how a dependent change gets reviewed on its own
+  # diff — ran no checks whatsoever and reported "no checks reported". Unverified is
+  # worse than red: a red PR tells you something; a silent one looks ready to merge.
   pull_request:
-    branches: [ main ]
   push:
     branches: [ main ]
     # Release tags build *and* publish the library to GitHub Packages (see the
