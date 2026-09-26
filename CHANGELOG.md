@@ -5,6 +5,24 @@ For detailed release notes see [docs/releases/](docs/releases/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **PDF `pageCount` was always 0** (`TikaDocumentParserAdapter`). The adapter read the page count from
+  `meta:page-count` only. That key is `Office.PAGE_COUNT`, which Tika's **OOXML/Office** parsers
+  populate; Tika's **PDF** parser populates `PagedText.N_PAGES` (`xmpTPg:NPages`) and does not set
+  `meta:page-count` at all. Every parsed PDF therefore reported `pageCount = 0` while DOCX/PPTX
+  reported correctly. Fixed by reading `PagedText.N_PAGES` first and falling back to
+  `Office.PAGE_COUNT`; Office formats set both keys to the same value, so their reported page count is
+  unchanged. Tika's typed metadata constants are now used instead of a string literal.
+
+  **This was not a Tika 4 regression.** The behaviour was verified empirically against both
+  Tika 2.9.2 and Tika 4.0.0 — `meta:page-count` is null for PDFs under *both* versions, so the defect
+  has existed since the adapter was written in v0.4.0 and was merely *discovered* during the Tika 4
+  migration. The migration commit's claim that "`meta:page-count` is unaffected" was accurate: it was
+  equally broken before and after. No API, schema or `ParsedMetadata` change; the only behavioural
+  difference is that PDFs now report their real page count. +3 tests (813 total), with deterministic
+  3-page PDF and 2-page DOCX fixtures added under `src/test/resources/documents/`
+
 ### Fixed (documentation accuracy — no code change)
 
 - **Retrieval & RAG pipeline diagram refreshed and re-synchronised** (`docs/diagrams/retrieval-pipeline.svg`). The diagram had drifted into contradicting the frozen roadmap (ADR GOV03) in a document every visitor reads: it was titled "**Future** Retrieval & RAG Pipeline" with "all steps shown as future" long after the pipeline shipped, labelled **MCP Server as v0.8.0** and **LangGraph / Multi-Agent as v0.9.0** (all three are Phase 8 spike or post-v1.0), presented **"streaming SSE"** as part of an implemented stage when SSE is unshipped Phase 8 work, dated Conversation Memory v0.7.0 instead of v0.5.0, and used `[SOURCE-N]` rather than the actual `[SOURCE:N]` markers (ADR G03). Same layout, dimensions, stage order and panel structure retained; palette, contrast and typography modernised, and the stage Phase 7 changed (Fusion / Re-ranking) is now visually distinguished. Same class of correction as ADRs HD08–HD10

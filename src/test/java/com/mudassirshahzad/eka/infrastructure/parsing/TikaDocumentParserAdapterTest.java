@@ -5,6 +5,8 @@ import com.mudassirshahzad.eka.domain.document.ParsingStatus;
 import com.mudassirshahzad.eka.domain.document.SupportedFormat;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
@@ -92,5 +94,41 @@ class TikaDocumentParserAdapterTest {
         ParsedDocument result = adapter.parse(content, SupportedFormat.MARKDOWN);
 
         assertThat(result.detectedFormat()).isNotNull();
+    }
+
+    @Test
+    void parse_extractsPageCountFromPdf() throws IOException {
+        byte[] content = fixture("three-page.pdf");
+
+        ParsedDocument result = adapter.parse(content, SupportedFormat.PDF);
+
+        assertThat(result.detectedFormat()).isEqualTo(SupportedFormat.PDF);
+        assertThat(result.metadata().pageCount()).isEqualTo(3);
+    }
+
+    @Test
+    void parse_extractsPageCountFromOfficeDocument() throws IOException {
+        byte[] content = fixture("two-page.docx");
+
+        ParsedDocument result = adapter.parse(content, SupportedFormat.DOCX);
+
+        assertThat(result.detectedFormat()).isEqualTo(SupportedFormat.DOCX);
+        assertThat(result.metadata().pageCount()).isEqualTo(2);
+    }
+
+    @Test
+    void parse_reportsZeroPageCountForFormatsThatCarryNoPageMetadata() {
+        byte[] content = "plain text has no page count".getBytes(StandardCharsets.UTF_8);
+
+        ParsedDocument result = adapter.parse(content, SupportedFormat.TXT);
+
+        assertThat(result.metadata().pageCount()).isZero();
+    }
+
+    private byte[] fixture(String name) throws IOException {
+        try (InputStream in = getClass().getResourceAsStream("/documents/" + name)) {
+            assertThat(in).as("test fixture /documents/%s must exist", name).isNotNull();
+            return in.readAllBytes();
+        }
     }
 }
