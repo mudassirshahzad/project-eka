@@ -19,7 +19,7 @@ java {
 }
 
 ext {
-    springAiVersion  = '1.1.8'
+    springAiVersion  = '2.0.1'
     jjwtVersion      = '0.13.0'
     tikaVersion      = '4.0.0'
     archunitVersion  = '1.5.1'
