@@ -24,7 +24,7 @@ ext {
     tikaVersion      = '4.0.0'
     archunitVersion  = '1.5.1'
     springdocVersion = '2.9.1'
-    grpcVersion      = '1.75.0'
+    grpcVersion      = '1.84.0'
 }
 
 // ── Managed-dependency overrides (security) ────────────────────────────────
